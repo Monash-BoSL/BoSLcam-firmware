@@ -1,0 +1,4 @@
+build/*
+!/build/zephyr/
+build/zephyr/*
+!/build/zephyr/merged.hex
