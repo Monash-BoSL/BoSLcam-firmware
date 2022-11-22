@@ -1,0 +1,7 @@
+/*
+ * Copyright (c) 2021 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include "native_camera_common_0_14_0.dtsi"

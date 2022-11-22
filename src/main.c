@@ -29,7 +29,9 @@ static struct gpio_callback button_cb_data;
  * The led0 devicetree alias is optional. If present, we'll use it
  * to turn on the LED whenever the button is pressed.
  */
-static struct gpio_dt_spec led = GPIO_DT_SPEC_GET_OR(DT_ALIAS(led0), gpios,
+static struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET_OR(DT_ALIAS(led0), gpios,
+						     {0});
+static struct gpio_dt_spec led1 = GPIO_DT_SPEC_GET_OR(DT_ALIAS(led1), gpios,
 						     {0});
 
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
@@ -67,32 +69,51 @@ void main(void)
 	gpio_add_callback(button.port, &button_cb_data);
 	printk("Set up button at %s pin %d\n", button.port->name, button.pin);
 
-	if (led.port && !device_is_ready(led.port)) {
-		printk("Error %d: LED device %s is not ready; ignoring it\n",
-		       ret, led.port->name);
-		led.port = NULL;
+	if (led0.port && !device_is_ready(led0.port)) {
+		printk("Error %d: led0 device %s is not ready; ignoring it\n",
+		       ret, led0.port->name);
+		led0.port = NULL;
 	}
-	if (led.port) {
-		ret = gpio_pin_configure_dt(&led, GPIO_OUTPUT);
+	if (led0.port) {
+		ret = gpio_pin_configure_dt(&led0, GPIO_OUTPUT);
 		if (ret != 0) {
 			printk("Error %d: failed to configure LED device %s pin %d\n",
-			       ret, led.port->name, led.pin);
-			led.port = NULL;
+			       ret, led0.port->name, led0.pin);
+			led0.port = NULL;
 		} else {
-			printk("Set up LED at %s pin %d\n", led.port->name, led.pin);
+			printk("Set up LED at %s pin %d\n", led0.port->name, led0.pin);
+		}
+	}
+	
+	if (led1.port && !device_is_ready(led1.port)) {
+		printk("Error %d: led0 device %s is not ready; ignoring it\n",
+		       ret, led0.port->name);
+		led1.port = NULL;
+	}
+	if (led1.port) {
+		ret = gpio_pin_configure_dt(&led1, GPIO_OUTPUT);
+		if (ret != 0) {
+			printk("Error %d: failed to configure LED device %s pin %d\n",
+			       ret, led0.port->name, led1.pin);
+			led0.port = NULL;
+		} else {
+			printk("Set up LED at %s pin %d\n", led1.port->name, led1.pin);
 		}
 	}
 
 	printk("Press the button\n");
-	if (led.port) {
+	if (led0.port) {
+	if (led1.port) {
 		while (1) {
 			/* If we have an LED, match its state to the button's. */
 			int val = gpio_pin_get_dt(&button);
 
 			if (val >= 0) {
-				gpio_pin_set_dt(&led, val);
+				gpio_pin_set_dt(&led0, val);
+				gpio_pin_set_dt(&led1, !val);
 			}
 			k_msleep(SLEEP_TIME_MS);
 		}
+	}
 	}
 }
