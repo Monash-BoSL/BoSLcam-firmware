@@ -5,6 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+
 #include <zephyr.h>
 #include <device.h>
 #include <drivers/gpio.h>
@@ -12,7 +13,12 @@
 #include <sys/printk.h>
 #include <inttypes.h>
 
+#include <drivers/i2c.h>
+
+// #include <i2c.h>
+
 #define SLEEP_TIME_MS	1
+
 
 /*
  * Get button configuration from the devicetree sw0 alias. This is mandatory.
@@ -32,6 +38,10 @@ static struct gpio_callback button_cb_data;
 static struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET_OR(DT_ALIAS(led0), gpios,
 						     {0});
 
+
+static const struct device *i2c_sccb;
+
+
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
 {
@@ -41,6 +51,16 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 void main(void)
 {
 	int ret;
+	
+	i2c_sccb = device_get_binding(DT_LABEL(DT_NODELABEL(i2c2)));
+	printk("bind %s", i2c_sccb->name);
+	
+	while(1){
+		uint8_t buffer[40];
+		ret = i2c_write(i2c_sccb, buffer, 40, 0x03);
+
+	}
+	
 
 	if (!device_is_ready(button.port)) {
 		printk("Error: button device %s is not ready\n",
