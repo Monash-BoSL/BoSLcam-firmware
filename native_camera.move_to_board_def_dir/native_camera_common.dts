@@ -17,83 +17,26 @@
 	leds {
 		compatible = "gpio-leds";
 		led0: led_0 {
-			gpios = <&gpio0 2 0>;
+			gpios = <&gpio0 17 0>;
 			label = "Green LED 1";
-		};
-		led1: led_1 {
-			gpios = <&gpio0 3 0>;
-			label = "Green LED 2";
-		};
-		led2: led_2 {
-			gpios = <&gpio0 4 0>;
-			label = "Green LED 3";
-		};
-		led3: led_3 {
-			gpios = <&gpio0 5 0>;
-			label = "Green LED 4";
 		};
 	};
 
 	pwmleds {
 		compatible = "pwm-leds";
 		pwm_led0: pwm_led_0 {
-			pwms = <&pwm0 2>;
+			pwms = <&pwm0 17>;
 		};
 	};
 
 	buttons {
-		/*
-		 * Unlike most DK boards, we do not actually have 4 buttons
-		 * on nRF9160 DK. Instead, we have 2 buttons and 2 switches.
-		 * Treat the switches as buttons anyway, for convenience.
-		 * This makes life easier for software that wants to deal with
-		 * the usual "4 buttons per DK board" convention.
-		 */
 		compatible = "gpio-keys";
 		button0: button_0 {
-			gpios = <&gpio0 6 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+			gpios = <&gpio0 21 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 			label = "Push button 1";
 		};
-		button1: button_1 {
-			gpios = <&gpio0 7 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-			label = "Push button 2";
-		};
-		button2: button_2 {
-			gpios = <&gpio0 8 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-			label = "Switch 1";
-		};
-		button3: button_3 {
-			gpios = <&gpio0 9 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
-			label = "Switch 2";
-		};
 	};
-
-	interface_to_nrf52840: gpio-interface {
-		compatible = "nordic,nrf9160dk-nrf52840-interface";
-		#gpio-cells = <2>;
-		gpio-map-mask = <0xf 0>;
-		gpio-map-pass-thru = <0 0xffffffff>;
-		gpio-map = <0 0 &gpio0 17 0>,
-			   <1 0 &gpio0 18 0>,
-			   <2 0 &gpio0 19 0>,
-			   <3 0 &gpio0 21 0>,
-			   <4 0 &gpio0 22 0>,
-			   <5 0 &gpio0 23 0>;
-			   /* 6: COEX0 */
-			   /* 7: COEX1 */
-			   /* 8: COEX2 */
-	};
-
-	nrf52840_reset: gpio-reset {
-		compatible = "nordic,nrf9160dk-nrf52840-reset";
-		status = "disabled";
-		/*
-		 * This line is specified as active high for compatibility
-		 * with the previously used Kconfig-based configuration.
-		 */
-		gpios = <&interface_to_nrf52840 5 GPIO_ACTIVE_HIGH>;
-	};
-
+	
 	arduino_header: connector {
 		compatible = "arduino-header-r3";
 		#gpio-cells = <2>;
@@ -137,14 +80,8 @@
 	/* These aliases are provided for compatibility with samples */
 	aliases {
 		led0 = &led0;
-		led1 = &led1;
-		led2 = &led2;
-		led3 = &led3;
 		pwm-led0 = &pwm_led0;
 		sw0 = &button0;
-		sw1 = &button1;
-		sw2 = &button2;
-		sw3 = &button3;
 		bootloader-led0 = &led0;
 	};
 };
@@ -161,51 +98,61 @@
 	status = "okay";
 };
 
+
 &uart0 {
 	status = "okay";
 	current-speed = <115200>;
-	tx-pin = <29>;
-	rx-pin = <28>;
+	tx-pin = <0xFFFFFFFF>;
+	rx-pin = <0xFFFFFFFF>;
 	rx-pull-up;
-	rts-pin = <27>;
-	cts-pin = <26>;
+	rts-pin = <0xFFFFFFFF>;
+	cts-pin = <0xFFFFFFFF>;
 	cts-pull-up;
 };
+
 
 arduino_serial: &uart1 {
 	status = "okay";
-	current-speed = <115200>;
-	tx-pin = <1>;
-	rx-pin = <0>;
-	rx-pull-up;
-	rts-pin = <14>;
-	cts-pin = <15>;
-	cts-pull-up;
+	current-speed = <9600>;
+	tx-pin = <31>;
+	rx-pin = <30>;
 };
 
+/*
 &uart2 {
 	tx-pin = <24>;
 	rx-pin = <23>;
 };
+*/
 
 arduino_i2c: &i2c2 {
 	compatible = "nordic,nrf-twim";
 	status = "okay";
-	sda-pin = <30>;
-	scl-pin = <31>;
+	sda-pin = <10>;
+	scl-pin = <9>;
 };
 
 &pwm0 {
 	status = "okay";
-	ch0-pin = <2>;
+	ch0-pin = <17>;
 };
 
-&spi3 {
+&spi0 {
 	compatible = "nordic,nrf-spim";
 	status = "okay";
-	sck-pin = <19>;
-	mosi-pin = <18>;
-	miso-pin = <17>;
+	sck-pin = <22>;
+	mosi-pin = <24>;
+	miso-pin = <23>;
+	cs-gpios = <&gpio0 25 GPIO_ACTIVE_LOW>;
+};
+
+&spi1 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	sck-pin = <26>;
+	mosi-pin = <27>;
+	miso-pin = <29>;
+	cs-gpios = <&gpio0 28 GPIO_ACTIVE_LOW>;
 };
 
 &timer0 {
