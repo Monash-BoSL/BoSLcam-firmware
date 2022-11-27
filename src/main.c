@@ -6,6 +6,7 @@
  */
 
 
+#include <nrfx.h>
 #include <zephyr.h>
 #include <device.h>
 #include <drivers/gpio.h>
@@ -18,6 +19,17 @@
 // #include <i2c.h>
 
 #define SLEEP_TIME_MS	1
+
+
+#define CAMADDR_WR  0x42
+#define CAMADDR_RD  0x43
+
+#define SCCB_VS		11
+#define SCCB_HREF	12
+#define SCCB_PCLK	13
+#define SCCB_XCLK	14
+#define SCCB_PEN	15
+#define SCCB_PDN	16
 
 
 /*
@@ -38,6 +50,7 @@ static struct gpio_callback button_cb_data;
 static struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET_OR(DT_ALIAS(led0), gpios,
 						     {0});
 
+static const struct device * gpio; 
 
 static const struct device *i2c_sccb;
 
@@ -52,13 +65,36 @@ void main(void)
 {
 	int ret;
 	
+	gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
+	printk("bind %s\n", gpio->name);
+	
+	gpio_pin_configure(gpio, SCCB_PEN, GPIO_OUTPUT);
+	gpio_pin_configure(gpio, SCCB_PDN, GPIO_OUTPUT);
+	gpio_pin_configure(gpio, 18, GPIO_OUTPUT);
+	gpio_pin_set_raw(gpio, SCCB_PEN, 1);
+	gpio_pin_set_raw(gpio, SCCB_PDN, 0);
+		
+	while(1){
+		// NRF_GPIO->OUT |= (0x01 << 18);
+		// NRF_GPIO->OUT &= ~(0x01 << 18);
+		NRF_P0->OUT ^= (0x01 << 18);
+	}
+	
 	i2c_sccb = device_get_binding(DT_LABEL(DT_NODELABEL(i2c2)));
-	printk("bind %s", i2c_sccb->name);
+	printk("bind %s\n", i2c_sccb->name);
 	
 	while(1){
 		uint8_t buffer[40];
-		ret = i2c_write(i2c_sccb, buffer, 40, 0x03);
-
+		// ret = i2c_write(i2c_sccb, buffer, 40, 0x03);
+		ret = i2c_read(i2c_sccb, buffer, 1, CAMADDR_RD);
+		printk("buf: ");
+		for(int i = 0; i < 40; i++){
+			printk("%02X", buffer[i]);
+			buffer[i] = 0x00;
+		}
+		printk("\n");
+		
+		k_msleep(500);
 	}
 	
 
