@@ -27,6 +27,7 @@
 
 #define CAMADDR_WR  0x42
 #define CAMADDR_RD  0x43
+#define CAMADDR		0x21
 
 #define SCCB_VS		11
 #define SCCB_HREF	12
@@ -34,6 +35,9 @@
 #define SCCB_XCLK	14
 #define SCCB_PEN	15
 #define SCCB_PDN	16
+
+#define SCCB_CLK_DPPI_CH 0
+#define GPIOTE_CLK_TSK 0
 
 
 /*
@@ -74,100 +78,56 @@ void main(void)
 	
 	gpio_pin_configure(gpio, SCCB_PEN, GPIO_OUTPUT);
 	gpio_pin_configure(gpio, SCCB_PDN, GPIO_OUTPUT);
+	for(int i = 0; i < 8; i++){
+		gpio_pin_configure(gpio, i, GPIO_INPUT);
+	}
 	gpio_pin_set_raw(gpio, SCCB_PEN, 1);
 	gpio_pin_set_raw(gpio, SCCB_PDN, 0);
 		
 		
-	NRF_P0->PIN_CNF[18] = 0b00000000000000000000000000000001; 
-	// nrf_gpio_cfg_input(21,NRF_GPIO_PIN_PULLUP);
+	NRF_P0->PIN_CNF[SCCB_XCLK] = 0b00000000000000000000000000000001; 
 
-	nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_125kHz);
+
+	nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_16MHz);
 	nrf_timer_mode_set(NRF_TIMER0, NRF_TIMER_MODE_TIMER);
-	nrf_timer_cc_set(NRF_TIMER0,NRF_TIMER_CC_CHANNEL0, 0x10);
+	nrf_timer_cc_set(NRF_TIMER0,NRF_TIMER_CC_CHANNEL0, 0x01);
 	nrf_timer_bit_width_set(NRF_TIMER0, NRF_TIMER_BIT_WIDTH_8);
 	nrf_timer_shorts_set(NRF_TIMER0, 0b00000000000000000000000000000001);//reset timer on match with compare 0
-	nrf_timer_publish_set(NRF_TIMER0, NRF_TIMER_EVENT_COMPARE0,0);
-	// // nrf_gpiote_subscribe_set(NRF_GPIOTE, NRF_GPIOTE_TASK_OUT_0 ,0);
-	// // nrf_gpiote_task_configure(NRF_GPIOTE,
-                                                 // // 0,
-                                                 // // 18,
-                                                 // // NRF_GPIOTE_POLARITY_TOGGLE,
-                                                 // // NRF_GPIOTE_INITIAL_VALUE_HIGH);
+	nrf_timer_publish_set(NRF_TIMER0, NRF_TIMER_EVENT_COMPARE0,SCCB_CLK_DPPI_CH);
+	nrf_gpiote_subscribe_set(NRF_GPIOTE, NRF_GPIOTE_TASK_OUT_0 ,SCCB_CLK_DPPI_CH);
+	nrf_gpiote_task_configure(NRF_GPIOTE,
+								 GPIOTE_CLK_TSK,
+								 SCCB_XCLK,
+								 NRF_GPIOTE_POLARITY_TOGGLE,
+								 NRF_GPIOTE_INITIAL_VALUE_HIGH);
+    nrf_gpiote_task_enable(NRF_GPIOTE,GPIOTE_CLK_TSK);
 
-	// // nrf_dppi_task_trigger(NRF_DPPIC, NRF_DPPI_TASK_CHG0_EN);
+
 	nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_START);
-	
-	// uint8_t chen = nrf_dppi_channel_check(NRF_DPPIC, 0);
-	// printk("print %i", chen);
-	
-	
-	/* Configure GPIOTE Index 0 to be an Event */
-    // nrf_gpiote_event_configure(NRF_GPIOTE,0,21,NRF_GPIOTE_POLARITY_HITOLO);
-
-    /* Configure GPIOTE Index 1 to be a Task*/
-    nrf_gpiote_task_configure(NRF_GPIOTE,1,18,NRF_GPIOTE_POLARITY_TOGGLE,NRF_GPIOTE_INITIAL_VALUE_LOW);
-
-    /* Index 0 will Publish on DPPI Channel 0 */
-    // nrf_gpiote_publish_set(NRF_GPIOTE,NRF_GPIOTE_EVENT_IN_0,0);
-
-    /* Index 1 will Subscribe on DPPI Channel 0 */
-    nrf_gpiote_subscribe_set(NRF_GPIOTE,NRF_GPIOTE_TASK_OUT_1,0);
-
-    /* Enable Publish and Subscribe */
-    nrf_gpiote_event_enable(NRF_GPIOTE,0);
-    nrf_gpiote_task_enable(NRF_GPIOTE,1);
 
     /* Enable DPPI Channel */
-    nrf_dppi_channels_enable(NRF_DPPIC, 1);
+    nrf_dppi_channels_enable(NRF_DPPIC, 0x01 << SCCB_CLK_DPPI_CH);
 
-    /* Validate things did get enabled */
-    printk("[0] is %d\n",nrf_gpiote_te_is_enabled(NRF_GPIOTE,0));
-    // printk("[1] is %d\n",nrf_gpiote_te_is_enabled(NRF_GPIOTE,1));
-    printk("[2] is %d\n",nrf_dppi_channel_check(NRF_DPPIC,0));
-	
-	while(1){
-		
-	}
-	
-	
-	
-	// while(1){
-		// // NRF_GPIO->OUT |= (0x01 << 18);
-		// // NRF_GPIO->OUT &= ~(0x01 << 18);
-		// NRF_P0->OUTSET = (0x01 << 18);
-		// NRF_P0->OUTCLR = (0x01 << 18);
-		// NRF_P0->OUTSET = (0x01 << 18);
-		// NRF_P0->OUTCLR = (0x01 << 18);
-		// NRF_P0->OUTSET = (0x01 << 18);
-		// NRF_P0->OUTCLR = (0x01 << 18);
-		// NRF_P0->OUTSET = (0x01 << 18);
-		// NRF_P0->OUTCLR = (0x01 << 18);
-		// NRF_P0->OUTSET = (0x01 << 18);
-		// NRF_P0->OUTCLR = (0x01 << 18);
-		// NRF_P0->OUTSET = (0x01 << 18);
-		// NRF_P0->OUTCLR = (0x01 << 18);
-		// NRF_P0->OUTSET = (0x01 << 18);
-		// NRF_P0->OUTCLR = (0x01 << 18);
-		// NRF_P0->OUTSET = (0x01 << 18);
-		// NRF_P0->OUTCLR = (0x01 << 18);
-		// NRF_P0->OUTSET = (0x01 << 18);
-		// NRF_P0->OUTCLR = (0x01 << 18);
-		// NRF_P0->OUTSET = (0x01 << 18);
-		// NRF_P0->OUTCLR = (0x01 << 18);
-	// }
-	
+
+
 	i2c_sccb = device_get_binding(DT_LABEL(DT_NODELABEL(i2c2)));
 	printk("bind %s\n", i2c_sccb->name);
 	
 	while(1){
 		uint8_t buffer[40];
-		// ret = i2c_write(i2c_sccb, buffer, 40, 0x03);
-		ret = i2c_read(i2c_sccb, buffer, 1, CAMADDR_RD);
+		buffer[0] = 0x12;
+		buffer[1] = 0x80;
+		ret = i2c_write(i2c_sccb, buffer, 2, CAMADDR);
+		k_msleep(100);
+		uint8_t val;
+		ret = i2c_reg_read_byte(i2c_sccb, CAMADDR, 0x0A, &val);
+		// ret = i2c_read(i2c_sccb, buffer, 40, CAMADDR);
 		printk("buf: ");
-		for(int i = 0; i < 40; i++){
-			printk("%02X", buffer[i]);
-			buffer[i] = 0x00;
-		}
+		printk("%02X", val);
+		// for(int i = 0; i < 40; i++){
+			// printk("%02X", buffer[i]);
+			// buffer[i] = 0x00;
+		// }
 		printk("\n");
 		
 		k_msleep(500);
