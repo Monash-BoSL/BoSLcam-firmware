@@ -79,36 +79,36 @@ void main(void)
 		
 		
 	NRF_P0->PIN_CNF[18] = 0b00000000000000000000000000000001; 
-	nrf_gpio_cfg_input(21,NRF_GPIO_PIN_PULLUP);
+	// nrf_gpio_cfg_input(21,NRF_GPIO_PIN_PULLUP);
 
-	// nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_125kHz);
-	// nrf_timer_mode_set(NRF_TIMER0, NRF_TIMER_MODE_TIMER);
-	// nrf_timer_cc_set(NRF_TIMER0,NRF_TIMER_CC_CHANNEL0, 0x10);
-	// nrf_timer_bit_width_set(NRF_TIMER0, NRF_TIMER_BIT_WIDTH_8);
-	// nrf_timer_shorts_set(NRF_TIMER0, 0b00000000000000000000000000000001);//reset timer on match with compare 0
-	// nrf_timer_publish_set(NRF_TIMER0, NRF_TIMER_EVENT_COMPARE0,0);
-	// nrf_gpiote_subscribe_set(NRF_GPIOTE, NRF_GPIOTE_TASK_OUT_0 ,0);
-	// nrf_gpiote_task_configure(NRF_GPIOTE,
-                                                 // 0,
-                                                 // 18,
-                                                 // NRF_GPIOTE_POLARITY_TOGGLE,
-                                                 // NRF_GPIOTE_INITIAL_VALUE_HIGH);
-	// nrf_gpiote_task_enable(NRF_GPIOTE,0);
-	// nrf_dppi_task_trigger(NRF_DPPIC, NRF_DPPI_TASK_CHG0_EN);
-	// nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_START);
+	nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_125kHz);
+	nrf_timer_mode_set(NRF_TIMER0, NRF_TIMER_MODE_TIMER);
+	nrf_timer_cc_set(NRF_TIMER0,NRF_TIMER_CC_CHANNEL0, 0x10);
+	nrf_timer_bit_width_set(NRF_TIMER0, NRF_TIMER_BIT_WIDTH_8);
+	nrf_timer_shorts_set(NRF_TIMER0, 0b00000000000000000000000000000001);//reset timer on match with compare 0
+	nrf_timer_publish_set(NRF_TIMER0, NRF_TIMER_EVENT_COMPARE0,0);
+	// // nrf_gpiote_subscribe_set(NRF_GPIOTE, NRF_GPIOTE_TASK_OUT_0 ,0);
+	// // nrf_gpiote_task_configure(NRF_GPIOTE,
+                                                 // // 0,
+                                                 // // 18,
+                                                 // // NRF_GPIOTE_POLARITY_TOGGLE,
+                                                 // // NRF_GPIOTE_INITIAL_VALUE_HIGH);
+
+	// // nrf_dppi_task_trigger(NRF_DPPIC, NRF_DPPI_TASK_CHG0_EN);
+	nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_START);
 	
 	// uint8_t chen = nrf_dppi_channel_check(NRF_DPPIC, 0);
 	// printk("print %i", chen);
 	
 	
 	/* Configure GPIOTE Index 0 to be an Event */
-    nrf_gpiote_event_configure(NRF_GPIOTE,0,21,NRF_GPIOTE_POLARITY_HITOLO);
+    // nrf_gpiote_event_configure(NRF_GPIOTE,0,21,NRF_GPIOTE_POLARITY_HITOLO);
 
     /* Configure GPIOTE Index 1 to be a Task*/
     nrf_gpiote_task_configure(NRF_GPIOTE,1,18,NRF_GPIOTE_POLARITY_TOGGLE,NRF_GPIOTE_INITIAL_VALUE_LOW);
 
     /* Index 0 will Publish on DPPI Channel 0 */
-    nrf_gpiote_publish_set(NRF_GPIOTE,NRF_GPIOTE_EVENT_IN_0,0);
+    // nrf_gpiote_publish_set(NRF_GPIOTE,NRF_GPIOTE_EVENT_IN_0,0);
 
     /* Index 1 will Subscribe on DPPI Channel 0 */
     nrf_gpiote_subscribe_set(NRF_GPIOTE,NRF_GPIOTE_TASK_OUT_1,0);
@@ -122,7 +122,7 @@ void main(void)
 
     /* Validate things did get enabled */
     printk("[0] is %d\n",nrf_gpiote_te_is_enabled(NRF_GPIOTE,0));
-    printk("[1] is %d\n",nrf_gpiote_te_is_enabled(NRF_GPIOTE,1));
+    // printk("[1] is %d\n",nrf_gpiote_te_is_enabled(NRF_GPIOTE,1));
     printk("[2] is %d\n",nrf_dppi_channel_check(NRF_DPPIC,0));
 	
 	while(1){
