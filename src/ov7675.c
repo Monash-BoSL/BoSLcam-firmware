@@ -147,7 +147,7 @@ static const struct regval_list ov7670_default_regs[] = {//from the linux driver
 	{0x5d, 0x49},		{0x5e, 0x0e},
 	{0x6c, 0x0a},		{0x6d, 0x55},
 	{0x6e, 0x11},		{0x6f, 0x9e}, /* it was 0x9F "9e for advance AWB" */
-	{0x6a, 0x40},		{REG_BLUE, 0x40},
+	{0x6a, 0x40},		{REG_BLUE, 0x10},
 	{REG_RED, 0x60},
 	{REG_COM8, COM8_FASTAEC|COM8_AECSTEP|COM8_AGC|COM8_AEC|COM8_AWB},
 
@@ -193,26 +193,25 @@ static void errorLed(void){
 }
 
 void wrReg(uint8_t reg,uint8_t dat){
-
-	k_msleep(100);
 	i2c_reg_write_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, dat);
-	// _delay_ms(1);
+	// k_msleep(1);
 }
 
 uint8_t rdReg(uint8_t reg){
 	uint8_t val;
 	i2c_reg_read_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, &val);
-	// _delay_ms(1);
+	// k_msleep(1);
 	return val;
 }
 static void wrSensorRegs8_8(const struct regval_list reglist[]){
 	const struct regval_list *next = reglist;
 	for(;;){
-		uint8_t reg_addr = &next->reg_num;
-		uint8_t reg_val = &next->value;
-		if((reg_addr==255)&&(reg_val==255))
-			break;
+		uint8_t reg_addr = next->reg_num;
+		uint8_t reg_val = next->value;
+		if((reg_addr==255)&&(reg_val==255)){break;}
+		// printk("writing reg: %02X, val: %02X\n", reg_addr, reg_val);
 		wrReg(reg_addr, reg_val);
+		// k_msleep(50);
 		next++;
 	}
 }

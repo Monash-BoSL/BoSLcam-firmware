@@ -115,30 +115,44 @@ void main(void)
 	i2c_sccb = device_get_binding(DT_LABEL(DT_NODELABEL(i2c2)));
 	printk("bind %s\n", i2c_sccb->name);
 	
-	
-	
+	printk("begin");
+	camInit();
 	while(1){
-		uint8_t buffer[40];
-		buffer[0] = 0x12;
-		buffer[1] = 0x80;
-		// ret = i2c_write(i2c_sccb, buffer, 2, CAMADDR);
-		// ret = i2c_reg_write_byte(i2c_sccb, CAMADDR, 0x12, 0x80);
-		wrReg(0x12,0x80);
-		k_msleep(100);
-		uint8_t val;
-		// ret = i2c_reg_read_byte(i2c_sccb, CAMADDR, 0x0A, &val);
-		val = rdReg(0x0A);
-		// ret = i2c_read(i2c_sccb, buffer, 40, CAMADDR);
-		printk("buf: ");
-		printk("%02X", val);
-		// for(int i = 0; i < 40; i++){
-			// printk("%02X", buffer[i]);
-			// buffer[i] = 0x00;
-		// }
-		printk("\n");
-		
-		k_msleep(500);
+	 uint8_t val;
+	val = rdReg(REG_VREF);
+	printk("REG_VREF: %02X\n", val);
+	
+	k_msleep(1000);
 	}
+	
+	// while(1){
+		// // ret = i2c_write(i2c_sccb, buffer, 2, CAMADDR);
+		// // ret = i2c_reg_write_byte(i2c_sccb, CAMADDR, 0x12, 0x80);
+		// wrReg(0x12,0x80);
+		// k_msleep(100);
+		// uint8_t val;
+		// // ret = i2c_reg_read_byte(i2c_sccb, CAMADDR, 0x0A, &val);
+		// val = rdReg(0x0A);
+		// // ret = i2c_read(i2c_sccb, buffer, 40, CAMADDR);
+		// printk(" buf: ");
+		// printk("%02X", val);
+		
+		// val = rdReg(0x01);
+		// printk(" buf: ");
+		// printk("%02X", val);
+		// wrReg(0x01,0x32);
+		// val = rdReg(0x01);
+		// printk(" buf: ");
+		// printk("%02X", val);
+		
+		// // for(int i = 0; i < 40; i++){
+			// // printk("%02X", buffer[i]);
+			// // buffer[i] = 0x00;
+		// // }
+		// printk("\n");
+		
+		// k_msleep(500);
+	// }
 	
 
 
