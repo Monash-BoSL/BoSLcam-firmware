@@ -64,7 +64,7 @@ static const struct device * gpio;
 
 const struct device * i2c_sccb;
 
-uint8_t imbuf[640*240];
+uint8_t imbuf[640*256];
 
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
@@ -140,7 +140,7 @@ void main(void)
 	
 	uint16_t wg = 640;
 	// uint16_t hg = 480;
-	uint16_t hg = 240;
+	uint16_t hg = 256;
 	uint16_t lg2;
 	uint32_t p = 0;
 
@@ -162,7 +162,7 @@ void main(void)
 
 	printk("image line:+++\n\n\n\n");
 
-	for(uint32_t i = 0; i < 640*32; i++){
+	for(uint32_t i = 0; i < 640*1; i++){
 		printk("%02X ", imbuf[i]);
 	}
 	printk("+++image end");
