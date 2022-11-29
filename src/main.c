@@ -20,6 +20,8 @@
 
 #include <drivers/i2c.h>
 
+#include "ov7675.h"
+
 // #include <i2c.h>
 
 #define SLEEP_TIME_MS	1
@@ -60,7 +62,7 @@ static struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET_OR(DT_ALIAS(led0), gpios,
 
 static const struct device * gpio; 
 
-static const struct device *i2c_sccb;
+const struct device * i2c_sccb;
 
 
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
@@ -113,14 +115,19 @@ void main(void)
 	i2c_sccb = device_get_binding(DT_LABEL(DT_NODELABEL(i2c2)));
 	printk("bind %s\n", i2c_sccb->name);
 	
+	
+	
 	while(1){
 		uint8_t buffer[40];
 		buffer[0] = 0x12;
 		buffer[1] = 0x80;
-		ret = i2c_write(i2c_sccb, buffer, 2, CAMADDR);
+		// ret = i2c_write(i2c_sccb, buffer, 2, CAMADDR);
+		// ret = i2c_reg_write_byte(i2c_sccb, CAMADDR, 0x12, 0x80);
+		wrReg(0x12,0x80);
 		k_msleep(100);
 		uint8_t val;
-		ret = i2c_reg_read_byte(i2c_sccb, CAMADDR, 0x0A, &val);
+		// ret = i2c_reg_read_byte(i2c_sccb, CAMADDR, 0x0A, &val);
+		val = rdReg(0x0A);
 		// ret = i2c_read(i2c_sccb, buffer, 40, CAMADDR);
 		printk("buf: ");
 		printk("%02X", val);
@@ -133,6 +140,15 @@ void main(void)
 		k_msleep(500);
 	}
 	
+
+
+
+
+
+
+
+
+
 
 	if (!device_is_ready(button.port)) {
 		printk("Error: button device %s is not ready\n",
