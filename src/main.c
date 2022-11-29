@@ -64,6 +64,7 @@ static const struct device * gpio;
 
 const struct device * i2c_sccb;
 
+uint8_t imbuf[640*240];
 
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
@@ -83,6 +84,8 @@ void main(void)
 	for(int i = 0; i < 8; i++){
 		gpio_pin_configure(gpio, i, GPIO_INPUT);
 	}
+	gpio_pin_configure(gpio, SCCB_VS, GPIO_INPUT);
+	gpio_pin_configure(gpio, SCCB_PCLK, GPIO_INPUT);
 	gpio_pin_set_raw(gpio, SCCB_PEN, 1);
 	gpio_pin_set_raw(gpio, SCCB_PDN, 0);
 		
@@ -117,13 +120,59 @@ void main(void)
 	
 	printk("begin");
 	camInit();
-	while(1){
-	 uint8_t val;
-	val = rdReg(REG_VREF);
-	printk("REG_VREF: %02X\n", val);
+	// while(1){
+	 // uint8_t val;
+	// val = rdReg(REG_VREF);
+	// printk("REG_VREF: %02X\n", val);
 	
-	k_msleep(1000);
+	// k_msleep(1000);
+	// }
+	
+
+	setRes(VGA);
+	setColorSpace(BAYER_RGB);
+	
+	for(int j = 0; j < 1; j ++){
+	
+	wrReg(0x11,25);
+	
+	
+	
+	uint16_t wg = 640;
+	// uint16_t hg = 480;
+	uint16_t hg = 240;
+	uint16_t lg2;
+	uint32_t p = 0;
+
+	printk("RDY\n");
+	//Wait for vsync 
+	while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
+	while(nrf_gpio_pin_read(SCCB_VS));//wait for low
+
+	while(hg--){
+		lg2=wg;
+		while(lg2--){
+			
+			while(nrf_gpio_pin_read(SCCB_PCLK));//wait for low on PCLK
+			imbuf[p] = (uint8_t) NRF_P0->IN;
+			while(!(nrf_gpio_pin_read(SCCB_PCLK)));//wait for high on PCLK
+			p++;
+		}
 	}
+
+	printk("image line:+++\n\n\n\n");
+
+	for(uint32_t i = 0; i < 640*32; i++){
+		printk("%02X ", imbuf[i]);
+	}
+	printk("+++image end");
+	
+	}
+	
+	while(1){
+		
+	}
+	
 	
 	// while(1){
 		// // ret = i2c_write(i2c_sccb, buffer, 2, CAMADDR);
