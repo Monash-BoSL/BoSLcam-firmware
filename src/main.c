@@ -85,11 +85,11 @@ void main(void)
 		gpio_pin_configure(gpio, i, GPIO_INPUT);
 	}
 	gpio_pin_configure(gpio, SCCB_VS, GPIO_INPUT);
+	gpio_pin_configure(gpio, SCCB_HREF, GPIO_INPUT);
 	gpio_pin_configure(gpio, SCCB_PCLK, GPIO_INPUT);
 	gpio_pin_set_raw(gpio, SCCB_PEN, 1);
 	gpio_pin_set_raw(gpio, SCCB_PDN, 0);
-		
-		
+				
 	NRF_P0->PIN_CNF[SCCB_XCLK] = 0b00000000000000000000000000000001; 
 
 
@@ -129,18 +129,19 @@ void main(void)
 	// }
 	
 
-	setRes(VGA);
-	setColorSpace(BAYER_RGB);
+	// setRes(VGA);
+	// setColorSpace(BAYER_RGB);
 	
 	for(int j = 0; j < 1; j ++){
 	
 	wrReg(0x11,25);
+	k_msleep(4000);
 	
 	
 	
 	uint16_t wg = 640;
 	// uint16_t hg = 480;
-	uint16_t hg = 256;
+	uint16_t hg = 120;
 	uint16_t lg2;
 	uint32_t p = 0;
 
@@ -151,13 +152,15 @@ void main(void)
 
 	while(hg--){
 		lg2=wg;
-		while(lg2--){
-			
+		printk("%u\n", hg);
+		while(nrf_gpio_pin_read(SCCB_HREF)){
 			while(nrf_gpio_pin_read(SCCB_PCLK));//wait for low on PCLK
-			imbuf[p] = (uint8_t) NRF_P0->IN;
+			// imbuf[p] = (uint8_t) NRF_P0->IN;
 			while(!(nrf_gpio_pin_read(SCCB_PCLK)));//wait for high on PCLK
-			p++;
+			// p++;
+			// lg2--;
 		}
+		while(!(nrf_gpio_pin_read(SCCB_HREF)));
 	}
 
 	printk("image line:+++\n\n\n\n");
