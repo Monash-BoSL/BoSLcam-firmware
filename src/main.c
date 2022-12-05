@@ -72,10 +72,7 @@ void button_pressed(const struct device *dev, struct gpio_callback *cb,
 	printk("Button pressed at %" PRIu32 "\n", k_cycle_get_32());
 }
 
-void main(void)
-{
-	int ret;
-	
+void sccb_setup(void){
 	gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
 	printk("bind %s\n", gpio->name);
 	
@@ -93,6 +90,7 @@ void main(void)
 	NRF_P0->PIN_CNF[SCCB_XCLK] = 0b00000000000000000000000000000001; 
 
 
+	//setup clock on XCLK pin at 8 MHz.
 	nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_16MHz);
 	nrf_timer_mode_set(NRF_TIMER0, NRF_TIMER_MODE_TIMER);
 	nrf_timer_cc_set(NRF_TIMER0,NRF_TIMER_CC_CHANNEL0, 0x01);
@@ -114,34 +112,20 @@ void main(void)
     nrf_dppi_channels_enable(NRF_DPPIC, 0x01 << SCCB_CLK_DPPI_CH);
 
 
-
+	
 	i2c_sccb = device_get_binding(DT_LABEL(DT_NODELABEL(i2c2)));
 	printk("bind %s\n", i2c_sccb->name);
-	
-	printk("begin");
-	camInit();
-	// while(1){
-	 // uint8_t val;
-	// val = rdReg(REG_VREF);
-	// printk("REG_VREF: %02X\n", val);
-	
-	// k_msleep(1000);
-	// }
+
+	camInit();	
+	wrReg(0x11,0);//set clock divider to 1, no need to slow it down!
 	
 
-	// setRes(VGA);
-	// setColorSpace(BAYER_RGB);
-	
-	
-	wrReg(0x11,0);
+	k_msleep(1000);//delay for autoexposure awb, etc ...
+}
 
-	k_msleep(4000);
-	
-	
-	
-	uint16_t wg = 640;
-	// uint16_t hg = 480;
-	uint16_t hg = 240;
+void get_frame(void){
+	uint16_t wg = 640;//line width in bytes
+	uint16_t hg = 240;//number of lines per frame
 	uint16_t lg2;
 	uint32_t p = 0;
 
@@ -150,71 +134,37 @@ void main(void)
 	while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
 	while(nrf_gpio_pin_read(SCCB_VS));//wait for low
 
-	while(hg--){
+	while(hg--){//get line
 		lg2=wg;
 		printk("%u\n", hg);
-		while(lg2--){
-			// while(!(nrf_gpio_pin_read(SCCB_PCLK)));//wait for high on PCLK
+		while(lg2--){//get pixel
 			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
-			imbuf[p] = (uint8_t) NRF_P0->IN;
+			imbuf[p] = (uint8_t) NRF_P0->IN;//read in D0 - D8
 			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
 			p++;
 		}
-		while((nrf_gpio_pin_read(SCCB_HREF)));
+		while((nrf_gpio_pin_read(SCCB_HREF)));//SYNC line on HREF
 	}
 
+	//due to hardware error we need to swap the last 2 bits of imbuf
 	for(uint32_t p = 0; p < 640*240; p++){
 		uint8_t x = imbuf[p];
+		
 		imbuf[p] = (x & ~(0x3)) | ((x >> 0x1)&0x1) | ((x << 1)&0x2);
 	}
+}
 
-	// printk("image line:+++\n\n\n\n");
+void main(void)
+{
+	int ret;
+	
+	
+	sccb_setup();
 
-	// for(uint32_t i = 0; i < 640*1; i++){
-		// printk("%02X ", imbuf[i]);
-	// }
+	get_frame();
+
+
 	printk("+++image end");
-	
-	
-	
-	while(1){
-		
-	}
-	
-	
-	// while(1){
-		// // ret = i2c_write(i2c_sccb, buffer, 2, CAMADDR);
-		// // ret = i2c_reg_write_byte(i2c_sccb, CAMADDR, 0x12, 0x80);
-		// wrReg(0x12,0x80);
-		// k_msleep(100);
-		// uint8_t val;
-		// // ret = i2c_reg_read_byte(i2c_sccb, CAMADDR, 0x0A, &val);
-		// val = rdReg(0x0A);
-		// // ret = i2c_read(i2c_sccb, buffer, 40, CAMADDR);
-		// printk(" buf: ");
-		// printk("%02X", val);
-		
-		// val = rdReg(0x01);
-		// printk(" buf: ");
-		// printk("%02X", val);
-		// wrReg(0x01,0x32);
-		// val = rdReg(0x01);
-		// printk(" buf: ");
-		// printk("%02X", val);
-		
-		// // for(int i = 0; i < 40; i++){
-			// // printk("%02X", buffer[i]);
-			// // buffer[i] = 0x00;
-		// // }
-		// printk("\n");
-		
-		// k_msleep(500);
-	// }
-	
-
-
-
-
 
 
 
