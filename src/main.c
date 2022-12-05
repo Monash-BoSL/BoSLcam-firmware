@@ -132,16 +132,16 @@ void main(void)
 	// setRes(VGA);
 	// setColorSpace(BAYER_RGB);
 	
-	for(int j = 0; j < 1; j ++){
 	
-	wrReg(0x11,25);
+	wrReg(0x11,0);
+
 	k_msleep(4000);
 	
 	
 	
 	uint16_t wg = 640;
 	// uint16_t hg = 480;
-	uint16_t hg = 120;
+	uint16_t hg = 240;
 	uint16_t lg2;
 	uint32_t p = 0;
 
@@ -153,24 +153,29 @@ void main(void)
 	while(hg--){
 		lg2=wg;
 		printk("%u\n", hg);
-		while(nrf_gpio_pin_read(SCCB_HREF)){
-			while(nrf_gpio_pin_read(SCCB_PCLK));//wait for low on PCLK
-			// imbuf[p] = (uint8_t) NRF_P0->IN;
-			while(!(nrf_gpio_pin_read(SCCB_PCLK)));//wait for high on PCLK
-			// p++;
-			// lg2--;
+		while(lg2--){
+			// while(!(nrf_gpio_pin_read(SCCB_PCLK)));//wait for high on PCLK
+			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
+			imbuf[p] = (uint8_t) NRF_P0->IN;
+			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
+			p++;
 		}
-		while(!(nrf_gpio_pin_read(SCCB_HREF)));
+		while((nrf_gpio_pin_read(SCCB_HREF)));
 	}
 
-	printk("image line:+++\n\n\n\n");
-
-	for(uint32_t i = 0; i < 640*1; i++){
-		printk("%02X ", imbuf[i]);
+	for(uint32_t p = 0; p < 640*240; p++){
+		uint8_t x = imbuf[p];
+		imbuf[p] = (x & ~(0x3)) | ((x >> 0x1)&0x1) | ((x << 1)&0x2);
 	}
+
+	// printk("image line:+++\n\n\n\n");
+
+	// for(uint32_t i = 0; i < 640*1; i++){
+		// printk("%02X ", imbuf[i]);
+	// }
 	printk("+++image end");
 	
-	}
+	
 	
 	while(1){
 		
