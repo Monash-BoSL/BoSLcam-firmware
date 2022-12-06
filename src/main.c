@@ -144,7 +144,7 @@ void sccb_setup(void){
 }
 
 void get_frame(void){
-	uint16_t wg = 640;//line width in bytes
+	uint16_t wg = 320;//line width in pixels
 	uint16_t hg = 240;//number of lines per frame
 	uint16_t lg2;
 	uint32_t p = 0;
@@ -158,10 +158,16 @@ void get_frame(void){
 		lg2=wg;
 		printk("%u\n", hg);
 		while(lg2--){//get pixel
+			//low byte
+			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
+			imbuf[p+1] = (uint8_t) NRF_P0->IN;//read in D0 - D8
+			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
+			//high byte
 			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
 			imbuf[p] = (uint8_t) NRF_P0->IN;//read in D0 - D8
 			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
-			p++;
+			
+			p += 2;
 		}
 		while((nrf_gpio_pin_read(SCCB_HREF)));//SYNC line on HREF
 	}
@@ -215,6 +221,16 @@ static int lsdir(const char *path)
 	return res;
 }
 
+#define BMPIMAGEOFFSET 66
+const char bmp_header[BMPIMAGEOFFSET] =
+{
+  0x42, 0x4D, 0x36, 0x58, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x42, 0x00, 0x00, 0x00, 0x28, 0x00,
+  0x00, 0x00, 0x40, 0x01, 0x00, 0x00, 0xF0, 0x00, 0x00, 0x00, 0x01, 0x00, 0x10, 0x00, 0x03, 0x00,
+  0x00, 0x00, 0x00, 0x58, 0x02, 0x00, 0xC4, 0x0E, 0x00, 0x00, 0xC4, 0x0E, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF8, 0x00, 0x00, 0xE0, 0x07, 0x00, 0x00, 0x1F, 0x00,
+  0x00, 0x00
+};
+
 void main(void)
 {
 	int ret;
@@ -260,22 +276,33 @@ void main(void)
 	} else {
 		printk("Error mounting disk.\n");
 	}
-
-	while (1) {
-		k_sleep(K_MSEC(1000));
-	}
-	
 	
 	sccb_setup();
 
 	get_frame();
 
 
-	printk("+++image end");
+	printk("+++image end\n");
 
+	struct fs_file_t imf;
+	
+	fs_file_t_init(&imf);
+	printk("zfp init\n");
 
-
-
+	fs_open(&imf, "/SD:/im.bmp", FS_O_WRITE | FS_O_CREATE);
+	printk("zfp open\n");
+	
+	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
+	fs_write(&imf, imbuf, 640*240);
+	printk("zfp write\n");
+	
+	fs_close(&imf);
+	printk("zfp close\n");
+	
+	while(1){
+		k_msleep(100);
+	}
+	
 
 
 	if (!device_is_ready(button.port)) {
