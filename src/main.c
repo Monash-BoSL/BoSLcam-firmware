@@ -300,6 +300,8 @@ void main(void)
 	ret = ftp_login("Testing@eodc.com.au", "Monash2022!!");
 	LOG_INF("ftp login: %d", ret);
 	
+	ret = ftp_put("count.bin", "0123456789", 10, FTP_PUT_NORMAL);
+	LOG_INF("ftp put: %d", ret);
 		
 	LOG_INF("UPLOAD SEQUENCE ENDED");
 	
