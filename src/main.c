@@ -224,12 +224,22 @@ void ftp_data_callback(const uint8_t *msg, uint16_t len)
 {
 	// LOG_INF("%d ", len);
 	// printk("ftp data:\n%.*s", len, (uint8_t *)msg);
+	printk("ftp data:\n");
+	printk(msg);
+	// for(int i = 0; i < len; i += 128){//printk supports only 128bytes ata time
+		// printk(msg+i);
+	// }
 }
 
 void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
 {
 	// LOG_INF("%d ", len);
 	// printk("ftp ctrl:\n%.*s", len, (uint8_t *)msg);
+	printk("ftp ctrl:\n");
+	printk(msg);
+	// for(int i = 0; i < len; i += 128){//printk supports only 128bytes ata time
+		// printk(msg+i);
+	// }
 	// printk("end of ctrl", len);
 }
 
