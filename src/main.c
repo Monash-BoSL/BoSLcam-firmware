@@ -11,16 +11,29 @@
 #include <hal/nrf_dppi.h>
 #include <hal/nrf_gpiote.h>
 #include <hal/nrf_gpio.h>
+
 #include <zephyr.h>
 #include <device.h>
+
 #include <storage/disk_access.h>
 #include <fs/fs.h>
 #include <ff.h>
+
 #include <drivers/gpio.h>
 #include <sys/util.h>
 #include <sys/printk.h>
 #include <inttypes.h>
 #include <logging/log.h>
+
+#include <nrf_modem.h>
+#include <nrf_modem_at.h>
+#include <modem/nrf_modem_lib.h>
+#include <modem/at_monitor.h>
+
+#include <net/ftp_client.h>
+
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <drivers/i2c.h>
 
@@ -45,33 +58,14 @@
 #define SCCB_CLK_DPPI_CH 0
 #define GPIOTE_CLK_TSK 0
 
-
-/*
- * Get button configuration from the devicetree sw0 alias. This is mandatory.
- */
-#define SW0_NODE	DT_ALIAS(sw0)
-#if !DT_NODE_HAS_STATUS(SW0_NODE, okay)
-#error "Unsupported board: sw0 devicetree alias is not defined"
-#endif
-
 LOG_MODULE_REGISTER(main);
-
-static const struct gpio_dt_spec button = GPIO_DT_SPEC_GET_OR(SW0_NODE, gpios,
-							      {0});
-static struct gpio_callback button_cb_data;
-
-/*
- * The led0 devicetree alias is optional. If present, we'll use it
- * to turn on the LED whenever the button is pressed.
- */
-static struct gpio_dt_spec led0 = GPIO_DT_SPEC_GET_OR(DT_ALIAS(led0), gpios,
-						     {0});
 
 static const struct device * gpio; 
 
 const struct device * i2c_sccb;
 
-uint8_t imbuf[640*256];
+// uint8_t imbuf[640*256];
+uint8_t imbuf[640];
 
 static FATFS fat_fs;
 /* mounting info */
@@ -86,15 +80,10 @@ static struct fs_mount_t mp = {
 */
 static const char *disk_mount_pt = "/SD:";
 
-void button_pressed(const struct device *dev, struct gpio_callback *cb,
-		    uint32_t pins)
-{
-	printk("Button pressed at %" PRIu32 "\n", k_cycle_get_32());
-}
 
 void sccb_setup(void){
 	gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
-	printk("bind %s\n", gpio->name);
+	LOG_INF("bind %s\n", gpio->name);
 	
 	gpio_pin_configure(gpio, SCCB_PEN, GPIO_OUTPUT);
 	gpio_pin_configure(gpio, SCCB_PDN, GPIO_OUTPUT);
@@ -134,7 +123,7 @@ void sccb_setup(void){
 
 	
 	i2c_sccb = device_get_binding(DT_LABEL(DT_NODELABEL(i2c2)));
-	printk("bind %s\n", i2c_sccb->name);
+	LOG_INF("bind %s\n", i2c_sccb->name);
 
 	camInit();	
 	wrReg(0x11,0);//set clock divider to 1, no need to slow it down!
@@ -149,14 +138,14 @@ void get_frame(void){
 	uint16_t lg2;
 	uint32_t p = 0;
 
-	printk("RDY\n");
+	LOG_INF("RDY\n");
 	//Wait for vsync 
 	while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
 	while(nrf_gpio_pin_read(SCCB_VS));//wait for low
 
 	while(hg--){//get line
 		lg2=wg;
-		printk("%u\n", hg);
+		// printk("%u\n", hg);
 		while(lg2--){//get pixel
 			//low byte
 			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
@@ -193,11 +182,11 @@ static int lsdir(const char *path)
 	/* Verify fs_opendir() */
 	res = fs_opendir(&dirp, path);
 	if (res) {
-		printk("Error opening dir %s [%d]\n", path, res);
+		LOG_ERR("Error opening dir %s [%d]\n", path, res);
 		return res;
 	}
 
-	printk("\nListing dir %s ...\n", path);
+	LOG_INF("\nListing dir %s ...\n", path);
 	for (;;) {
 		/* Verify fs_readdir() */
 		res = fs_readdir(&dirp, &entry);
@@ -208,9 +197,9 @@ static int lsdir(const char *path)
 		}
 
 		if (entry.type == FS_DIR_ENTRY_DIR) {
-			printk("[DIR ] %s\n", entry.name);
+			LOG_INF("[DIR ] %s\n", entry.name);
 		} else {
-			printk("[FILE] %s (size = %zu)\n",
+			LOG_INF("[FILE] %s (size = %zu)\n",
 				entry.name, entry.size);
 		}
 	}
@@ -231,11 +220,129 @@ const char bmp_header[BMPIMAGEOFFSET] =
   0x00, 0x00
 };
 
+void ftp_data_callback(const uint8_t *msg, uint16_t len)
+{
+	printk("data: %.*s", len, (uint8_t *)msg);
+}
+
+void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
+{
+	// char code_str[4];  /* Proprietary code 900 ~ 999 */
+	// int code;
+
+	// strncpy(code_str, msg, 3);
+	// code = atoi(code_str);
+	// if (FTP_PROPRIETARY(code)) {
+		// switch (code) {
+		// case FTP_CODE_901:
+			// sprintf(rsp_buf, "\r\n#XFTP: %d,\"disconnected\"\r\n", -ECONNRESET);
+			// break;
+		// case FTP_CODE_902:
+			// sprintf(rsp_buf, "\r\n#XFTP: %d,\"disconnected\"\r\n", -ECONNABORTED);
+			// break;
+		// case FTP_CODE_903:
+			// sprintf(rsp_buf, "\r\n#XFTP: %d,\"disconnected\"\r\n", -EIO);
+			// break;
+		// case FTP_CODE_904:
+			// sprintf(rsp_buf, "\r\n#XFTP: %d,\"disconnected\"\r\n", -EAGAIN);
+			// break;
+		// case FTP_CODE_905:
+			// sprintf(rsp_buf, "\r\n#XFTP: %d,\"disconnected\"\r\n", -ENETDOWN);
+			// break;
+		// default:
+			// sprintf(rsp_buf, "\r\n#XFTP: %d,\"disconnected\"\r\n", -ENOEXEC);
+			// break;
+		// }
+		// if (ftp_data_mode_handler && exit_datamode(DATAMODE_EXIT_URC)) {
+			// ftp_data_mode_handler = NULL;
+		// }
+		// if (ftp_verbose_on) {
+			// rsp_send(rsp_buf, strlen(rsp_buf));
+		// }
+		// return;
+	// }
+
+	// if (ftp_verbose_on) {
+		// rsp_send((uint8_t *)msg, len);
+	// }
+	printk("ctrl: %.*s", len, (uint8_t *)msg);
+}
+
 void main(void)
 {
+	char response[1024];
 	int ret;
 		
-	printk("begin!\n");
+	LOG_INF("begin!\n");
+	
+	LOG_INF("AT modem begin\n");
+
+	
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CGMR");
+	printk(response);
+	
+	ret = nrf_modem_at_printf("AT");
+	if (ret) {LOG_ERR("AT failed\n");	return;	}
+	LOG_INF("AT");
+		
+	
+	// ret = nrf_modem_at_printf("AT%XSYSTEMMODE=1,0,0,1");
+	// if (ret) {LOG_ERR("AT%XSYSTEMMODE failed\n");	return;	}
+	// ret = nrf_modem_at_cmd(response, sizeof(response), "AT%XSYSTEMMODE=1,0,0,1");
+	// printk(response);
+	
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CGDCONT=0,\"IP\",\"hologram\"");
+	printk(response);
+	LOG_INF("CGDCONT");
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CFUN=1");
+	printk(response);
+	LOG_INF("CFUN");
+	
+	
+	k_msleep(1000);
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+COPS=1,2,\"50501\"");
+	printk(response);
+	LOG_INF("COPS");
+	
+	// ret = nrf_modem_at_printf("AT+CEREG=1");
+	// if (ret) {LOG_ERR("AT+CEREG failed\n");	return;	}
+	
+	
+	k_msleep(10000);
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CEREG?");
+	printk(response);
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CPIN?");
+	printk(response);
+	
+	
+	ftp_init(ftp_ctrl_callback, ftp_data_callback);
+	
+	ret = ftp_open("ftp.eodc.com.au", 21, -1);
+	LOG_INF("ftp open: %d", ret);
+	
+	ret = ftp_login("Testing@eodc.com.au", "Monash2022!!");
+	LOG_INF("ftp login: %d", ret);
+	
+		
+	LOG_INF("UPLOAD SEQUENCE ENDED");
+	
+	
+	while(1){
+		
+	}
+	
+	
+	
+	
+	
+	
+	
 	/* raw disk i/o */
 	do {
 		static const char *disk_pdrv = "SD";
@@ -260,10 +367,10 @@ void main(void)
 			LOG_ERR("Unable to get sector size");
 			break;
 		}
-		printk("Sector size %u\n", block_size);
+		LOG_INF("Sector size %u\n", block_size);
 
 		memory_size_mb = (uint64_t)block_count * block_size;
-		printk("Memory Size(MB) %u\n", (uint32_t)memory_size_mb>>20);
+		LOG_INF("Memory Size(MB) %u\n", (uint32_t)memory_size_mb>>20);
 	} while (0);
 
 	mp.mnt_point = disk_mount_pt;
@@ -271,10 +378,10 @@ void main(void)
 	int res = fs_mount(&mp);
 
 	if (res == FR_OK) {
-		printk("Disk mounted.\n");
+		LOG_INF("Disk mounted.\n");
 		lsdir(disk_mount_pt);
 	} else {
-		printk("Error mounting disk.\n");
+		LOG_ERR("Error mounting disk.\n");
 	}
 	
 	sccb_setup();
@@ -282,80 +389,23 @@ void main(void)
 	get_frame();
 
 
-	printk("+++image end\n");
+	LOG_INF("+++image end\n");
 
 	struct fs_file_t imf;
 	
 	fs_file_t_init(&imf);
-	printk("zfp init\n");
+	LOG_DBG("zfp init\n");
 
 	fs_open(&imf, "/SD:/im.bmp", FS_O_WRITE | FS_O_CREATE);
-	printk("zfp open\n");
+	LOG_DBG("zfp open\n");
 	
 	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
 	fs_write(&imf, imbuf, 640*240);
-	printk("zfp write\n");
+	LOG_DBG("zfp write\n");
 	
 	fs_close(&imf);
-	printk("zfp close\n");
-	
-	while(1){
-		k_msleep(100);
-	}
+	LOG_DBG("zfp close\n");
 	
 
 
-	if (!device_is_ready(button.port)) {
-		printk("Error: button device %s is not ready\n",
-		       button.port->name);
-		return;
-	}
-
-	ret = gpio_pin_configure_dt(&button, GPIO_INPUT);
-	if (ret != 0) {
-		printk("Error %d: failed to configure %s pin %d\n",
-		       ret, button.port->name, button.pin);
-		return;
-	}
-
-	ret = gpio_pin_interrupt_configure_dt(&button,
-					      GPIO_INT_EDGE_TO_ACTIVE);
-	if (ret != 0) {
-		printk("Error %d: failed to configure interrupt on %s pin %d\n",
-			ret, button.port->name, button.pin);
-		return;
-	}
-
-	gpio_init_callback(&button_cb_data, button_pressed, BIT(button.pin));
-	gpio_add_callback(button.port, &button_cb_data);
-	printk("Set up button at %s pin %d\n", button.port->name, button.pin);
-
-	if (led0.port && !device_is_ready(led0.port)) {
-		printk("Error %d: led0 device %s is not ready; ignoring it\n",
-		       ret, led0.port->name);
-		led0.port = NULL;
-	}
-	if (led0.port) {
-		ret = gpio_pin_configure_dt(&led0, GPIO_OUTPUT);
-		if (ret != 0) {
-			printk("Error %d: failed to configure LED device %s pin %d\n",
-			       ret, led0.port->name, led0.pin);
-			led0.port = NULL;
-		} else {
-			printk("Set up LED at %s pin %d\n", led0.port->name, led0.pin);
-		}
-	}
-	
-
-	printk("Press the button\n");
-	if (led0.port) {
-		while (1) {
-			/* If we have an LED, match its state to the button's. */
-			int val = gpio_pin_get_dt(&button);
-			if (val >= 0) {
-				gpio_pin_set_dt(&led0, val);
-			}
-			k_msleep(SLEEP_TIME_MS);
-		}
-	}
 }
