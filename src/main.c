@@ -222,50 +222,15 @@ const char bmp_header[BMPIMAGEOFFSET] =
 
 void ftp_data_callback(const uint8_t *msg, uint16_t len)
 {
-	printk("data: %.*s", len, (uint8_t *)msg);
+	// LOG_INF("%d ", len);
+	// printk("ftp data:\n%.*s", len, (uint8_t *)msg);
 }
 
 void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
 {
-	// char code_str[4];  /* Proprietary code 900 ~ 999 */
-	// int code;
-
-	// strncpy(code_str, msg, 3);
-	// code = atoi(code_str);
-	// if (FTP_PROPRIETARY(code)) {
-		// switch (code) {
-		// case FTP_CODE_901:
-			// sprintf(rsp_buf, "\r\n#XFTP: %d,\"disconnected\"\r\n", -ECONNRESET);
-			// break;
-		// case FTP_CODE_902:
-			// sprintf(rsp_buf, "\r\n#XFTP: %d,\"disconnected\"\r\n", -ECONNABORTED);
-			// break;
-		// case FTP_CODE_903:
-			// sprintf(rsp_buf, "\r\n#XFTP: %d,\"disconnected\"\r\n", -EIO);
-			// break;
-		// case FTP_CODE_904:
-			// sprintf(rsp_buf, "\r\n#XFTP: %d,\"disconnected\"\r\n", -EAGAIN);
-			// break;
-		// case FTP_CODE_905:
-			// sprintf(rsp_buf, "\r\n#XFTP: %d,\"disconnected\"\r\n", -ENETDOWN);
-			// break;
-		// default:
-			// sprintf(rsp_buf, "\r\n#XFTP: %d,\"disconnected\"\r\n", -ENOEXEC);
-			// break;
-		// }
-		// if (ftp_data_mode_handler && exit_datamode(DATAMODE_EXIT_URC)) {
-			// ftp_data_mode_handler = NULL;
-		// }
-		// if (ftp_verbose_on) {
-			// rsp_send(rsp_buf, strlen(rsp_buf));
-		// }
-		// return;
-	// }
-
-	// if (ftp_verbose_on) {
-		// rsp_send((uint8_t *)msg, len);
-	// }
-	printk("ctrl: %.*s", len, (uint8_t *)msg);
+	// LOG_INF("%d ", len);
+	// printk("ftp ctrl:\n%.*s", len, (uint8_t *)msg);
+	// printk("end of ctrl", len);
 }
 
 void main(void)
@@ -302,17 +267,13 @@ void main(void)
 	LOG_INF("CFUN");
 	
 	
-	k_msleep(1000);
+	// k_msleep(1000);
 	
 	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+COPS=1,2,\"50501\"");
 	printk(response);
 	LOG_INF("COPS");
-	
-	// ret = nrf_modem_at_printf("AT+CEREG=1");
-	// if (ret) {LOG_ERR("AT+CEREG failed\n");	return;	}
-	
-	
-	k_msleep(10000);
+		
+	// k_msleep(10000);
 	
 	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CEREG?");
 	printk(response);
@@ -334,7 +295,7 @@ void main(void)
 	
 	
 	while(1){
-		
+		k_msleep(100);
 	}
 	
 	
