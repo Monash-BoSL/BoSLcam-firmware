@@ -64,7 +64,7 @@ static const struct device * gpio;
 
 const struct device * i2c_sccb;
 
-uint8_t imbuf[640*240];
+uint8_t imbuf[640*120];
 
 static FATFS fat_fs;
 /* mounting info */
@@ -133,7 +133,7 @@ void sccb_setup(void){
 
 void get_frame(void){
 	uint16_t wg = 320;//line width in pixels
-	uint16_t hg = 240;//number of lines per frame
+	uint16_t hg = 120;//number of lines per frame
 	uint16_t lg2;
 	uint32_t p = 0;
 
@@ -161,7 +161,7 @@ void get_frame(void){
 	}
 
 	//due to hardware error we need to swap the last 2 bits of imbuf
-	for(uint32_t p = 0; p < 640*240; p++){
+	for(uint32_t p = 0; p < 640*120; p++){
 		uint8_t x = imbuf[p];
 		
 		imbuf[p] = (x & ~(0x3)) | ((x >> 0x1)&0x1) | ((x << 1)&0x2);
@@ -306,7 +306,7 @@ void main(void)
 	LOG_DBG("zfp open\n");
 	
 	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
-	fs_write(&imf, imbuf, 640*240);
+	fs_write(&imf, imbuf, 640*120);
 	LOG_DBG("zfp write\n");
 	
 	fs_close(&imf);
@@ -364,10 +364,12 @@ void main(void)
 	
 
 	ret = ftp_put("image.bmp", bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
-	for(uint32_t l = 0; l < 640*240; l += 4096){
-		uint16_t tsize = l+4096 < 640*240 ? 4096 : 640*240 - l;
+	const uint16_t chuck_size = UINT16_MAX;
+	for(uint32_t l = 0; l < 640*120; l += chuck_size){
+		uint16_t tsize = MIN(chuck_size, (640*120 - l));
 		ret = ftp_put("image.bmp", imbuf+l, tsize, FTP_PUT_APPEND);
 	}
+	
 	LOG_INF("ftp put: %d", ret);
 		
 	ret = ftp_close();

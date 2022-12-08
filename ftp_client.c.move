@@ -25,6 +25,9 @@ LOG_MODULE_REGISTER(ftp_client, CONFIG_FTP_CLIENT_LOG_LEVEL);
 
 #define FTP_STACK_SIZE		KB(2)
 #define FTP_PRIORITY		K_LOWEST_APPLICATION_THREAD_PRIO
+
+#define SEND_PACKET_SIZE 1024
+
 static K_THREAD_STACK_DEFINE(ftp_stack_area, FTP_STACK_SIZE);
 
 static struct ftp_client {
@@ -200,7 +203,8 @@ static int do_ftp_send_ctrl(const uint8_t *message, int length)
 
 	LOG_DBG("%s", log_strdup(message));
 	while (offset < length) {
-		ret = send(client.cmd_sock, message + offset, length - offset, 0);
+		uint16_t send_len = MIN(SEND_PACKET_SIZE, length-offset);
+		ret = send(client.cmd_sock, message + offset, send_len, 0);
 		if (ret < 0) {
 			LOG_ERR("send cmd failed: %d", -errno);
 			ret = -errno;
@@ -233,7 +237,8 @@ static int do_ftp_send_data(const char *pasv_msg, uint8_t *message, uint16_t len
 	}
 
 	while (offset < length) {
-		ret = send(client.data_sock, message + offset, length - offset, 0);
+		uint16_t send_len = MIN(SEND_PACKET_SIZE, length-offset);
+		ret = send(client.data_sock, message + offset, send_len, 0);
 		if (ret < 0) {
 			LOG_ERR("send data failed: %d", -errno);
 			ret = -errno;
