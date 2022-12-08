@@ -58,13 +58,17 @@
 #define SCCB_CLK_DPPI_CH 0
 #define GPIOTE_CLK_TSK 0
 
+#define IMAGE_WIDTH			320
+#define IMAGE_HEIGHT		240
+#define IMAGE_SIZE_BYTES 	(IMAGE_WIDTH*IMAGE_HEIGHT*2)
+
 LOG_MODULE_REGISTER(main);
 
 static const struct device * gpio; 
 
 const struct device * i2c_sccb;
 
-uint8_t imbuf[640*120];
+uint8_t imbuf[IMAGE_SIZE_BYTES];
 
 static FATFS fat_fs;
 /* mounting info */
@@ -132,8 +136,8 @@ void sccb_setup(void){
 }
 
 void get_frame(void){
-	uint16_t wg = 320;//line width in pixels
-	uint16_t hg = 120;//number of lines per frame
+	uint16_t wg = IMAGE_WIDTH;//line width in pixels
+	uint16_t hg = IMAGE_HEIGHT;//number of lines per frame
 	uint16_t lg2;
 	uint32_t p = 0;
 
@@ -161,7 +165,7 @@ void get_frame(void){
 	}
 
 	//due to hardware error we need to swap the last 2 bits of imbuf
-	for(uint32_t p = 0; p < 640*120; p++){
+	for(uint32_t p = 0; p < IMAGE_SIZE_BYTES; p++){
 		uint8_t x = imbuf[p];
 		
 		imbuf[p] = (x & ~(0x3)) | ((x >> 0x1)&0x1) | ((x << 1)&0x2);
@@ -306,7 +310,7 @@ void main(void)
 	LOG_DBG("zfp open\n");
 	
 	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
-	fs_write(&imf, imbuf, 640*120);
+	fs_write(&imf, imbuf, IMAGE_SIZE_BYTES);
 	LOG_DBG("zfp write\n");
 	
 	fs_close(&imf);
@@ -326,11 +330,6 @@ void main(void)
 	LOG_INF("AT");
 		
 	
-	// ret = nrf_modem_at_printf("AT%XSYSTEMMODE=1,0,0,1");
-	// if (ret) {LOG_ERR("AT%XSYSTEMMODE failed\n");	return;	}
-	// ret = nrf_modem_at_cmd(response, sizeof(response), "AT%XSYSTEMMODE=1,0,0,1");
-	// printk(response);
-	
 	
 	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CGDCONT=0,\"IP\",\"hologram\"");
 	printk(response);
@@ -339,15 +338,10 @@ void main(void)
 	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CFUN=1");
 	printk(response);
 	LOG_INF("CFUN");
-	
-	
-	// k_msleep(1000);
-	
+		
 	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+COPS=1,2,\"50501\"");
 	printk(response);
 	LOG_INF("COPS");
-		
-	// k_msleep(10000);
 	
 	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CEREG?");
 	printk(response);
@@ -361,12 +355,13 @@ void main(void)
 	ret = ftp_open("ftp.bosl.com.au", 21, -1);
 	
 	ret = ftp_login("images@bosl.com.au", "solderflux");
-	
+		
+	ret = ftp_type(FTP_TYPE_BINARY);
 
 	ret = ftp_put("image.bmp", bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
 	const uint16_t chuck_size = UINT16_MAX;
-	for(uint32_t l = 0; l < 640*120; l += chuck_size){
-		uint16_t tsize = MIN(chuck_size, (640*120 - l));
+	for(uint32_t l = 0; l < IMAGE_SIZE_BYTES; l += chuck_size){
+		uint16_t tsize = MIN(chuck_size, (IMAGE_SIZE_BYTES - l));
 		ret = ftp_put("image.bmp", imbuf+l, tsize, FTP_PUT_APPEND);
 	}
 	
