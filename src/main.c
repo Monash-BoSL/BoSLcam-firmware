@@ -64,8 +64,7 @@ static const struct device * gpio;
 
 const struct device * i2c_sccb;
 
-// uint8_t imbuf[640*256];
-uint8_t imbuf[640];
+uint8_t imbuf[640*240];
 
 static FATFS fat_fs;
 /* mounting info */
@@ -245,76 +244,10 @@ void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
 
 void main(void)
 {
-	char response[1024];
+	char response[256];
 	int ret;
 		
 	LOG_INF("begin!\n");
-	
-	LOG_INF("AT modem begin\n");
-
-	
-	
-	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CGMR");
-	printk(response);
-	
-	ret = nrf_modem_at_printf("AT");
-	if (ret) {LOG_ERR("AT failed\n");	return;	}
-	LOG_INF("AT");
-		
-	
-	// ret = nrf_modem_at_printf("AT%XSYSTEMMODE=1,0,0,1");
-	// if (ret) {LOG_ERR("AT%XSYSTEMMODE failed\n");	return;	}
-	// ret = nrf_modem_at_cmd(response, sizeof(response), "AT%XSYSTEMMODE=1,0,0,1");
-	// printk(response);
-	
-	
-	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CGDCONT=0,\"IP\",\"hologram\"");
-	printk(response);
-	LOG_INF("CGDCONT");
-	
-	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CFUN=1");
-	printk(response);
-	LOG_INF("CFUN");
-	
-	
-	// k_msleep(1000);
-	
-	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+COPS=1,2,\"50501\"");
-	printk(response);
-	LOG_INF("COPS");
-		
-	// k_msleep(10000);
-	
-	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CEREG?");
-	printk(response);
-	
-	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CPIN?");
-	printk(response);
-	
-	
-	ftp_init(ftp_ctrl_callback, ftp_data_callback);
-	
-	ret = ftp_open("ftp.eodc.com.au", 21, -1);
-	LOG_INF("ftp open: %d", ret);
-	
-	ret = ftp_login("Testing@eodc.com.au", "Monash2022!!");
-	LOG_INF("ftp login: %d", ret);
-	
-	ret = ftp_put("count.bin", "0123456789", 10, FTP_PUT_NORMAL);
-	LOG_INF("ftp put: %d", ret);
-		
-	LOG_INF("UPLOAD SEQUENCE ENDED");
-	
-	
-	while(1){
-		k_msleep(100);
-	}
-	
-	
-	
-	
-	
-	
 	
 	/* raw disk i/o */
 	do {
@@ -378,6 +311,75 @@ void main(void)
 	
 	fs_close(&imf);
 	LOG_DBG("zfp close\n");
+	
+	
+		
+	LOG_INF("AT modem begin\n");
+
+	
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CGMR");
+	printk(response);
+	
+	ret = nrf_modem_at_printf("AT");
+	if (ret) {LOG_ERR("AT failed\n");	return;	}
+	LOG_INF("AT");
+		
+	
+	// ret = nrf_modem_at_printf("AT%XSYSTEMMODE=1,0,0,1");
+	// if (ret) {LOG_ERR("AT%XSYSTEMMODE failed\n");	return;	}
+	// ret = nrf_modem_at_cmd(response, sizeof(response), "AT%XSYSTEMMODE=1,0,0,1");
+	// printk(response);
+	
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CGDCONT=0,\"IP\",\"hologram\"");
+	printk(response);
+	LOG_INF("CGDCONT");
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CFUN=1");
+	printk(response);
+	LOG_INF("CFUN");
+	
+	
+	// k_msleep(1000);
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+COPS=1,2,\"50501\"");
+	printk(response);
+	LOG_INF("COPS");
+		
+	// k_msleep(10000);
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CEREG?");
+	printk(response);
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CPIN?");
+	printk(response);
+	
+	
+	ftp_init(ftp_ctrl_callback, ftp_data_callback);
+	
+	ret = ftp_open("ftp.bosl.com.au", 21, -1);
+	
+	ret = ftp_login("images@bosl.com.au", "solderflux");
+	
+
+	ret = ftp_put("image.bmp", bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
+	for(uint32_t l = 0; l < 640*240; l += 4096){
+		uint16_t tsize = l+4096 < 640*240 ? 4096 : 640*240 - l;
+		ret = ftp_put("image.bmp", imbuf+l, tsize, FTP_PUT_APPEND);
+	}
+	LOG_INF("ftp put: %d", ret);
+		
+	ret = ftp_close();
+		
+	
+	LOG_INF("UPLOAD SEQUENCE ENDED");
+	
+	
+	while(1){
+		k_msleep(100);
+	}
+	
 	
 
 
