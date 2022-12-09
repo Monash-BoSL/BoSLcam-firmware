@@ -69,6 +69,7 @@ static const struct device * gpio;
 const struct device * i2c_sccb;
 
 uint8_t imbuf[IMAGE_SIZE_BYTES];
+char response[256];
 
 static FATFS fat_fs;
 /* mounting info */
@@ -225,25 +226,12 @@ const char bmp_header[BMPIMAGEOFFSET] =
 
 void ftp_data_callback(const uint8_t *msg, uint16_t len)
 {
-	// LOG_INF("%d ", len);
-	// printk("ftp data:\n%.*s", len, (uint8_t *)msg);
-	printk("ftp data:\n");
 	printk(msg);
-	// for(int i = 0; i < len; i += 128){//printk supports only 128bytes ata time
-		// printk(msg+i);
-	// }
 }
 
 void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
 {
-	// LOG_INF("%d ", len);
-	// printk("ftp ctrl:\n%.*s", len, (uint8_t *)msg);
-	printk("ftp ctrl:\n");
 	printk(msg);
-	// for(int i = 0; i < len; i += 128){//printk supports only 128bytes ata time
-		// printk(msg+i);
-	// }
-	// printk("end of ctrl", len);
 }
 
 void sdhc_info(void){
@@ -306,31 +294,10 @@ void sdhc_write_image(void){
 	LOG_DBG("zfp close\n");
 }
 
-void main(void)
-{
-	char response[256];
+void ftp_write_image(void){
 	int ret;
-		
-	LOG_INF("begin!\n");
 	
-
-
-	
-	sccb_setup();
-
-	get_frame();
-
-
-	LOG_INF("+++image end\n");
-	
-	
-	
-	
-	
-		
 	LOG_INF("AT modem begin\n");
-
-	
 	
 	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CGMR");
 	printk(response);
@@ -369,8 +336,25 @@ void main(void)
 	LOG_INF("ftp put: %d", ret);
 	ret = ftp_close();
 	LOG_INF("UPLOAD SEQUENCE ENDED");
+}
+
+void main(void)
+{
+		
+	LOG_INF("begin!\n");
 	
+	sdhc_info();
+
 	
+	sccb_setup();
+
+	get_frame();
+
+
+	LOG_INF("+++image end\n");
+	
+	sdhc_write_image();
+	ftp_write_image();
 	
 	while(1){
 		k_msleep(100);
