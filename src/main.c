@@ -246,14 +246,8 @@ void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
 	// printk("end of ctrl", len);
 }
 
-void main(void)
-{
-	char response[256];
-	int ret;
-		
-	LOG_INF("begin!\n");
-	
-	/* raw disk i/o */
+void sdhc_info(void){
+		/* raw disk i/o */
 	do {
 		static const char *disk_pdrv = "SD";
 		uint64_t memory_size_mb;
@@ -282,7 +276,9 @@ void main(void)
 		memory_size_mb = (uint64_t)block_count * block_size;
 		LOG_INF("Memory Size(MB) %u\n", (uint32_t)memory_size_mb>>20);
 	} while (0);
+}
 
+void sdhc_write_image(void){
 	mp.mnt_point = disk_mount_pt;
 
 	int res = fs_mount(&mp);
@@ -293,13 +289,6 @@ void main(void)
 	} else {
 		LOG_ERR("Error mounting disk.\n");
 	}
-	
-	sccb_setup();
-
-	get_frame();
-
-
-	LOG_INF("+++image end\n");
 
 	struct fs_file_t imf;
 	
@@ -315,6 +304,27 @@ void main(void)
 	
 	fs_close(&imf);
 	LOG_DBG("zfp close\n");
+}
+
+void main(void)
+{
+	char response[256];
+	int ret;
+		
+	LOG_INF("begin!\n");
+	
+
+
+	
+	sccb_setup();
+
+	get_frame();
+
+
+	LOG_INF("+++image end\n");
+	
+	
+	
 	
 	
 		
@@ -351,33 +361,18 @@ void main(void)
 	
 	
 	ftp_init(ftp_ctrl_callback, ftp_data_callback);
-	
 	ret = ftp_open("ftp.bosl.com.au", 21, -1);
-	
 	ret = ftp_login("images@bosl.com.au", "solderflux");
-		
 	ret = ftp_type(FTP_TYPE_BINARY);
-
 	ret = ftp_put("image.bmp", bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
-	const uint16_t chuck_size = UINT16_MAX;
-	for(uint32_t l = 0; l < IMAGE_SIZE_BYTES; l += chuck_size){
-		uint16_t tsize = MIN(chuck_size, (IMAGE_SIZE_BYTES - l));
-		ret = ftp_put("image.bmp", imbuf+l, tsize, FTP_PUT_APPEND);
-	}
-	
+	ret = ftp_put("image.bmp", imbuf, IMAGE_SIZE_BYTES, FTP_PUT_APPEND);
 	LOG_INF("ftp put: %d", ret);
-		
 	ret = ftp_close();
-		
-	
 	LOG_INF("UPLOAD SEQUENCE ENDED");
+	
 	
 	
 	while(1){
 		k_msleep(100);
 	}
-	
-	
-
-
 }
