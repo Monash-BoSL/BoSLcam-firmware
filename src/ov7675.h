@@ -1,18 +1,20 @@
 #pragma once
 #include <stdint.h>
 
-
-void wrReg(uint8_t reg,uint8_t dat);
-uint8_t rdReg(uint8_t reg);
+void wr_reg(uint8_t reg,uint8_t dat);
+uint8_t rd_reg(uint8_t reg);
 enum RESOLUTION{VGA,QVGA,QQVGA};
 enum COLORSPACE{YUV422,RGB565,BAYER_RGB};
+void set_color_space(enum COLORSPACE color);
+void set_res(enum RESOLUTION res);
+void ov7675_init(uint32_t auto_time);
+void ov7675_capture(uint8_t* buffer);
+
 struct regval_list{
 	uint8_t reg_num;
 	uint8_t value;
 };
-void setColorSpace(enum COLORSPACE color);
-void setRes(enum RESOLUTION res);
-void camInit(void);
+
 #define OV7670_I2C_ADDRESS	0x21
 /* Registers */
 #define REG_GAIN	0x00	/* Gain lower 8 bits (rest in vref) */

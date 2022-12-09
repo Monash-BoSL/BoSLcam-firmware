@@ -4,456 +4,168 @@
 #include <sys/util.h>
 #include <sys/printk.h>
 #include <inttypes.h>
+#include <logging/log.h>
+
 #include <drivers/i2c.h>
+#include <drivers/gpio.h>
+
+#include <nrfx.h>
+
+#include <hal/nrf_timer.h>
+#include <hal/nrf_dppi.h>
+#include <hal/nrf_gpiote.h>
+#include <hal/nrf_gpio.h>
 
 #include "ov7675.h"
+#include "ov7675_regs.h"
+#include "config.h"
 
+
+LOG_MODULE_REGISTER(ov7675);
+
+extern const struct device * gpio;
 extern const struct device * i2c_sccb;
 
-static const struct regval_list vga_ov7670[] = {
-	{REG_HREF,0xF6},	// was B6  
-	{0x17,0x13},		// HSTART
-	{0x18,0x01},		// HSTOP
-	{0x19,0x02},		// VSTART
-	{0x1a,0x7a},		// VSTOP
-	{REG_VREF,0x0a},	// VREF
-	{0xff, 0xff},		/* END MARKER */
-};
-static const struct regval_list qvga_ov7670[] = {
-	{REG_COM14, 0x19},
-	{0x72, 0x11},
-	{0x73, 0xf1},
-	{REG_HSTART,0x16},
-	{REG_HSTOP,0x04},
-	{REG_HREF,0x24},
-	{REG_VSTART,0x02},
-	{REG_VSTOP,0x7a},
-	{REG_VREF,0x0a},
-	{0xff, 0xff},	/* END MARKER */
-};
-static const struct regval_list qqvga_ov7670[] = {
-	{REG_COM14, 0x1a},	// divide by 4
-	{0x72, 0x22},		// downsample by 4
-	{0x73, 0xf2},		// divide by 4
-	{REG_HSTART,0x16},
-	{REG_HSTOP,0x04},
-	{REG_HREF,0xa4},		   
-	{REG_VSTART,0x02},
-	{REG_VSTOP,0x7a},
-	{REG_VREF,0x0a},
-	{0xff, 0xff},	/* END MARKER */
-};
-static const struct regval_list yuv422_ov7670[] = {
-	{REG_COM7, 0x0},	/* Selects YUV mode */
-	{REG_RGB444, 0},	/* No RGB444 please */
-	{REG_COM1, 0},
-	{REG_COM15, COM15_R00FF},
-	{REG_COM9, 0x6A},	/* 128x gain ceiling; 0x8 is reserved bit */
-	{0x4f, 0x80},		/* "matrix coefficient 1" */
-	{0x50, 0x80},		/* "matrix coefficient 2" */
-	{0x51, 0},		/* vb */
-	{0x52, 0x22},		/* "matrix coefficient 4" */
-	{0x53, 0x5e},		/* "matrix coefficient 5" */
-	{0x54, 0x80},		/* "matrix coefficient 6" */
-	{REG_COM13,/*COM13_GAMMA|*/COM13_UVSAT},
-	{0xff, 0xff},		/* END MARKER */
-};
-static const struct regval_list rgb565_ov7670[] = {
-	{REG_COM7, COM7_RGB}, /* Selects RGB mode */
-	{REG_RGB444, 0},	  /* No RGB444 please */
-	{REG_COM1, 0x0},
-	{REG_COM15, COM15_RGB565|COM15_R00FF},
-	{REG_COM9, 0x6A},	 /* 128x gain ceiling; 0x8 is reserved bit */
-	{0x4f, 0xb3},		 /* "matrix coefficient 1" */
-	{0x50, 0xb3},		 /* "matrix coefficient 2" */
-	{0x51, 0},		 /* vb */
-	{0x52, 0x3d},		 /* "matrix coefficient 4" */
-	{0x53, 0xa7},		 /* "matrix coefficient 5" */
-	{0x54, 0xe4},		 /* "matrix coefficient 6" */
-	{REG_COM13, /*COM13_GAMMA|*/COM13_UVSAT},
-	{0xff, 0xff},	/* END MARKER */
-};
-static const struct regval_list bayerRGB_ov7670[] = {
-	{REG_COM7, COM7_BAYER},
-	{REG_COM13, 0x08}, /* No gamma, magic rsvd bit */
-	{REG_COM16, 0x3d}, /* Edge enhancement, denoise */
-	{REG_REG76, 0xe1}, /* Pix correction, magic rsvd */
-	{0xff, 0xff},	/* END MARKER */
-};
-static const struct regval_list ov7670_default_regs[] = {//from the linux driver
-	{REG_COM7, COM7_RESET},
-	{REG_TSLB,  0x04},	/* OV */
-	{REG_COM7, 0},	/* VGA */
-	/*
-	 * Set the hardware window.  These values from OV don't entirely
-	 * make sense - hstop is less than hstart.  But they work...
-	 */
-	{REG_HSTART, 0x13},	{REG_HSTOP, 0x01},
-	{REG_HREF, 0xb6},	{REG_VSTART, 0x02},
-	{REG_VSTOP, 0x7a},	{REG_VREF, 0x0a},
-
-	{REG_COM3, 0},	{REG_COM14, 0},
-	/* Mystery scaling numbers */
-	{0x70, 0x3a},		{0x71, 0x35},
-	{0x72, 0x11},		{0x73, 0xf0},
-	{0xa2,/* 0x02 changed to 1*/1},{REG_COM10, COM10_VS_NEG},
-	/* Gamma curve values */
-	{0x7a, 0x20},		{0x7b, 0x10},
-	{0x7c, 0x1e},		{0x7d, 0x35},
-	{0x7e, 0x5a},		{0x7f, 0x69},
-	{0x80, 0x76},		{0x81, 0x80},
-	{0x82, 0x88},		{0x83, 0x8f},
-	{0x84, 0x96},		{0x85, 0xa3},
-	{0x86, 0xaf},		{0x87, 0xc4},
-	{0x88, 0xd7},		{0x89, 0xe8},
-	/* AGC and AEC parameters.  Note we start by disabling those features,
-	   then turn them only after tweaking the values. */
-	{REG_COM8, COM8_FASTAEC | COM8_AECSTEP},
-	{REG_GAIN, 0},	{REG_AECH, 0},
-	{REG_COM4, 0x40}, /* magic reserved bit */
-	{REG_COM9, 0x18}, /* 4x gain + magic rsvd bit */
-	{REG_BD50MAX, 0x05},	{REG_BD60MAX, 0x07},
-	{REG_AEW, 0x95},	{REG_AEB, 0x33},
-	{REG_VPT, 0xe3},	{REG_HAECC1, 0x78},
-	{REG_HAECC2, 0x68},	{0xa1, 0x03}, /* magic */
-	{REG_HAECC3, 0xd8},	{REG_HAECC4, 0xd8},
-	{REG_HAECC5, 0xf0},	{REG_HAECC6, 0x90},
-	{REG_HAECC7, 0x94},
-	{REG_COM8, COM8_FASTAEC|COM8_AECSTEP|COM8_AGC|COM8_AEC},
-	{0x30,0},{0x31,0},//disable some delays
-	/* Almost all of these are magic "reserved" values.  */
-	{REG_COM5, 0x61},	{REG_COM6, 0x4b},
-	{0x16, 0x02},		{REG_MVFP, 0x07},
-	{0x21, 0x02},		{0x22, 0x91},
-	{0x29, 0x07},		{0x33, 0x0b},
-	{0x35, 0x0b},		{0x37, 0x1d},
-	{0x38, 0x71},		{0x39, 0x2a},
-	{REG_COM12, 0x78},	{0x4d, 0x40},
-	{0x4e, 0x20},		{REG_GFIX, 0},
-	/*{0x6b, 0x4a},*/		{0x74,0x10},
-	{0x8d, 0x4f},		{0x8e, 0},
-	{0x8f, 0},		{0x90, 0},
-	{0x91, 0},		{0x96, 0},
-	{0x9a, 0},		{0xb0, 0x84},
-	{0xb1, 0x0c},		{0xb2, 0x0e},
-	{0xb3, 0x82},		{0xb8, 0x0a},
-
-	/* More reserved magic, some of which tweaks white balance */
-	{0x43, 0x0a},		{0x44, 0xf0},
-	{0x45, 0x34},		{0x46, 0x58},
-	{0x47, 0x28},		{0x48, 0x3a},
-	{0x59, 0x88},		{0x5a, 0x88},
-	{0x5b, 0x44},		{0x5c, 0x67},
-	{0x5d, 0x49},		{0x5e, 0x0e},
-	{0x6c, 0x0a},		{0x6d, 0x55},
-	{0x6e, 0x11},		{0x6f, 0x9e}, /* it was 0x9F "9e for advance AWB" */
-	{0x6a, 0x40},		{REG_BLUE, 0x10},
-	{REG_RED, 0x60},
-	{REG_COM8, COM8_FASTAEC|COM8_AECSTEP|COM8_AGC|COM8_AEC|COM8_AWB},
-
-	/* Matrix coefficients */
-	{0x4f, 0x80},		{0x50, 0x80},
-	{0x51, 0},		{0x52, 0x22},
-	{0x53, 0x5e},		{0x54, 0x80},
-	{0x58, 0x9e},
-
-	{REG_COM16, COM16_AWBGAIN},	{REG_EDGE, 0},
-	{0x75, 0x05},		{REG_REG76, 0xe1},
-	{0x4c, 0},		{0x77, 0x01},
-	{REG_COM13, /*0xc3*/0x48},	{0x4b, 0x09},
-	{0xc9, 0x60},		/*{REG_COM16, 0x38},*/
-	{0x56, 0x40},
-
-	{0x34, 0x11},		{REG_COM11, COM11_EXP|COM11_HZAUTO},
-	{0xa4, 0x82/*Was 0x88*/},		{0x96, 0},
-	{0x97, 0x30},		{0x98, 0x20},
-	{0x99, 0x30},		{0x9a, 0x84},
-	{0x9b, 0x29},		{0x9c, 0x03},
-	{0x9d, 0x4c},		{0x9e, 0x3f},
-	{0x78, 0x04},
-
-	/* Extra-weird stuff.  Some sort of multiplexor register */
-	{0x79, 0x01},		{0xc8, 0xf0},
-	{0x79, 0x0f},		{0xc8, 0x00},
-	{0x79, 0x10},		{0xc8, 0x7e},
-	{0x79, 0x0a},		{0xc8, 0x80},
-	{0x79, 0x0b},		{0xc8, 0x01},
-	{0x79, 0x0c},		{0xc8, 0x0f},
-	{0x79, 0x0d},		{0xc8, 0x20},
-	{0x79, 0x09},		{0xc8, 0x80},
-	{0x79, 0x02},		{0xc8, 0xc0},
-	{0x79, 0x03},		{0xc8, 0x40},
-	{0x79, 0x05},		{0xc8, 0x30},
-	{0x79, 0x26},
-
-	{0xff, 0xff},	/* END MARKER */
-};
-
-static const struct regval_list ov7675_qvga_regs[] = {
-	{0x11,0x80},
-	{0x3a,0x4},
-	{0x12,0x0},
-	{0x17,0x13},
-	{0x18,0x1},
-	{0x32,0xb6},
-	{0x19,63},
-	{0x1a,0x7b},
-	{0x03,0x01},	
-	{0xc,0x0},
-	{0x3e,0x0},
-	{0x70,0x3a},
-	{0x71,0x35},
-	{0x72,0x11},
-	{0x73,0xf0},
-	{0xa2,0x2},
-	{0x15,0x0},
-	{0x7a,0x18},
-	{0x7b,0x4},
-	{0x7c,0x9},
-	{0x7d,0x18},
-	{0x7e,0x38},
-	{0x7f,0x47},
-	{0x80,0x56},
-	{0x81,0x66},
-	{0x82,0x74},
-	{0x83,0x7f},
-	{0x84,0x89},
-	{0x85,0x9a},
-	{0x86,0xa9},
-	{0x87,0xc4},
-	{0x88,0xdb},
-	{0x89,0xee},
-	{0x13,0xe0},
-	{0x1,0x50},
-	{0x2,0x68},
-	{0x0,0x0},
-	{0x10,0x0},
-	{0xd,0x40},
-	{0x14,0x48},
-	{0x15,0x07},
-	{0xab,0x8},
-	{0x24,0x60},
-	{0x25,0x50},
-	{0x26,0xe3},
-	{0x9f,0x78},
-	{0xa0,0x68},
-	{0xa1,0x3},
-	{0xa6,0xd8},
-	{0xa7,0xd8},
-	{0xa8,0xf0},
-	{0xa9,0x90},
-	{0xaa,0x14},
-	{0x13,0xe5},
-	{0xe,0x61},
-	{0xf,0x4b},
-	{0x16,0x2},
-	{0x1e,0x27},//0x1e,0x17
-	{0x21,0x2},
-	{0x22,0x91},
-	{0x29,0x07},
-	{0x33,0xb},
-	{0x35,0xb},
-	{0x37,0x1d},
-	{0x38,0x71},
-	{0x39,0x2a},
-	{0x3c,0x78},
-	{0x4d,0x40},
-	{0x4e,0x20},
-	{0x69,0x0},
-	{0x4e,0x20},
-	{0x74,0x10},
-	{0x8d,0x4f},
-	{0x8e,0x0},
-	{0x8f,0x0},
-	{0x90,0x0},
-	{0x91,0x0},
-	{0x92,0x66},
-	{0x96,0x0},
-	{0x9a,0x80},
-	{0xb0,0x84},
-	{0xb1,0xc},
-	{0xb2,0xe},
-	{0xb3,0x82},
-	{0xb8,0x0a},
-	{0x43,0x14},
-	{0x44,0xf0},
-	{0x45,0x41},
-	{0x46,0x66},
-	{0x47,0x2a},
-	{0x48,0x3e},
-	{0x59,0x8d},
-	{0x5a,0x8e},
-	{0x5b,0x53},
-	{0x5c,0x83},
-	{0x5d,0x4f},
-	{0x5e,0xe},
-	{0x6c,0x0a},
-	{0x6d,0x55},
-	{0x6e,0x11},
-	{0x6f,0x9e},
-	{0x62,0x90},
-	{0x63,0x30},
-	{0x64,0x11},
-	{0x65,0x0},
-	{0x66,0x5},
-	{0x94,0x11},
-	{0x95,0x18},
-	{0x6a,0x40},
-	{0x1,0x40},
-	{0x2,0x40},
-	{0x13,0xe7},
-	{0x4f,0x80},
-	{0x50,0x80},
-	{0x51,0x0},
-	{0x52,0x22},
-	{0x53,0x5e},
-	{0x54,0x80},
-	{0x58,0x9e},
-	{0x41,0x8},
-	{0x3f,0x0},
-	{0x75,0x3},
-	{0x76,0xe1},
-	{0x4c,0x0},
-	{0x77,0x0},
-	{0x3d,0xc2},
-	{0x4b,0x9},
-	{0xc9,0x60},
-	{0x41,0x38},
-	{0x56,0x3a},
-	{0x34,0x11},
-	{0x3b,0x0a},
-	{0xa4,0x88},
-	{0x96,0x0},
-	{0x97,0x30},
-	{0x98,0x20},
-	{0x99,0x30},
-	{0x9a,0x84},
-	{0x9b,0x29},
-	{0x9c,0x3},
-	{0x9d,0x98},
-	{0x9e,0x3f},
-	{0x78,0x4},
-	{0x79,0x1},
-	{0xc8,0xf0},
-	{0x79,0xf},
-	{0xc8,0x0},
-	{0x79,0x10},
-	{0xc8,0x7e},
-	{0x79,0x0a},
-	{0xc8,0x80},
-	{0x79,0xb},
-	{0xc8,0x1},
-	{0x79,0xc},
-	{0xc8,0xf},
-	{0x79,0xd},
-	{0xc8,0x20},
-	{0x79,0x9},
-	{0xc8,0x80},
-	{0x79,0x2},
-	{0xc8,0xc0},
-	{0x79,0x3},
-	{0xc8,0x40},
-	{0x79,0x5},
-	{0xc8,0x30},
-	{0x79,0x26},
-	{0x2d,0x0},
-	{0x2e,0x0},
-	{0x11,0x40},
-	{0x6b,0x0a},
-	{0x2a,0x0},
-	{0x2b,0x0},
-	{0x2d,0x0},
-	{0x2e,0x0},
-	{0xca,0x0},
-	{0x92,0x66},
-	{0x93,0x0},
-	{0x3b,0x0a},
-	{0xcf,0x8c},
-	{0x9d,0x98},
-	{0x9e,0x7f},
-	{0xa5,0x2},
-	{0xab,0x3},
-	{0x15,0x2},
-	{0x12,0x14},
-	{0x8c,0x0},
-	{0x4,0x0},
-	{0x40,0x10},
-	{0x14,0x48},
-	{0x4f,0xb3},
-	{0x50,0xb3},
-	{0x51,0x0},
-	{0x52,0x3d},
-	{0x53,0xa7},
-	{0x54,0xe4},
-	{0x3d,0xc0},
-	{0x15,0x2},
-	{0xff, 0xff},
-};
-
-
-static void errorLed(void){
-	printk("LED ERROR");
-}
-
-void wrReg(uint8_t reg,uint8_t dat){
+void wr_reg(uint8_t reg,uint8_t dat){
 	i2c_reg_write_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, dat);
-	// k_msleep(1);
 }
 
-uint8_t rdReg(uint8_t reg){
+uint8_t rd_reg(uint8_t reg){
 	uint8_t val;
 	i2c_reg_read_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, &val);
-	// k_msleep(1);
 	return val;
 }
-static void wrSensorRegs8_8(const struct regval_list reglist[]){
+static void wr_sensor_regs8_8(const struct regval_list reglist[]){
 	const struct regval_list *next = reglist;
 	for(;;){
 		uint8_t reg_addr = next->reg_num;
 		uint8_t reg_val = next->value;
 		if((reg_addr==255)&&(reg_val==255)){break;}
-		// printk("writing reg: %02X, val: %02X\n", reg_addr, reg_val);
-		wrReg(reg_addr, reg_val);
-		// k_msleep(50);
+		wr_reg(reg_addr, reg_val);
 		next++;
 	}
 }
-void setColorSpace(enum COLORSPACE color){
+void set_color_space(enum COLORSPACE color){
 	switch(color){
 		case YUV422:
-			wrSensorRegs8_8(yuv422_ov7670);
+			wr_sensor_regs8_8(yuv422_ov7670);
 		break;
 		case RGB565:
-			wrSensorRegs8_8(rgb565_ov7670);
-			{uint8_t temp=rdReg(0x11);
-			// _delay_ms(1);
+			wr_sensor_regs8_8(rgb565_ov7670);
+			{uint8_t temp=rd_reg(0x11);
 			k_msleep(1);
-			wrReg(0x11,temp);}//according to the Linux kernel driver rgb565 PCLK needs rewriting
+			wr_reg(0x11,temp);}//according to the Linux kernel driver rgb565 PCLK needs rewriting
 		break;
 		case BAYER_RGB:
-			wrSensorRegs8_8(bayerRGB_ov7670);
+			wr_sensor_regs8_8(bayerRGB_ov7670);
 		break;
 	}
 }
-void setRes(enum RESOLUTION res){
+void set_res(enum RESOLUTION res){
 	switch(res){
 		case VGA:
-			wrReg(REG_COM3,0);	// REG_COM3
-			wrSensorRegs8_8(vga_ov7670);
+			wr_reg(REG_COM3,0);	// REG_COM3
+			wr_sensor_regs8_8(vga_ov7670);
 		break;
 		case QVGA:
-			wrReg(REG_COM3,4);	// REG_COM3 enable scaling
-			wrSensorRegs8_8(qvga_ov7670);
+			wr_reg(REG_COM3,4);	// REG_COM3 enable scaling
+			wr_sensor_regs8_8(qvga_ov7670);
 		break;
 		case QQVGA:
-			wrReg(REG_COM3,4);	// REG_COM3 enable scaling
-			wrSensorRegs8_8(qqvga_ov7670);
+			wr_reg(REG_COM3,4);	// REG_COM3 enable scaling
+			wr_sensor_regs8_8(qqvga_ov7670);
 		break;
 	}
 }
-void camInit(void){
-	wrReg(0x12, 0x80);//Reset the camera.
+
+void ov7675_init(uint32_t auto_time){
+	gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
+	LOG_INF("bind %s\n", gpio->name);
+	i2c_sccb = device_get_binding(DT_LABEL(DT_NODELABEL(i2c2)));
+	LOG_INF("bind %s\n", i2c_sccb->name);
+	
+	//setup gpio for all pins
+	gpio_pin_configure(gpio, SCCB_PEN, GPIO_OUTPUT);
+	gpio_pin_configure(gpio, SCCB_PDN, GPIO_OUTPUT);
+	for(int i = 0; i < 8; i++){
+		gpio_pin_configure(gpio, i, GPIO_INPUT);
+	}
+	gpio_pin_configure(gpio, SCCB_VS, GPIO_INPUT);
+	gpio_pin_configure(gpio, SCCB_HREF, GPIO_INPUT);
+	gpio_pin_configure(gpio, SCCB_PCLK, GPIO_INPUT);
+	gpio_pin_set_raw(gpio, SCCB_PEN, 1);
+	gpio_pin_set_raw(gpio, SCCB_PDN, 0);
+				
+	NRF_P0->PIN_CNF[SCCB_XCLK] = 0b00000000000000000000000000000001; 
+
+
+	//setup clock on XCLK pin at 8 MHz.
+	nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_16MHz);
+	nrf_timer_mode_set(NRF_TIMER0, NRF_TIMER_MODE_TIMER);
+	nrf_timer_cc_set(NRF_TIMER0,NRF_TIMER_CC_CHANNEL0, 0x01);
+	nrf_timer_bit_width_set(NRF_TIMER0, NRF_TIMER_BIT_WIDTH_8);
+	nrf_timer_shorts_set(NRF_TIMER0, 0b00000000000000000000000000000001);//reset timer on match with compare 0
+	nrf_timer_publish_set(NRF_TIMER0, NRF_TIMER_EVENT_COMPARE0,SCCB_CLK_DPPI_CH);
+	nrf_gpiote_subscribe_set(NRF_GPIOTE, NRF_GPIOTE_TASK_OUT_0 ,SCCB_CLK_DPPI_CH);
+	nrf_gpiote_task_configure(	NRF_GPIOTE,
+								GPIOTE_CLK_TSK,
+								SCCB_XCLK,
+								NRF_GPIOTE_POLARITY_TOGGLE,
+								NRF_GPIOTE_INITIAL_VALUE_HIGH);
+    nrf_gpiote_task_enable(NRF_GPIOTE,GPIOTE_CLK_TSK);
+	
+	nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_START);
+
+    /* Enable DPPI Channel */
+    nrf_dppi_channels_enable(NRF_DPPIC, 0x01 << SCCB_CLK_DPPI_CH);
+
+	
+	wr_reg(0x11,0);//set clock divider to 1, no need to slow it down!
+	
+	
+	wr_reg(0x12, 0x80);//Reset the camera.
 	k_msleep(100);
-	wrSensorRegs8_8(ov7675_qvga_regs);
-	wrReg(REG_COM10,32);//PCLK does not toggle on HBLANK.
+	wr_sensor_regs8_8(ov7675_qvga_regs);
+	wr_reg(REG_COM10,32);//PCLK does not toggle on HBLANK.
+	
+	if(auto_time){
+		k_msleep(auto_time);//delay for autoexposure awb, etc ...
+	}
+}
+
+void ov7675_capture(uint8_t* buffer){
+	uint16_t wg = IMAGE_WIDTH;//line width in pixels
+	uint16_t hg = IMAGE_HEIGHT;//number of lines per frame
+	uint16_t lg2;
+	uint32_t p = 0;
+
+	LOG_INF("ready\n");
+	//Wait for vsync 
+	while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
+	while(nrf_gpio_pin_read(SCCB_VS));//wait for low
+
+	while(hg--){//get line
+		lg2=wg;
+		// printk("%u\n", hg);
+		while(lg2--){//get pixel
+			//low byte
+			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
+			buffer[p+1] = (uint8_t) NRF_P0->IN;//read in D0 - D8
+			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
+			//high byte
+			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
+			buffer[p] = (uint8_t) NRF_P0->IN;//read in D0 - D8
+			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
+			
+			p += 2;
+		}
+		while((nrf_gpio_pin_read(SCCB_HREF)));//SYNC line on HREF
+	}
+
+	//due to hardware error we need to swap the last 2 bits of buffer
+	for(uint32_t p = 0; p < IMAGE_SIZE_BYTES; p++){
+		uint8_t x = buffer[p];
+		
+		buffer[p] = (x & ~(0x3)) | ((x >> 0x1)&0x1) | ((x << 1)&0x2);
+	}
 }
