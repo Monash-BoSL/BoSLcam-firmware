@@ -3,6 +3,9 @@
 //ording is importaint to correct reading of file
 //be sure to not change the ordering of the line
 //an incorrect configuration will cause the program to lock up
+//
+//FOLDERS MUST BE PRESENT ON THE SD CARD AND FTP SERVER FOR
+//THE PROGRAM TO FUNCTION. FAILURE TO DO SO WILL RESULT IN LOST IMAGES.
 //***********************************************
 
 //***********************************************

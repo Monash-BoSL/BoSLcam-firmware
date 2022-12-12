@@ -143,7 +143,7 @@ void ov7675_capture(uint8_t* buffer){
 	//Wait for vsync 
 	while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
 	while(nrf_gpio_pin_read(SCCB_VS));//wait for low
-
+	
 	while(hg--){//get line
 		lg2=wg;
 		// printk("%u\n", hg);

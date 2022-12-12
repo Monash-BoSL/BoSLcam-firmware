@@ -12,6 +12,8 @@
 #include <logging/log.h>
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
 
 #include "common.h"
 #include "sd.h"
@@ -241,10 +243,24 @@ int parse_config_file(struct fs_file_t* zfp){
 	return 0;
 }
 
+int sdhc_mount(void){
+	int res;
+	mp.mnt_point = disk_mount_pt;
+
+	res = fs_mount(&mp);
+
+	if (res == FR_OK) {
+		LOG_INF("Disk mounted.\n");
+		return 0;
+	} else {
+		LOG_ERR("Error mounting disk.\n");
+		return -1;
+	}
+}
+
 int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
 	const uint32_t max_path_length = 256;
 	char path[max_path_length];
-	int res;
 	struct fs_file_t imf;
 	mcfg = master_cfg;
 	
@@ -252,20 +268,8 @@ int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
-	
 	strcpy(path, disk_mount_pt);
 	strcpy(path+sizeof(disk_mount_pt), sdhc_path);
-	
-	mp.mnt_point = disk_mount_pt;
-
-	res = fs_mount(&mp);
-
-	if (res == FR_OK) {
-		LOG_INF("Disk mounted.\n");
-	} else {
-		LOG_ERR("Error mounting disk.\n");
-	}
-
 	
 	fs_file_t_init(&imf);
 	fs_open(&imf, path, FS_O_READ);
@@ -278,36 +282,47 @@ int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
 }
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
-int sdhc_write_image(char* sdhc_path, char* data, uint32_t length){
+int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
 	const uint32_t max_path_length = 256;
 	char path[max_path_length];
-	int res;
 	struct fs_file_t imf;
 	
 	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
+	sprintf(path, "%s%s%08X.bmp", disk_mount_pt,sdhc_path, capture->time);
 	
-	strcpy(path, disk_mount_pt);
-	strcpy(path+sizeof(disk_mount_pt), sdhc_path);
-	
-	mp.mnt_point = disk_mount_pt;
-
-	res = fs_mount(&mp);
-
-	if (res == FR_OK) {
-		LOG_INF("Disk mounted.\n");
-		// lsdir(disk_mount_pt);
-	} else {
-		LOG_ERR("Error mounting disk.\n");
-	}
-
 	
 	fs_file_t_init(&imf);
 	fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE);
 	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
-	fs_write(&imf, data, length);
+	fs_write(&imf, capture->data, capture->length);
+	fs_close(&imf);
+
+	return 0;
+}
+
+//ensure that your path beings with a / eg "/im1.bmp" !!
+int sdhc_write_status(char* sdhc_path, struct status_t* status){
+	const uint32_t max_path_length = 256;
+	char path[max_path_length];
+	struct fs_file_t imf;
+	
+	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
+		LOG_ERR("file name too long");
+		return -ENAMETOOLONG;
+	}
+	sprintf(path, "%s%s%08X.bmp", disk_mount_pt,sdhc_path, capture->time);
+	
+	
+	fs_file_t_init(&imf);
+	fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE | FS_O_APPEND);
+	//here is where we write what we want to log to file
+	strftime(path, max_path_length, "%Y/%m/%d-%H:%M:%S UTC" , &time(status->system_time));
+	sprinf(path+strlen(path), ", %d, %d\n", battery_voltage, captures);
+	
+	fs_write(&imf, path, strlen(path));
 	fs_close(&imf);
 
 	return 0;

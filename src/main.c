@@ -9,12 +9,22 @@
 #include <inttypes.h>
 #include <logging/log.h>
 
+#include <date_time.h>
+
 #include "common.h"
 #include "ov7675.h"
 #include "sd.h"
 #include "ftp.h"
 
 #define SLEEP_TIME_MS	1
+
+/*************** TODO *******************************
+-automatically make directories on sd card and ftp
+-figure out how to name files when no network info
+
+
+****************************************************/
+
 
 LOG_MODULE_REGISTER(main);
 
@@ -23,44 +33,75 @@ const struct device * i2c_sccb;
 
 uint8_t image_buffer[IMAGE_SIZE_BYTES];
 
+
 static struct master_config_t mcfg;
-uint32_t captures = 0;
+struct capture_t capture = {.data = image_buffer, .length = IMAGE_SIZE_BYTES, .time = 0};
+struct status_t stats = {.system_time = 0, .battery_voltage -1, .captures = 0};
 
 int sleepy(uint32_t ms_sleep){
 	return k_msleep(ms_sleep);
 }
 
-int setup(void){
+int get_capture_time(uint32_t* ct){
 	int ret;
+	uint64_t unix_time_ms; 
+	ret = date_time_now(&unix_time_ms);
+	if(ret < 0){return ret;}
+	*ct = (uint32_t) (unix_time_ms/1000);
+	return 0;
+}
+
+int update_status(){
+	stats.system_time = capture.time; 
+	stats.battery_voltage = -1;//fix this
+	
+	return 0;
+}
+
+int setup(void){
+	int ret;	
+	ftp_setup();
+	
+	ret = sdhc_mount();
+	
 	ret = sdhc_load_config("/config.txt", &mcfg);
 	if(ret < 0){
 		LOG_ERR("failed to load config. halting");
 		return -1;
 	}
+	
+	//gets current network time
+	ret = modem_network_register(&mcfg.ftp_cfg);
+	if (ret < 0){return ret;}
+	
 	return 0;
 }
 
 int loop(void){
+	int d = mcfg.trig_cfg.logging_decimation_ftp;
 	
 	// status();
+	if(d > 0){get_capture_time(&capture.time);}
+	update_status();
 	
 	LOG_INF("ov7675 initialisation");
 	ov7675_init(mcfg.im_cfg.auto_range_time);
 
 	LOG_INF("ov7675 capture");
-	ov7675_capture(image_buffer);
-
+	ov7675_capture(capture.data);
+	
 	LOG_INF("image -> sdhc");
 	sdhc_write_image(mcfg.sd_cfg.image_path, 
-					 image_buffer, 
-					 IMAGE_SIZE_BYTES);
+					 &capture);
+	sdhc_write_status(mcfg.sd_cfg.status_path, 
+					 &status);
 					 
-	int d = mcfg.trig_cfg.logging_decimation_ftp;
-	if ((d > 0) && (0 == (captures % d))){
+	if ((d > 0) && (0 == (stats.captures % d))){
 		LOG_INF("image -> ftp");
 		ftp_write_image(&mcfg.ftp_cfg, 
-						image_buffer, 
-						IMAGE_SIZE_BYTES);
+						&capture);
+		ftp_write_status(&mcfg.ftp_cfg, 
+					 &status);
 	}
 	LOG_INF("done");
 	
@@ -81,7 +122,7 @@ int loop(void){
 		break;	
 	}
 	
-	captures++;
+	stats.captures++;
 	
 	return 0;
 }

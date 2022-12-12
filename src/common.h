@@ -73,3 +73,16 @@ struct master_config_t {
 	struct sd_config_t sd_cfg;
 };
 
+struct capture_t {
+	uint8_t* data;
+	uint32_t length;
+	uint32_t time;
+};
+
+struct status_t {
+	uint32_t system_time;
+	int32_t battery_voltage;
+	uint32_t captures;
+};
+
+
