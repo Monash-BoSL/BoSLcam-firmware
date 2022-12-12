@@ -29,3 +29,47 @@ static const char bmp_header[BMPIMAGEOFFSET] =
 };
 
 
+struct image_config_t {
+	uint32_t auto_range_time;
+	//image size 
+	//awb enable
+	//ae enable
+	//...
+};
+
+struct ftp_config_t {
+	char* apn;
+	char* network_operator;//numertic network operator code
+	char* domain;
+	//port
+	char* username;
+	char* password;
+	char* image_path;
+	char* status_path;
+};
+
+struct sd_config_t {
+	char* image_path;
+	char* status_path;
+	int	logging_level;//DBG, INF, WRN, ERR, OFF
+};
+
+enum trigger_type {
+	TIME_TIRGGER = 0,
+	UART_TRIGGER,
+};
+
+struct trigger_config_t {
+	enum trigger_type trig_type;
+	uint32_t logging_interval; //ms
+	uint32_t logging_decimation_ftp;//1 in every x photos captured to sd will be uploaded
+};
+
+struct master_config_t {
+	//struct gnss_config;
+	struct trigger_config_t trig_cfg;
+	struct image_config_t im_cfg;
+	struct ftp_config_t ftp_cfg;
+	struct sd_config_t sd_cfg;
+};
+

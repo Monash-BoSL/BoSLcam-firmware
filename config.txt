@@ -1,0 +1,38 @@
+//***************BoSL camera config file*********
+//adjust to suit your application
+//ording is importaint to correct reading of file
+//be sure to not change the ordering of the line
+//an incorrect configuration will cause the program to lock up
+//***********************************************
+
+//***********************************************
+//feel free to add notes about this config here:
+//
+//
+//
+//
+//
+//
+//
+//
+//**********************************************
+
+//image_config_t
+uint32_t auto_range_time = 1000
+//ftp_config_t
+char* apn = "hologram"
+char* network_operator = "50501"
+char* domain = "ftp.bosl.com.au"
+char* username = "images@bosl.com.au"
+char* password = "solderflux"
+char* image_path = "/dev/images/img"
+char* status_path = "/dev/status"
+//sd_config_t 
+char* image_path = "/devlog/images/img"
+char* status_path = "/devlog/status"
+int	logging_level = 0;//DBG, INF, WRN, ERR, OFF
+//trigger_config_t 
+enum trigger_type trig_type = 0//0 time trig, 1 uart trig
+uint32_t logging_interval = 60000//ms
+uint32_t logging_decimation_ftp = 1//1 in every x photos captured to sd will be uploaded
+

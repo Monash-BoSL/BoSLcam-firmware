@@ -18,7 +18,7 @@
 
 #include "ov7675.h"
 #include "ov7675_regs.h"
-#include "config.h"
+#include "common.h"
 
 
 LOG_MODULE_REGISTER(ov7675);
