@@ -308,19 +308,22 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
 	const uint32_t max_path_length = 256;
 	char path[max_path_length];
 	struct fs_file_t imf;
+	struct tm cal;
+	
 	
 	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
-	sprintf(path, "%s%s%08X.bmp", disk_mount_pt,sdhc_path, capture->time);
-	
+	strcpy(path, disk_mount_pt);
+	strcat(path, sdhc_path);
 	
 	fs_file_t_init(&imf);
 	fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE | FS_O_APPEND);
 	//here is where we write what we want to log to file
-	strftime(path, max_path_length, "%Y/%m/%d-%H:%M:%S UTC" , &time(status->system_time));
-	sprinf(path+strlen(path), ", %d, %d\n", battery_voltage, captures);
+	unix_date(&cal, status->system_time);
+	strftime(path, max_path_length, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
+	sprintf(path+strlen(path), ", %d, %d\n", status->battery_voltage, status->captures);
 	
 	fs_write(&imf, path, strlen(path));
 	fs_close(&imf);

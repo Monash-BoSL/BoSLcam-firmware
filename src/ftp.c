@@ -16,6 +16,7 @@
 #include <net/ftp_client.h>
 
 #include <stdio.h>
+#include <time.h>
 
 #include "common.h"
 #include "ftp.h"
@@ -34,6 +35,8 @@ void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
 
 int modem_network_register(struct ftp_config_t* ftp_cfg_p){
 	int ret;
+	char response[256];
+	
 	ret = nrf_modem_at_printf("AT");
 	if(ret == 0){LOG_INF("AT initialised");}
 	else if (ret < 0){LOG_ERR("AT initialisation error"); return ret;}
@@ -46,10 +49,11 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
 	if(ret == 0){LOG_INF("CFUN on ok");}
 	else if (ret < 0){LOG_ERR("CFUN on error"); return ret;}
 	
+	//may get stuck here if there is no network...
 	ret = nrf_modem_at_printf("AT+COPS=1,2,\"%s\"", ftp_cfg_p->network_operator);
 	if(ret == 0){LOG_INF("COPS register ok");}
 	else if (ret < 0){LOG_ERR("COPS register error"); return ret;}
-	
+		
 	return 0;
 }
 
@@ -96,11 +100,13 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
 	const uint32_t max_path_length = 256;
 	char path[256];
 	int ret;
+	struct tm cal;
 	
 	LOG_INF("modem begin\n");
 	
-	strftime(path, max_path_length, "%Y/%m/%d-%H:%M:%S UTC" , &time(status->system_time));
-	sprinf(path+strlen(path), ", %d, %d\n", battery_voltage, captures);
+	unix_date(&cal, status->system_time);
+	strftime(path, max_path_length, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
+	sprintf(path+strlen(path), ", %d, %d\n", status->battery_voltage, status->captures);
 	
 	ret = modem_network_register(ftp_cfg_p);
 	if (ret < 0){return ret;}
@@ -108,7 +114,7 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
 	ret = ftp_open(ftp_cfg_p->domain, 21, -1);
 	ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
 	ret = ftp_type(FTP_TYPE_BINARY);
-	ret = ftp_put(ftp_cfg_p->status_path, capture->data, capture->length, FTP_PUT_APPEND);
+	ret = ftp_put(ftp_cfg_p->status_path, path, strlen(path), FTP_PUT_APPEND);
 	ret = ftp_close();
 	LOG_INF("UPLOAD SEQUENCE ENDED");
 	return 0;

@@ -36,7 +36,7 @@ uint8_t image_buffer[IMAGE_SIZE_BYTES];
 
 static struct master_config_t mcfg;
 struct capture_t capture = {.data = image_buffer, .length = IMAGE_SIZE_BYTES, .time = 0};
-struct status_t stats = {.system_time = 0, .battery_voltage -1, .captures = 0};
+struct status_t stats = {.system_time = 0, .battery_voltage = -1, .captures = 0};
 
 int sleepy(uint32_t ms_sleep){
 	return k_msleep(ms_sleep);
@@ -61,7 +61,7 @@ int update_status(){
 int setup(void){
 	int ret;	
 	ftp_setup();
-	
+
 	ret = sdhc_mount();
 	
 	ret = sdhc_load_config("/config.txt", &mcfg);
@@ -72,6 +72,14 @@ int setup(void){
 	
 	//gets current network time
 	ret = modem_network_register(&mcfg.ftp_cfg);
+	
+	date_time_update_async(NULL);
+	LOG_INF("busy wait for valid time");
+	for(uint32_t i = 0; i < 1000; i++){
+		if(date_time_is_valid()){break;}
+		k_msleep(10);
+	}
+	
 	if (ret < 0){return ret;}
 	
 	return 0;
@@ -94,14 +102,14 @@ int loop(void){
 	sdhc_write_image(mcfg.sd_cfg.image_path, 
 					 &capture);
 	sdhc_write_status(mcfg.sd_cfg.status_path, 
-					 &status);
+					 &stats);
 					 
 	if ((d > 0) && (0 == (stats.captures % d))){
 		LOG_INF("image -> ftp");
 		ftp_write_image(&mcfg.ftp_cfg, 
 						&capture);
 		ftp_write_status(&mcfg.ftp_cfg, 
-					 &status);
+					 &stats);
 	}
 	LOG_INF("done");
 	

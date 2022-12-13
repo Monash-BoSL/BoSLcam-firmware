@@ -36,6 +36,6 @@ char* status_path = "/devlog/status"
 int	logging_level = 0;//DBG, INF, WRN, ERR, OFF
 //trigger_config_t 
 enum trigger_type trig_type = 0//0 time trig, 1 uart trig
-uint32_t logging_interval = 60000//ms
+uint32_t logging_interval = 6000//ms
 uint32_t logging_decimation_ftp = 1//1 in every x photos captured to sd will be uploaded
 
