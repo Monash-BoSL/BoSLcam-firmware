@@ -86,13 +86,22 @@ enum time_source {
 	NETWORK_TIME,
 	NTP_TIME,
 	FS_TIME,
+	NO_TIME,
+	EXT_TIME,
 };
+
+static const char* time_source_str[] = {"GNSS_TIME",
+								"NETWORK_TIME",
+								"NTP_TIME",
+								"FS_TIME",
+								"NO_TIME",
+								"EXT_TIME",};
 
 struct status_t {
 	int32_t system_time;
 	int32_t battery_voltage;
 	uint32_t captures;
-	enum time_source t_source;
+	enum time_source time_src;
 };
 
 

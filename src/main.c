@@ -46,12 +46,11 @@ int get_capture_time(int32_t* ct){
 	int ret;
 	int d = mcfg.trig_cfg.logging_decimation_ftp;	
 	
-	if(d>0){//for when ftp is enabled
 	uint64_t unix_time_ms; 
 	ret = date_time_now(&unix_time_ms);
 	if(ret < 0){return ret;}
 	*ct = (uint32_t) (unix_time_ms/1000);
-	}
+
 	return 0;
 }
 
@@ -62,19 +61,37 @@ int update_status(){
 	return 0;
 }
 
+void time_source_stats_async(const struct date_time_evt* evt){
+	switch (evt->type){
+	case DATE_TIME_OBTAINED_MODEM:
+		stats.time_src = NETWORK_TIME;
+		break;
+	case DATE_TIME_OBTAINED_NTP:
+		stats.time_src = NTP_TIME;
+		break;
+	case DATE_TIME_OBTAINED_EXT:
+		stats.time_src = EXT_TIME;
+		break;
+	case DATE_TIME_NOT_OBTAINED:
+		stats.time_src = NO_TIME;
+		break;
+	} 
+}
+
 int setup(void){
 	int ret;	
-	int d = mcfg.trig_cfg.logging_decimation_ftp;	
 
 	ret = sdhc_mount();
 	
 	ret = sdhc_load_config("/config.txt", &mcfg);
 	if(ret < 0){
 		LOG_ERR("failed to load config. halting");
-		return -1;
+		return ret;
 	}
 	
-	if(d > 0){
+	
+	int d = mcfg.trig_cfg.logging_decimation_ftp;	
+	if(d > 0){//first try get time from network
 		ftp_setup();
 		//gets current network time
 		ret = modem_network_register(&mcfg.ftp_cfg);
@@ -86,14 +103,37 @@ int setup(void){
 			if(date_time_is_valid()){break;}
 			k_msleep(10);
 		}
-	}else{
-		struct tm cal;
-		ret = sdhc_load_last_status_time(mcfg.sd_cfg.status_path, &cal);
-		if(ret < 0){return ret;}
-		ret = date_time_set(&cal);
-		if(ret < 0){return ret;}
+		stats.time_src = NETWORK_TIME;
 	}
 	
+	date_time_register_handler(time_source_stats_async);
+	
+	
+	if(!date_time_is_valid()){//then from SD
+		LOG_ERR("no network time, resorting to SD");
+		struct tm cal;
+		ret = sdhc_load_last_status_time(mcfg.sd_cfg.status_path, &cal);
+		if(ret == 0){
+			ret = date_time_set(&cal);
+			stats.time_src = FS_TIME;
+		}
+	}
+	if(!date_time_is_valid()){//then from default time epoch
+		LOG_ERR("no valid time, resorting to default");
+		struct tm cal = {	.tm_sec = 0,
+							.tm_min = 0,
+							.tm_hour = 0,
+							.tm_mday = 1,
+							.tm_mon = 0,
+							.tm_year = 120,
+							.tm_wday = 0,
+							.tm_yday = 0,
+							.tm_isdst = 0,
+						};//2020/01/01-00:00:00 UTC	
+		ret = date_time_set(&cal);
+		stats.time_src = NO_TIME;
+	}
+	if(!date_time_is_valid()){return -ENODATA;}
 	
 	
 	return 0;

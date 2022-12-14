@@ -106,7 +106,10 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
 	
 	unix_date(&cal, status->system_time);
 	strftime(path, max_path_length, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
-	sprintf(path+strlen(path), ", %d, %d\n", status->battery_voltage, status->captures);
+	sprintf(path+strlen(path), ",%s,%d,%d\n", 
+								time_source_str[status->time_src],
+								status->captures, 
+								status->battery_voltage);
 	
 	ret = modem_network_register(ftp_cfg_p);
 	if (ret < 0){return ret;}

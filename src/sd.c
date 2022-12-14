@@ -299,8 +299,8 @@ int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
 	strcat(path, sdhc_path);
 	
 	fs_file_t_init(&imf);
-	fs_open(&imf, path, FS_O_READ);
-
+	ret = fs_open(&imf, path, FS_O_READ);
+	if(ret < 0){return ret;}
 	{//get date string from file
 		char next;
 		bool date = 1;
@@ -384,7 +384,10 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
 	//here is where we write what we want to log to file
 	unix_date(&cal, status->system_time);
 	strftime(path, max_path_length, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
-	sprintf(path+strlen(path), ", %d, %d\n", status->battery_voltage, status->captures);
+	sprintf(path+strlen(path), ",%s,%d,%d\n", 
+								time_source_str[status->time_src],
+								status->captures, 
+								status->battery_voltage);
 	
 	fs_write(&imf, path, strlen(path));
 	fs_close(&imf);
