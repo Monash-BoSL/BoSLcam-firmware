@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#include <sys/timeutil.h>
+
 #include "common.h"
 #include "sd.h"
 
@@ -280,6 +282,65 @@ int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
 
 	return 0;
 }
+
+
+int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
+	const uint32_t max_path_length = 256;
+	char path[max_path_length];
+	struct fs_file_t imf;
+	char strtime[80];
+	int ret;
+	
+	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
+		LOG_ERR("file name too long");
+		return -ENAMETOOLONG;
+	}
+	strcpy(path, disk_mount_pt);
+	strcat(path, sdhc_path);
+	
+	fs_file_t_init(&imf);
+	fs_open(&imf, path, FS_O_READ);
+
+	{//get date string from file
+		char next;
+		bool date = 1;
+		uint32_t i = 0;
+		
+		do{
+			ret = fs_read(&imf, &next, 1);
+			if(ret < 0){return ret;}
+		
+			if(next == '\n'){date = 1; i = 0; continue;}
+			if(next == ','){date = 0; strtime[i] = '\0'; continue;}
+			if(date == 1){
+				strtime[i] = next;
+				i++;
+				continue;
+			}
+		
+		}while(ret > 0);
+	}
+	fs_close(&imf);
+	
+	
+	ret = sscanf(strtime, "%d/%d/%d-%d:%d:%d", 	
+												&cal->tm_year,
+												&cal->tm_mon, 
+												&cal->tm_mday, 
+												&cal->tm_hour, 
+												&cal->tm_min, 
+												&cal->tm_sec);
+	cal->tm_year -= 1900;
+	cal->tm_mon -= 1;
+	cal->tm_wday = 0;
+	cal->tm_yday = 0;
+	cal->tm_isdst = 0;
+	
+	// *ct = timeutil_timegm64(&cal);
+
+	return 0;
+}
+
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
 int sdhc_write_image(char* sdhc_path, struct capture_t* capture){

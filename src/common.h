@@ -81,10 +81,18 @@ struct capture_t {
 	int32_t time;
 };
 
+enum time_source {
+	GNSS_TIME = 0,
+	NETWORK_TIME,
+	NTP_TIME,
+	FS_TIME,
+};
+
 struct status_t {
 	int32_t system_time;
 	int32_t battery_voltage;
 	uint32_t captures;
+	enum time_source t_source;
 };
 
 

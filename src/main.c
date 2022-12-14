@@ -21,7 +21,7 @@
 /*************** TODO *******************************
 -automatically make directories on sd card and ftp
 -figure out how to name files when no network info
-
+-add printing of where the time is from into status
 
 ****************************************************/
 
@@ -42,12 +42,16 @@ int sleepy(uint32_t ms_sleep){
 	return k_msleep(ms_sleep);
 }
 
-int get_capture_time(uint32_t* ct){
+int get_capture_time(int32_t* ct){
 	int ret;
+	int d = mcfg.trig_cfg.logging_decimation_ftp;	
+	
+	if(d>0){//for when ftp is enabled
 	uint64_t unix_time_ms; 
 	ret = date_time_now(&unix_time_ms);
 	if(ret < 0){return ret;}
 	*ct = (uint32_t) (unix_time_ms/1000);
+	}
 	return 0;
 }
 
@@ -60,7 +64,7 @@ int update_status(){
 
 int setup(void){
 	int ret;	
-	ftp_setup();
+	int d = mcfg.trig_cfg.logging_decimation_ftp;	
 
 	ret = sdhc_mount();
 	
@@ -70,17 +74,27 @@ int setup(void){
 		return -1;
 	}
 	
-	//gets current network time
-	ret = modem_network_register(&mcfg.ftp_cfg);
-	
-	date_time_update_async(NULL);
-	LOG_INF("busy wait for valid time");
-	for(uint32_t i = 0; i < 1000; i++){
-		if(date_time_is_valid()){break;}
-		k_msleep(10);
+	if(d > 0){
+		ftp_setup();
+		//gets current network time
+		ret = modem_network_register(&mcfg.ftp_cfg);
+		if (ret < 0){return ret;}
+		
+		date_time_update_async(NULL);
+		LOG_INF("busy wait for valid time");
+		for(uint32_t i = 0; i < 1000; i++){
+			if(date_time_is_valid()){break;}
+			k_msleep(10);
+		}
+	}else{
+		struct tm cal;
+		ret = sdhc_load_last_status_time(mcfg.sd_cfg.status_path, &cal);
+		if(ret < 0){return ret;}
+		ret = date_time_set(&cal);
+		if(ret < 0){return ret;}
 	}
 	
-	if (ret < 0){return ret;}
+	
 	
 	return 0;
 }
@@ -88,8 +102,7 @@ int setup(void){
 int loop(void){
 	int d = mcfg.trig_cfg.logging_decimation_ftp;
 	
-	// status();
-	if(d > 0){get_capture_time(&capture.time);}
+	get_capture_time(&capture.time);
 	update_status();
 	
 	LOG_INF("ov7675 initialisation");

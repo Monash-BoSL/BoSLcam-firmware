@@ -35,7 +35,7 @@ void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
 
 int modem_network_register(struct ftp_config_t* ftp_cfg_p){
 	int ret;
-	char response[256];
+	// char response[256];
 	
 	ret = nrf_modem_at_printf("AT");
 	if(ret == 0){LOG_INF("AT initialised");}
