@@ -80,10 +80,50 @@ void time_source_stats_async(const struct date_time_evt* evt){
 	} 
 }
 
+void modem_init(void){
+	int err;
+
+	if (IS_ENABLED(CONFIG_LTE_AUTO_INIT_AND_CONNECT)) {
+		/* Do nothing, modem is already configured and LTE connected. */
+	} else {
+		err = lte_lc_init();
+		if (err) {
+			printk("Modem initialization failed, error: %d\n", err);
+			return;
+		}
+	}
+}
+
+
+int configure_low_power(void){
+	int err;
+
+	/** Power Saving Mode */
+	err = lte_lc_psm_req(true);
+	if (err) {
+		printk("lte_lc_psm_req, error: %d\n", err);
+	}
+
+	/** enhanced Discontinuous Reception */
+	err = lte_lc_edrx_req(true);
+	if (err) {
+		printk("lte_lc_edrx_req, error: %d\n", err);
+	}
+
+	// /** Release Assistance Indication  */
+	// err = lte_lc_rai_req(true);
+	// if (err) {
+		// printk("lte_lc_rai_req, error: %d\n", err);
+	// }
+
+
+	return err;
+}
+
 int setup(void){
 	int ret;	
 
-	ret = sdhc_mount();
+	ret = sdhc_mount();//very importaint for low power
 	
 	ret = sdhc_load_config("/config.txt", &mcfg);
 	if(ret < 0){
@@ -95,6 +135,13 @@ int setup(void){
 	int d = mcfg.trig_cfg.logging_decimation_ftp;	
 	if(d > 0){//first try get time from network
 		ftp_setup();
+		
+		
+		
+		modem_init();
+		configure_low_power();
+
+		
 		//gets current network time
 		ret = modem_network_register(&mcfg.ftp_cfg);
 		if (ret < 0){return ret;}
@@ -190,83 +237,36 @@ int loop(void){
 	return 0;
 }
 
-static void modem_init(void)
-{
-	int err;
-
-	if (IS_ENABLED(CONFIG_LTE_AUTO_INIT_AND_CONNECT)) {
-		/* Do nothing, modem is already configured and LTE connected. */
-	} else {
-		err = lte_lc_init();
-		if (err) {
-			printk("Modem initialization failed, error: %d\n", err);
-			return;
-		}
-	}
-}
-
-
-static int configure_low_power(void)
-{
-	int err;
-
-	/** Power Saving Mode */
-	err = lte_lc_psm_req(true);
-	if (err) {
-		printk("lte_lc_psm_req, error: %d\n", err);
-	}
-
-	/** enhanced Discontinuous Reception */
-	err = lte_lc_edrx_req(true);
-	if (err) {
-		printk("lte_lc_edrx_req, error: %d\n", err);
-	}
-
-	// /** Release Assistance Indication  */
-	// err = lte_lc_rai_req(true);
-	// if (err) {
-		// printk("lte_lc_rai_req, error: %d\n", err);
-	// }
-
-
-	return err;
-}
-
 #include <hal/nrf_gpio.h>
 void main(void){
 	int ret;
 	nrf_gpio_cfg_input( 28, NRF_GPIO_PIN_PULLUP);
-	// LOG_INF("begin!");
-	// ret = setup();
-	// if(ret < 0){
-		// k_oops();
-		// //lockup program and halt
-		// //try call for help
+	LOG_INF("begin!");
+	ret = setup();
+	if(ret < 0){
+		k_oops();
+		//lockup program and halt
+		//try call for help
+	}
+	
+	k_msleep(10000);
+	
+	char response[1024];
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CEREG=5");
+	printk(response);
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CEREG?");
+	printk(response);
+	
+	// while(1){
+		// loop();
 	// }
 	
-	// // while(1){
-		// // loop();
-	// // }
-	
-	modem_init();
-	configure_low_power();
+	// modem_init();
+	// configure_low_power();
 	NRF_UARTE0->ENABLE = 0;
 	NRF_UARTE1->ENABLE = 0;
 	NRF_TWIM2->ENABLE = 0;
-	
-	sdhc_mount();
-	
-	
-	k_msleep(5000);
-	
-	
-	ret = sdhc_load_config("/config.txt", &mcfg);
-	if(ret < 0){
-		LOG_ERR("failed to load config. halting");
-		return ret;
-	}
-
-	
+		
 	while(1){
 		k_msleep(10000);
 	}
