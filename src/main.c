@@ -11,6 +11,8 @@
 
 #include <date_time.h>
 
+#include <modem/lte_lc.h>
+
 #include "common.h"
 #include "ov7675.h"
 #include "sd.h"
@@ -188,20 +190,77 @@ int loop(void){
 	return 0;
 }
 
+static void modem_init(void)
+{
+	int err;
+
+	if (IS_ENABLED(CONFIG_LTE_AUTO_INIT_AND_CONNECT)) {
+		/* Do nothing, modem is already configured and LTE connected. */
+	} else {
+		err = lte_lc_init();
+		if (err) {
+			printk("Modem initialization failed, error: %d\n", err);
+			return;
+		}
+	}
+}
+
+
+static int configure_low_power(void)
+{
+	int err;
+
+	/** Power Saving Mode */
+	err = lte_lc_psm_req(true);
+	if (err) {
+		printk("lte_lc_psm_req, error: %d\n", err);
+	}
+
+	/** enhanced Discontinuous Reception */
+	err = lte_lc_edrx_req(true);
+	if (err) {
+		printk("lte_lc_edrx_req, error: %d\n", err);
+	}
+
+	/** Release Assistance Indication  */
+	err = lte_lc_rai_req(true);
+	if (err) {
+		printk("lte_lc_rai_req, error: %d\n", err);
+	}
+
+
+	return err;
+}
+
+#include <hal/nrf_gpio.h>
 void main(void){
 	int ret;
+	nrf_gpio_cfg_input( 28, NRF_GPIO_PIN_PULLUP);
+	// LOG_INF("begin!");
+	// ret = setup();
+	// if(ret < 0){
+		// k_oops();
+		// //lockup program and halt
+		// //try call for help
+	// }
 	
-	LOG_INF("begin!");
-	ret = setup();
-	if(ret < 0){
-		k_oops();
-		//lockup program and halt
-		//try call for help
-	}
+	// // while(1){
+		// // loop();
+	// // }
 	
-	while(1){
-		loop();
-	}
+	modem_init();
+	configure_low_power();
+	
+	NRF_UARTE0->ENABLE = 0;
+	NRF_UARTE1->ENABLE = 0;
+	// NRF_SPIM0->ENABLE = 0;
+	// NRF_SPIM1->ENABLE = 0;
+	// NRF_SPIM2->ENABLE = 0;
+	NRF_SPIM3->ENABLE = 0;
+	// NRF_TWIM0->ENABLE = 0;
+	// NRF_TWIM1->ENABLE = 0;
+	NRF_TWIM2->ENABLE = 0;
+	// NRF_TWIM3->ENABLE = 0;
 	
 	while(1){
 		k_msleep(100);
