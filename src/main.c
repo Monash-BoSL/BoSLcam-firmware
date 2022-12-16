@@ -240,7 +240,12 @@ int loop(void){
 #include <hal/nrf_gpio.h>
 void main(void){
 	int ret;
+	//some low power stuff
 	nrf_gpio_cfg_input( 28, NRF_GPIO_PIN_PULLUP);
+	NRF_UARTE0->ENABLE = 0;
+	NRF_UARTE1->ENABLE = 0;
+	NRF_TWIM2->ENABLE = 0;
+	
 	LOG_INF("begin!");
 	ret = setup();
 	if(ret < 0){
@@ -251,11 +256,7 @@ void main(void){
 	
 	k_msleep(10000);
 	
-	char response[1024];
-	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CEREG=5");
-	printk(response);
-	ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CEREG?");
-	printk(response);
+
 	
 	// while(1){
 		// loop();
@@ -263,12 +264,13 @@ void main(void){
 	
 	// modem_init();
 	// configure_low_power();
-	NRF_UARTE0->ENABLE = 0;
-	NRF_UARTE1->ENABLE = 0;
-	NRF_TWIM2->ENABLE = 0;
+	
 		
 	while(1){
-		k_msleep(10000);
+		k_msleep(60000);
+		ftp_write_status(&mcfg.ftp_cfg, 
+					 &stats);
+		stats.captures++;
 	}
 	// k_msleep(5000);
 	
