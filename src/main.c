@@ -222,11 +222,11 @@ static int configure_low_power(void)
 		printk("lte_lc_edrx_req, error: %d\n", err);
 	}
 
-	/** Release Assistance Indication  */
-	err = lte_lc_rai_req(true);
-	if (err) {
-		printk("lte_lc_rai_req, error: %d\n", err);
-	}
+	// /** Release Assistance Indication  */
+	// err = lte_lc_rai_req(true);
+	// if (err) {
+		// printk("lte_lc_rai_req, error: %d\n", err);
+	// }
 
 
 	return err;
@@ -250,19 +250,27 @@ void main(void){
 	
 	modem_init();
 	configure_low_power();
-	
 	NRF_UARTE0->ENABLE = 0;
 	NRF_UARTE1->ENABLE = 0;
-	// NRF_SPIM0->ENABLE = 0;
-	// NRF_SPIM1->ENABLE = 0;
-	// NRF_SPIM2->ENABLE = 0;
-	NRF_SPIM3->ENABLE = 0;
-	// NRF_TWIM0->ENABLE = 0;
-	// NRF_TWIM1->ENABLE = 0;
 	NRF_TWIM2->ENABLE = 0;
-	// NRF_TWIM3->ENABLE = 0;
+	
+	sdhc_mount();
+	
+	
+	k_msleep(5000);
+	
+	
+	ret = sdhc_load_config("/config.txt", &mcfg);
+	if(ret < 0){
+		LOG_ERR("failed to load config. halting");
+		return ret;
+	}
+
 	
 	while(1){
-		k_msleep(100);
+		k_msleep(10000);
 	}
+	// k_msleep(5000);
+	
+	// while(1){}
 }
