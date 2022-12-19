@@ -24,7 +24,7 @@
 -automatically make directories on sd card and ftp
 -figure out how to name files when no network info
 -add printing of where the time is from into status
-
+-issue with network time reset on low power sleep?
 ****************************************************/
 
 
@@ -253,24 +253,17 @@ void main(void){
 		//lockup program and halt
 		//try call for help
 	}
-	
-	k_msleep(10000);
-	
-
-	
+		
 	// while(1){
 		// loop();
 	// }
 	
-	// modem_init();
-	// configure_low_power();
-	
+	nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
+	nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
+
 		
 	while(1){
-		k_msleep(60000);
-		ftp_write_status(&mcfg.ftp_cfg, 
-					 &stats);
-		stats.captures++;
+		k_msleep(1000);
 	}
 	// k_msleep(5000);
 	
