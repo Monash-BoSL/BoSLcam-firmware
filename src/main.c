@@ -1,8 +1,10 @@
 
 #include <nrfx.h>
+#include <hal/nrf_gpio.h>
 
 #include <zephyr.h>
 #include <device.h>
+
 
 #include <sys/util.h>
 #include <sys/printk.h>
@@ -10,6 +12,8 @@
 #include <logging/log.h>
 
 #include <date_time.h>
+
+#include <modem/lte_lc.h>
 
 #include "common.h"
 #include "ov7675.h"
@@ -22,7 +26,7 @@
 -automatically make directories on sd card and ftp
 -figure out how to name files when no network info
 -add printing of where the time is from into status
-
+-issue with network time reset on low power sleep?
 ****************************************************/
 
 
@@ -39,6 +43,9 @@ struct capture_t capture = {.data = image_buffer, .length = IMAGE_SIZE_BYTES, .t
 struct status_t stats = {.system_time = 0, .battery_voltage = -1, .captures = 0};
 
 int sleepy(uint32_t ms_sleep){
+	nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
+	nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
+	
 	return k_msleep(ms_sleep);
 }
 
@@ -78,10 +85,50 @@ void time_source_stats_async(const struct date_time_evt* evt){
 	} 
 }
 
+void modem_init(void){
+	int err;
+
+	if (IS_ENABLED(CONFIG_LTE_AUTO_INIT_AND_CONNECT)) {
+		/* Do nothing, modem is already configured and LTE connected. */
+	} else {
+		err = lte_lc_init();
+		if (err) {
+			printk("Modem initialization failed, error: %d\n", err);
+			return;
+		}
+	}
+}
+
+
+int configure_low_power(void){
+	int err;
+
+	/** Power Saving Mode */
+	err = lte_lc_psm_req(true);
+	if (err) {
+		printk("lte_lc_psm_req, error: %d\n", err);
+	}
+
+	/** enhanced Discontinuous Reception */
+	err = lte_lc_edrx_req(true);
+	if (err) {
+		printk("lte_lc_edrx_req, error: %d\n", err);
+	}
+
+	// /** Release Assistance Indication  */
+	// err = lte_lc_rai_req(true);
+	// if (err) {
+		// printk("lte_lc_rai_req, error: %d\n", err);
+	// }
+
+
+	return err;
+}
+
 int setup(void){
 	int ret;	
 
-	ret = sdhc_mount();
+	ret = sdhc_mount();//very importaint for low power
 	
 	ret = sdhc_load_config("/config.txt", &mcfg);
 	if(ret < 0){
@@ -93,6 +140,13 @@ int setup(void){
 	int d = mcfg.trig_cfg.logging_decimation_ftp;	
 	if(d > 0){//first try get time from network
 		ftp_setup();
+		
+		
+		
+		modem_init();
+		configure_low_power();
+
+		
 		//gets current network time
 		ret = modem_network_register(&mcfg.ftp_cfg);
 		if (ret < 0){return ret;}
@@ -107,7 +161,6 @@ int setup(void){
 	}
 	
 	date_time_register_handler(time_source_stats_async);
-	
 	
 	if(!date_time_is_valid()){//then from SD
 		LOG_ERR("no network time, resorting to SD");
@@ -188,8 +241,14 @@ int loop(void){
 	return 0;
 }
 
+
 void main(void){
 	int ret;
+	//some low power stuff
+	nrf_gpio_cfg_input( 28, NRF_GPIO_PIN_PULLUP);
+	NRF_UARTE0->ENABLE = 0;
+	NRF_UARTE1->ENABLE = 0;
+	NRF_TWIM2->ENABLE = 0;
 	
 	LOG_INF("begin!");
 	ret = setup();
@@ -198,12 +257,19 @@ void main(void){
 		//lockup program and halt
 		//try call for help
 	}
-	
+		
 	while(1){
 		loop();
 	}
 	
+	nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
+	nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
+
+		
 	while(1){
-		k_msleep(100);
+		k_msleep(1000);
 	}
+	// k_msleep(5000);
+	
+	// while(1){}
 }
