@@ -162,10 +162,10 @@ void ov7675_capture(uint8_t* buffer){
 		while((nrf_gpio_pin_read(SCCB_HREF)));//SYNC line on HREF
 	}
 
-	//due to hardware error we need to swap the last 2 bits of buffer
-	for(uint32_t p = 0; p < IMAGE_SIZE_BYTES; p++){
-		uint8_t x = buffer[p];
+	// //due to hardware error we need to swap the last 2 bits of buffer
+	// for(uint32_t p = 0; p < IMAGE_SIZE_BYTES; p++){
+		// uint8_t x = buffer[p];
 		
-		buffer[p] = (x & ~(0x3)) | ((x >> 0x1)&0x1) | ((x << 1)&0x2);
-	}
+		// buffer[p] = (x & ~(0x3)) | ((x >> 0x1)&0x1) | ((x << 1)&0x2);
+	// }
 }

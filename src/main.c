@@ -1,8 +1,10 @@
 
 #include <nrfx.h>
+#include <hal/nrf_gpio.h>
 
 #include <zephyr.h>
 #include <device.h>
+
 
 #include <sys/util.h>
 #include <sys/printk.h>
@@ -41,6 +43,9 @@ struct capture_t capture = {.data = image_buffer, .length = IMAGE_SIZE_BYTES, .t
 struct status_t stats = {.system_time = 0, .battery_voltage = -1, .captures = 0};
 
 int sleepy(uint32_t ms_sleep){
+	nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
+	nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
+	
 	return k_msleep(ms_sleep);
 }
 
@@ -157,7 +162,6 @@ int setup(void){
 	
 	date_time_register_handler(time_source_stats_async);
 	
-	
 	if(!date_time_is_valid()){//then from SD
 		LOG_ERR("no network time, resorting to SD");
 		struct tm cal;
@@ -237,7 +241,7 @@ int loop(void){
 	return 0;
 }
 
-#include <hal/nrf_gpio.h>
+
 void main(void){
 	int ret;
 	//some low power stuff
@@ -254,9 +258,9 @@ void main(void){
 		//try call for help
 	}
 		
-	// while(1){
-		// loop();
-	// }
+	while(1){
+		loop();
+	}
 	
 	nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
 	nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
