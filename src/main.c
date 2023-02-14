@@ -146,12 +146,12 @@ void get_frame(void){
 		while((nrf_gpio_pin_read(SCCB_HREF)));//SYNC line on HREF
 	}
 
-	//due to hardware error we need to swap the last 2 bits of imbuf
-	for(uint32_t p = 0; p < 640*240; p++){
-		uint8_t x = imbuf[p];
+	// //due to hardware error we need to swap the last 2 bits of imbuf
+	// for(uint32_t p = 0; p < 640*240; p++){
+		// uint8_t x = imbuf[p];
 		
-		imbuf[p] = (x & ~(0x3)) | ((x >> 0x1)&0x1) | ((x << 1)&0x2);
-	}
+		// imbuf[p] = (x & ~(0x3)) | ((x >> 0x1)&0x1) | ((x << 1)&0x2);
+	// }
 }
 
 void main(void)
