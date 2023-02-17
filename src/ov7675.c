@@ -454,6 +454,7 @@ void setRes(enum RESOLUTION res){
 void camInit(void){
 	wrReg(0x12, 0x80);//Reset the camera.
 	k_msleep(100);
-	wrSensorRegs8_8(ov7675_qvga_regs);
+	// wrSensorRegs8_8(ov7675_qvga_regs);
+	wrSensorRegs8_8(ov7670_default_regs);
 	wrReg(REG_COM10,32);//PCLK does not toggle on HBLANK.
 }
