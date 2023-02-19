@@ -124,8 +124,8 @@ void sccb_setup(void){
 }
 
 void get_frame(void){
-	uint16_t wg = 640;//line width in bytes
-	uint16_t hg = 240;//number of lines per frame
+	uint16_t wg = 704;//640;//line width in bytes
+	uint16_t hg = 200;//240;//number of lines per frame
 	uint16_t lg2;
 	uint32_t p = 0;
 
@@ -137,6 +137,7 @@ void get_frame(void){
 	while(hg--){//get line
 		lg2=wg;
 		printk("%u\n", hg);
+		// while(!(nrf_gpio_pin_read(SCCB_HREF)));//SYNC line on HREF
 		while(lg2--){//get pixel
 			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
 			imbuf[p] = (uint8_t) NRF_P0->IN;//read in D0 - D8
