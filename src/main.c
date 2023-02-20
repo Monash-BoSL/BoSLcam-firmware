@@ -64,7 +64,7 @@ static const struct device * gpio;
 
 const struct device * i2c_sccb;
 
-uint8_t imbuf[640*256];
+uint8_t imbuf[704*240];
 
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
@@ -117,8 +117,7 @@ void sccb_setup(void){
 	printk("bind %s\n", i2c_sccb->name);
 
 	camInit();	
-	volatile int scale = 0;
-	wrReg(REG_CLKRC, CLK_SCALE & scale);//set clock divider to 1, no need to slow it down!
+	wrReg(REG_CLKRC, CLK_SCALE & 0x00);//set clock divider to 1, no need to slow it down!
 	
 
 	k_msleep(1000);//delay for autoexposure awb, etc ...
@@ -126,7 +125,7 @@ void sccb_setup(void){
 
 void get_frame(void){
 	uint16_t wg = 704;//640;//line width in bytes
-	uint16_t hg = 200;//240;//number of lines per frame
+	uint16_t hg = 240;//240;//number of lines per frame
 	uint16_t lg2;
 	uint32_t p = 0;
 
