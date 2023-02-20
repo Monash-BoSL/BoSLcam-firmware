@@ -1,4 +1,7 @@
 mon reset 0
+b main.c:121
 b main.c:167
 c
-dump binary memory 76.bin imbuf imbuf+640*240
+set scale = 2
+c
+dump binary memory s2.bin imbuf imbuf+640*240

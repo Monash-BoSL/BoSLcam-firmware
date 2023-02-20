@@ -117,7 +117,8 @@ void sccb_setup(void){
 	printk("bind %s\n", i2c_sccb->name);
 
 	camInit();	
-	wrReg(0x11,0);//set clock divider to 1, no need to slow it down!
+	volatile int scale = 0;
+	wrReg(REG_CLKRC, CLK_SCALE & scale);//set clock divider to 1, no need to slow it down!
 	
 
 	k_msleep(1000);//delay for autoexposure awb, etc ...
