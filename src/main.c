@@ -51,7 +51,7 @@ int sleepy(uint32_t ms_sleep){
 int get_capture_time(int32_t* ct){
 	
 	int ret;
-	int d = mcfg.trig_cfg.logging_decimation_ftp;	
+	// int d = mcfg.trig_cfg.logging_decimation_ftp;	
 
 	uint64_t unix_time_ms; 
 	ret = date_time_now(&unix_time_ms);

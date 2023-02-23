@@ -144,7 +144,7 @@ void ov7675_init(uint32_t auto_time){
 	ov7670_set_hw(wsize->hstart, wsize->hstop, wsize->vstart,
 												wsize->vstop);
 	if(wsize->regs){
-		wrSensorRegs8_8(wsize->regs);
+		wr_sensor_regs8_8(wsize->regs);
 	}
 	
 	wr_reg(REG_DBLV, DBLV_BYPASS);//maybe?
