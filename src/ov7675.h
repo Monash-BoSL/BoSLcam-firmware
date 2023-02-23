@@ -1,14 +1,31 @@
 #pragma once
 #include <stdint.h>
 
-void camInit(void);
-void wrReg(uint8_t reg,uint8_t dat);
-uint8_t rdReg(uint8_t reg);
+void wr_reg(uint8_t reg,uint8_t dat);
+uint8_t rd_reg(uint8_t reg);
+enum RESOLUTION{VGA,QVGA,QQVGA};
+enum COLORSPACE{YUV422,RGB565,BAYER_RGB};
+void set_color_space(enum COLORSPACE color);
+void set_res(enum RESOLUTION res);
+void ov7675_init(uint32_t auto_time);
+void ov7675_capture(uint8_t* buffer);
 
 struct regval_list{
 	uint8_t reg_num;
 	uint8_t value;
 };
+
+struct ov7670_win_size {
+	int	width;
+	int	height;
+	unsigned char com7_bit;
+	int	hstart;		/* Start/stop values for the camera.  Note */
+	int	hstop;		/* that they do not always make complete */
+	int	vstart;		/* sense to humans, but evidently the sensor */
+	int	vstop;		/* will do the right thing... */
+	struct regval_list *regs; /* Regs to tweak */
+};
+
 
 #define OV7670_I2C_ADDRESS	0x21
 
