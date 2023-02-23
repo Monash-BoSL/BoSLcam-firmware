@@ -64,7 +64,7 @@ static const struct device * gpio;
 
 const struct device * i2c_sccb;
 
-uint8_t imbuf[704*240];
+uint8_t imbuf[640*240];
 
 void button_pressed(const struct device *dev, struct gpio_callback *cb,
 		    uint32_t pins)
@@ -124,8 +124,8 @@ void sccb_setup(void){
 }
 
 void get_frame(void){
-	uint16_t wg = 704;//640;//line width in bytes
-	uint16_t hg = 240;//240;//number of lines per frame
+	uint16_t wg = 640;//640;//line width in bytes
+	uint16_t hg = 480;//240;//number of lines per frame
 	uint16_t lg2;
 	uint32_t p = 0;
 
@@ -136,15 +136,18 @@ void get_frame(void){
 
 	while(hg--){//get line
 		lg2=wg;
-		printk("%u\n", hg);
-		// while(!(nrf_gpio_pin_read(SCCB_HREF)));//SYNC line on HREF
+		// printk("%u\n", hg);
+		if(hg % 2){
+			while(!(NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
+		}else{
 		while(lg2--){//get pixel
 			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
 			imbuf[p] = (uint8_t) NRF_P0->IN;//read in D0 - D8
 			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
 			p++;
 		}
-		while((nrf_gpio_pin_read(SCCB_HREF)));//SYNC line on HREF
+		}
+		while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
 	}
 
 	// //due to hardware error we need to swap the last 2 bits of imbuf
@@ -159,11 +162,9 @@ void main(void)
 {
 	int ret;
 	
-	
 	sccb_setup();
 
 	get_frame();
-
 
 	printk("+++image end");
 

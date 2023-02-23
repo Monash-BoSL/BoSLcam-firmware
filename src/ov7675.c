@@ -334,7 +334,7 @@ static void ov7670_set_hw(int hstart, int hstop, int vstart, int vstop)
 
 void camInit(void){		
 	
-	struct ov7670_win_size *wsize = &ov7675_win_sizes[1];
+	struct ov7670_win_size *wsize = &ov7675_win_sizes[2];
 	
 	wrReg(0x12, 0x80);//Reset the camera.
 	k_msleep(100);
