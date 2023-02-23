@@ -26,6 +26,7 @@ LOG_MODULE_REGISTER(ov7675);
 extern const struct device * gpio;
 extern const struct device * i2c_sccb;
 
+
 void wr_reg(uint8_t reg,uint8_t dat){
 	i2c_reg_write_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, dat);
 }
@@ -45,37 +46,34 @@ static void wr_sensor_regs8_8(const struct regval_list reglist[]){
 		next++;
 	}
 }
-void set_color_space(enum COLORSPACE color){
-	switch(color){
-		case YUV422:
-			wr_sensor_regs8_8(yuv422_ov7670);
-		break;
-		case RGB565:
-			wr_sensor_regs8_8(rgb565_ov7670);
-			{uint8_t temp=rd_reg(0x11);
-			k_msleep(1);
-			wr_reg(0x11,temp);}//according to the Linux kernel driver rgb565 PCLK needs rewriting
-		break;
-		case BAYER_RGB:
-			wr_sensor_regs8_8(bayerRGB_ov7670);
-		break;
-	}
-}
-void set_res(enum RESOLUTION res){
-	switch(res){
-		case VGA:
-			wr_reg(REG_COM3,0);	// REG_COM3
-			wr_sensor_regs8_8(vga_ov7670);
-		break;
-		case QVGA:
-			wr_reg(REG_COM3,4);	// REG_COM3 enable scaling
-			wr_sensor_regs8_8(qvga_ov7670);
-		break;
-		case QQVGA:
-			wr_reg(REG_COM3,4);	// REG_COM3 enable scaling
-			wr_sensor_regs8_8(qqvga_ov7670);
-		break;
-	}
+
+/*
+ * Store a set of start/stop values into the camera.
+ */
+static void ov7670_set_hw(int hstart, int hstop, int vstart, int vstop)
+{
+	unsigned char v;
+/*
+ * Horizontal: 11 bits, top 8 live in hstart and hstop.  Bottom 3 of
+ * hstart are in href[2:0], bottom 3 of hstop in href[5:3].  There is
+ * a mystery "edge offset" value in the top two bits of href.
+ */
+	wr_reg(REG_HSTART, (hstart >> 3) & 0xff);
+	wr_reg(REG_HSTOP, (hstop >> 3) & 0xff);
+	v = rd_reg(REG_HREF);
+	v = (v & 0xc0) | ((hstop & 0x7) << 3) | (hstart & 0x7);
+	k_msleep(10);
+	wr_reg(REG_HREF, v);
+/*
+ * Vertical: similar arrangement, but only 10 bits.
+ */
+	wr_reg(REG_VSTART, (vstart >> 2) & 0xff);
+	wr_reg(REG_VSTOP, (vstop >> 2) & 0xff);
+	v = rd_reg(REG_VREF);
+	v = (v & 0xf0) | ((vstop & 0x3) << 2) | (vstart & 0x3);
+	k_msleep(10);
+	wr_reg(REG_VREF, v);
+
 }
 
 void ov7675_init(uint32_t auto_time){
@@ -120,13 +118,39 @@ void ov7675_init(uint32_t auto_time){
     nrf_dppi_channels_enable(NRF_DPPIC, 0x01 << SCCB_CLK_DPPI_CH);
 
 	
-	wr_reg(0x11,0);//set clock divider to 1, no need to slow it down!
+	// wr_reg(0x11,0);//set clock divider to 1, no need to slow it down!
 	
+	////////////////////////////////////////////////////////////////////////////////
+	struct ov7670_win_size *wsize = &ov7675_win_sizes[2];
 	
 	wr_reg(0x12, 0x80);//Reset the camera.
 	k_msleep(100);
-	wr_sensor_regs8_8(ov7675_qvga_regs);
-	wr_reg(REG_COM10,32);//PCLK does not toggle on HBLANK.
+	wr_sensor_regs8_8(ov7670_default_regs);
+
+	
+	uint8_t com7 = ov7670_fmt_rgb565[0].value;
+	com7 |= wsize->com7_bit;
+	wr_reg(REG_COM7, com7);
+	
+	uint8_t com10 = 0;
+
+	com10 |= COM10_PCLK_HB;
+	
+	wr_reg(REG_COM10, com10);
+
+
+	wr_sensor_regs8_8(ov7670_fmt_rgb565+1);
+	
+	ov7670_set_hw(wsize->hstart, wsize->hstop, wsize->vstart,
+												wsize->vstop);
+	if(wsize->regs){
+		wrSensorRegs8_8(wsize->regs);
+	}
+	
+	wr_reg(REG_DBLV, DBLV_BYPASS);//maybe?
+	wr_reg(REG_CLKRC, CLK_SCALE & 0x00);//set clock divider to 1, no need to slow it down!
+	////////////////////////////////////////////////////////////////////////////////
+	
 	
 	if(auto_time){
 		k_msleep(auto_time);//delay for autoexposure awb, etc ...
@@ -134,8 +158,8 @@ void ov7675_init(uint32_t auto_time){
 }
 
 void ov7675_capture(uint8_t* buffer){
-	uint16_t wg = IMAGE_WIDTH;//line width in pixels
-	uint16_t hg = IMAGE_HEIGHT;//number of lines per frame
+	uint16_t wg = QVGA_WIDTH;//line width in pixels
+	uint16_t hg = VGA_HEIGHT;//number of lines per frame
 	uint16_t lg2;
 	uint32_t p = 0;
 
@@ -147,6 +171,9 @@ void ov7675_capture(uint8_t* buffer){
 	while(hg--){//get line
 		lg2=wg;
 		// printk("%u\n", hg);
+		if(hg % 2){
+			while(!(NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
+		}else{
 		while(lg2--){//get pixel
 			//low byte
 			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
@@ -159,7 +186,8 @@ void ov7675_capture(uint8_t* buffer){
 			
 			p += 2;
 		}
-		while((nrf_gpio_pin_read(SCCB_HREF)));//SYNC line on HREF
+		}
+		while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
 	}
 
 	// //due to hardware error we need to swap the last 2 bits of buffer

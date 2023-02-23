@@ -1,0 +1,4 @@
+b main.c:169
+mon reset 0
+c
+dump binary memory 045.bin imbuf imbuf+640*240

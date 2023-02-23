@@ -37,7 +37,6 @@ const struct device * i2c_sccb;
 
 uint8_t image_buffer[IMAGE_SIZE_BYTES];
 
-
 static struct master_config_t mcfg;
 struct capture_t capture = {.data = image_buffer, .length = IMAGE_SIZE_BYTES, .time = 0};
 struct status_t stats = {.system_time = 0, .battery_voltage = -1, .captures = 0};
@@ -50,9 +49,10 @@ int sleepy(uint32_t ms_sleep){
 }
 
 int get_capture_time(int32_t* ct){
+	
 	int ret;
 	int d = mcfg.trig_cfg.logging_decimation_ftp;	
-	
+
 	uint64_t unix_time_ms; 
 	ret = date_time_now(&unix_time_ms);
 	if(ret < 0){return ret;}
@@ -67,6 +67,7 @@ int update_status(){
 	
 	return 0;
 }
+
 
 void time_source_stats_async(const struct date_time_evt* evt){
 	switch (evt->type){
