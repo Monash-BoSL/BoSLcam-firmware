@@ -19,6 +19,7 @@
 
 #include "common.h"
 #include "sd.h"
+#include "util.h"
 
 LOG_MODULE_REGISTER(sd);
 
@@ -161,6 +162,7 @@ int store_value(char* val, uint32_t* index){
 			break;
 		case 5://password
 			store_string(val, &mcfg->ftp_cfg.password);
+			decrypt(mcfg->ftp_cfg.password, KEY); 
 			break;
 		case 6://image_path
 			store_string(val, &mcfg->ftp_cfg.image_path);

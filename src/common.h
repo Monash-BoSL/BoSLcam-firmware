@@ -2,6 +2,8 @@
 
 #include <time.h>
 
+#define KEY 37
+
 #define CAMADDR_WR  0x42
 #define CAMADDR_RD  0x43
 #define CAMADDR		0x21

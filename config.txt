@@ -29,7 +29,7 @@ char* apn = "hologram"
 char* network_operator = "50501"
 char* domain = "ftp.bosl.com.au"
 char* username = "images@bosl.com.au"
-char* password = "solderflux"
+char* password = "solderflux" //encrypted with python file
 char* image_path = "/dev/images/img"
 char* status_path = "/dev/status"
 //sd_config_t 
