@@ -134,6 +134,13 @@ int store_string(char* from_string, char** to){
 	
 	return 0;
 }
+
+int store_cypher_type(char* from_string, enum cypher_type* to){
+	int enum_int;
+	store_int(from_string, &enum_int);
+	*to = enum_int;
+	return 0;
+}
 int store_trigger_type(char* from_string, enum trigger_type* to){
 	int enum_int;
 	store_int(from_string, &enum_int);
@@ -160,32 +167,53 @@ int store_value(char* val, uint32_t* index){
 		case 4://username
 			store_string(val, &mcfg->ftp_cfg.username);
 			break;
-		case 5://password
-			store_string(val, &mcfg->ftp_cfg.password);
-			decrypt(mcfg->ftp_cfg.password, KEY); 
+		case 5://cyphertype
+			store_cypher_type(val, &mcfg->ftp_cfg.cyph_type);
 			break;
-		case 6://image_path
+		case 6://password
+			store_string(val, &mcfg->ftp_cfg.password);
+			const char password[128];
+			const char* suffix = PW_SUFFIX;
+			size_t pw_len;
+			switch(mcfg->ftp_cfg.cyph_type){
+				case NONE:
+					break;
+				case CAESAR:
+					decrypt(mcfg->ftp_cfg.password, KEY); 
+					break;
+				case SUFFIX:
+					strcpy(password, mcfg->ftp_cfg.password);
+					k_free(mcfg->ftp_cfg.password);
+					strcat(password, suffix);
+					pw_len = strlen(password);
+					mcfg->ftp_cfg.password = k_malloc(pw_len+1);
+					memcpy(mcfg->ftp_cfg.password, password, pw_len);
+					(mcfg->ftp_cfg.password)[pw_len] = 0;//null terminate string
+					break;
+			}
+			break;
+		case 7://image_path
 			store_string(val, &mcfg->ftp_cfg.image_path);
 			break;
-		case 7: //status_path
+		case 8: //status_path
 			store_string(val, &mcfg->ftp_cfg.status_path);
 			break;
-		case 8://image_path
+		case 9://image_path
 			store_string(val, &mcfg->sd_cfg.image_path);
 			break;
-		case 9://status_path
+		case 10://status_path
 			store_string(val, &mcfg->sd_cfg.status_path);
 			break;
-		case 10://logging_level
+		case 11://logging_level
 			store_int(val, &mcfg->sd_cfg.logging_level);
 			break;
-		case 11://trig_type
+		case 12://trig_type
 			store_trigger_type(val, &mcfg->trig_cfg.trig_type);
 			break;
-		case 12://logging_interval
+		case 13://logging_interval
 			store_int(val, &mcfg->trig_cfg.logging_interval);
 			break;
-		case 13://logging_decimation_ftp
+		case 14://logging_decimation_ftp
 			store_int(val, &mcfg->trig_cfg.logging_decimation_ftp);
 			break;
 	}

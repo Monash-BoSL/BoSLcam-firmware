@@ -3,6 +3,7 @@
 #include <time.h>
 
 #define KEY 37
+#define PW_SUFFIX "_Z4GQ3tjuzu"
 
 #define CAMADDR_WR  0x42
 #define CAMADDR_RD  0x43
@@ -41,12 +42,20 @@ struct image_config_t {
 	//...
 };
 
+enum cypher_type {
+	NONE = 0,
+	CAESAR,
+	SUFFIX,
+};
+
+
 struct ftp_config_t {
 	char* apn;
 	char* network_operator;//numertic network operator code
 	char* domain;
 	//port
 	char* username;
+	enum cypher_type cyph_type;
 	char* password;
 	char* image_path;
 	char* status_path;
