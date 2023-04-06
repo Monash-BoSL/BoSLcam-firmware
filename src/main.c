@@ -64,9 +64,23 @@ int get_capture_time(int32_t* ct){
 	return 0;
 }
 
+int slm_vbat(int* bat_mv){
+	int ret;
+	char response[1024];
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT%%XVBAT");
+	if(ret == 0){
+		char* start = strchr(response, ':')+1;
+		char* end = strchr(start, '\n');
+		*bat_mv = strtol(start, &end, 10);
+	}
+	return ret;
+}
+
+
 int update_status(){
 	stats.system_time = capture.time; 
-	stats.battery_voltage = -1;//fix this
+	slm_vbat(&stats.battery_voltage);
 	
 	return 0;
 }
@@ -255,12 +269,14 @@ void main(void){
 	NRF_TWIM2->ENABLE = 0;
 	
 	LOG_INF("begin!");
+	
 	ret = setup();
 	if(ret < 0){
 		k_oops();
 		//lockup program and halt
 		//try call for help
 	}
+	
 		
 	while(1){
 		loop();
