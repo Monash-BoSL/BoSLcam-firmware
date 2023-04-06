@@ -64,9 +64,23 @@ int get_capture_time(int32_t* ct){
 	return 0;
 }
 
+int slm_vbat(int* bat_mv){
+	int ret;
+	char response[1024];
+	
+	ret = nrf_modem_at_cmd(response, sizeof(response), "AT%%XVBAT");
+	if(ret == 0){
+		char* start = strchr(response, ':')+1;
+		char* end = strchr(start, '\n');
+		*bat_mv = strtol(start, &end, 10);
+	}
+	return ret;
+}
+
+
 int update_status(){
 	stats.system_time = capture.time; 
-	stats.battery_voltage = -1;//fix this
+	slm_vbat(&stats.battery_voltage);
 	
 	return 0;
 }
@@ -256,49 +270,26 @@ void main(void){
 	
 	LOG_INF("begin!");
 	
-	// ret = setup();
-	// if(ret < 0){
-		// k_oops();
-		// //lockup program and halt
-		// //try call for help
-	// }
-	
-	while(1){
-	int battery_mv;
-	char response[1024];
-	
-	// ret = nrf_modem_at_cmd(response, sizeof(response), "AT%XSYSTEMMODE?");
-	// printk(response);
-	// k_msleep(1000);
-	
-	// // 
-	// ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CFUN=1");
-	// printk(response);
-	// k_msleep(1000);
-	
-	ret = nrf_modem_at_cmd(response, sizeof(response), "AT%%XVBAT");
-	printk(response);
-	char* start = strchr(response, ':')+1;
-	char* end = strchr(start, '\n');
-	battery_mv = strtol(start, &end, 10);
-	
-	LOG_INF("battery voltage: %d", battery_mv);
-	
-	k_msleep(1000);
+	ret = setup();
+	if(ret < 0){
+		k_oops();
+		//lockup program and halt
+		//try call for help
 	}
-		
-	// while(1){
-		// loop();
-	// }
 	
-	// nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
-	// nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
+		
+	while(1){
+		loop();
+	}
+	
+	nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
+	nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
 
 		
-	// while(1){
-		// k_msleep(1000);
-	// }
-	// // k_msleep(5000);
+	while(1){
+		k_msleep(1000);
+	}
+	// k_msleep(5000);
 	
-	// // while(1){}
+	// while(1){}
 }
