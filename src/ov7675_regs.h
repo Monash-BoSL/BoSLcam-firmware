@@ -81,7 +81,7 @@ static struct regval_list ov7675_qqvga_regs[] = {
 };
 
 static struct regval_list ov7670_default_regs[] = {
-	// { REG_COM7, COM7_RESET },//we move this out of here as command needs quite a delay afterwards for everything to reset nicely
+	{ REG_COM7, COM7_RESET },
 /*
  * Clock scale: 3 = 15fps
  *              2 = 20fps
