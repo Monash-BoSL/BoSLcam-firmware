@@ -25,8 +25,6 @@
 /*************** TODO *******************************
 -automatically make directories on sd card and ftp
 -figure out how to name files when no network info
--add printing of where the time is from into status
--add battery level to status
 -add alarm based logging rather than delay based
 -add jpeg mode
 -issue with network time reset on low power sleep?

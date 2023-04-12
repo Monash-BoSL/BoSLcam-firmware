@@ -177,11 +177,11 @@ void ov7675_capture(uint8_t* buffer){
 		while(lg2--){//get pixel
 			//low byte
 			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
-			buffer[p+1] = (uint8_t) NRF_P0->IN;//read in D0 - D8
+			buffer[p] = (uint8_t) NRF_P0->IN;//read in D0 - D8
 			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
 			//high byte
 			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
-			buffer[p] = (uint8_t) NRF_P0->IN;//read in D0 - D8
+			buffer[p+1] = (uint8_t) NRF_P0->IN;//read in D0 - D8
 			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
 			
 			p += 2;
