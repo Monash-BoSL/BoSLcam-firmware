@@ -119,11 +119,11 @@ void ov7675_init(uint32_t auto_time){
 
 	
 	// wr_reg(0x11,0);//set clock divider to 1, no need to slow it down!
-	
+	k_msleep(100);
 	////////////////////////////////////////////////////////////////////////////////
 	struct ov7670_win_size *wsize = &ov7675_win_sizes[2];
 	
-	wr_reg(0x12, 0x80);//Reset the camera.
+	wr_reg(REG_COM7, COM7_RESET);//Reset the camera.
 	k_msleep(100);
 	wr_sensor_regs8_8(ov7670_default_regs);
 
@@ -133,12 +133,9 @@ void ov7675_init(uint32_t auto_time){
 	wr_reg(REG_COM7, com7);
 	
 	uint8_t com10 = 0;
-
 	com10 |= COM10_PCLK_HB;
-	
+
 	wr_reg(REG_COM10, com10);
-
-
 	wr_sensor_regs8_8(ov7670_fmt_rgb565+1);
 	
 	ov7670_set_hw(wsize->hstart, wsize->hstop, wsize->vstart,
@@ -177,11 +174,11 @@ void ov7675_capture(uint8_t* buffer){
 		while(lg2--){//get pixel
 			//low byte
 			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
-			buffer[p] = (uint8_t) NRF_P0->IN;//read in D0 - D8
+			buffer[p+1] = (uint8_t) NRF_P0->IN;//read in D0 - D8
 			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
 			//high byte
 			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
-			buffer[p+1] = (uint8_t) NRF_P0->IN;//read in D0 - D8
+			buffer[p] = (uint8_t) NRF_P0->IN;//read in D0 - D8
 			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
 			
 			p += 2;
