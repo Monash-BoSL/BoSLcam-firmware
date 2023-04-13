@@ -64,9 +64,9 @@ int lsdir(const char *path)
 		}
 
 		if (entry.type == FS_DIR_ENTRY_DIR) {
-			LOG_INF("[DIR ] %s\n", entry.name);
+			printk("[DIR ] %s\n", entry.name);
 		} else {
-			LOG_INF("[FILE] %s (size = %zu)\n",
+			printk("[FILE] %s (size = %zu)\n",
 				entry.name, entry.size);
 		}
 	}
@@ -386,6 +386,7 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
 	
 	
 	fs_file_t_init(&imf);
+	// fs_check_and_make_path();
 	fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE);
 	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
 	fs_write(&imf, capture->data, capture->length);
