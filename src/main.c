@@ -174,25 +174,33 @@ int loop(void){
 	return 0;
 }
 
-int create_directories(const char* path) {
+//we should abstract the mkdir process
+int make_absent_dir(const char* path) {
+	int res;
 	size_t pathlen = strlen(path)+1;
 	if(pathlen > 256){return -ENAMETOOLONG;}//magic number of max path length
 	
-	char* current = malloc(pathlen);
+	char* current = k_malloc(pathlen);
 	memset(current, '\0', pathlen);//null terminate
 	
 	char* pos = path;
 	char* end = strchr(pos+1, '/');
 	while(NULL != (end = strchr(pos+1, '/'))){
-		strncpy(current, path, end);
-		printk("%s\n", current);
+		strncpy(current+(pos-path), pos, end-pos);
+		printk("mkdir %s\n", current);
+		
+		struct fs_dirent* dirstat;
+		int res = fs_stat(current, dirstat);
+		if(res = -ENOENT){
+				fs_mkdir(current);
+		}else{
+			
+		}
 		pos = end;
 	}
-
-	
  
- 
-    free(current);
+    k_free(current);
+	return res;//make sure that we return a nice error code here. 
 }
 
 
