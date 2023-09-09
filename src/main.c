@@ -25,9 +25,12 @@
 
 /*************** TODO *******************************
 [X] automatically make directories on sd card and ftp
+[ ] add versioning in config file
+[ ] use yacc to build config parser
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
 [ ] add jpeg mode
+[ ] add option to switch to 640x480
 [ ] issue with network time reset on low power sleep?
 ****************************************************/
 
@@ -158,8 +161,6 @@ int setup(void){
 	if(d > 0){//first try get time from network
 		ftp_setup();
 		
-		
-		
 		modem_init();
 		configure_low_power();
 
@@ -226,7 +227,12 @@ int loop(void){
 					 &capture);
 	sdhc_write_status(mcfg.sd_cfg.status_path, 
 					 &stats);
-					 
+
+	//mcfg.im_cfg.format
+	LOG_INF("jpg   -> sdhc");
+	sdhc_write_jpg(mcfg.sd_cfg.image_path, 
+					 &capture);
+
 	if ((d > 0) && (0 == (stats.captures % d))){
 		LOG_INF("image -> ftp");
 		ftp_write_image(&mcfg.ftp_cfg, 

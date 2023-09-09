@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "tjpg.h": "c",
+        "jpg.h": "c",
+        "common.h": "c"
+    }
+}

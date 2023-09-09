@@ -3,10 +3,9 @@
 
 void wr_reg(uint8_t reg,uint8_t dat);
 uint8_t rd_reg(uint8_t reg);
-enum RESOLUTION{VGA,QVGA,QQVGA};
 enum COLORSPACE{YUV422,RGB565,BAYER_RGB};
 void set_color_space(enum COLORSPACE color);
-void set_res(enum RESOLUTION res);
+void set_res(enum image_size res);
 void ov7675_init(uint32_t auto_time);
 void ov7675_capture(uint8_t* buffer);
 
