@@ -1,10 +1,12 @@
 
 #include <nrfx.h>
+#include <nrf_modem_at.h>
 #include <hal/nrf_gpio.h>
 
 #include <zephyr.h>
 #include <device.h>
 
+#include <fs/fs.h>
 
 #include <sys/util.h>
 #include <sys/printk.h>
@@ -23,11 +25,11 @@
 #define SLEEP_TIME_MS	1
 
 /*************** TODO *******************************
--automatically make directories on sd card and ftp
--figure out how to name files when no network info
--add alarm based logging rather than delay based
--add jpeg mode
--issue with network time reset on low power sleep?
+[X] automatically make directories on sd card and ftp
+[ ] figure out how to name files when no network info
+[ ] add alarm based logging rather than delay based
+[ ] add jpeg mode
+[ ] issue with network time reset on low power sleep?
 ****************************************************/
 
 
@@ -166,7 +168,10 @@ int loop(void){
 	
 	const char* path = "/SD:/this/is/my/path/ffid.bmp";
 
-	create_directories(path);
+    // fs_mkdir("/SD:/tdir/");
+    // fs_mkdir("/SD:/udir");
+
+    fs_mkdirs(path);
 					
 	stats.captures++;
 	k_msleep(10000);
@@ -175,7 +180,7 @@ int loop(void){
 }
 
 //we should abstract the mkdir process
-int make_absent_dir(const char* path) {
+int fs_mkdirs(const char* path) {
 	int res;
 	size_t pathlen = strlen(path)+1;
 	if(pathlen > 256){return -ENAMETOOLONG;}//magic number of max path length
@@ -189,9 +194,9 @@ int make_absent_dir(const char* path) {
 		strncpy(current+(pos-path), pos, end-pos);
 		printk("mkdir %s\n", current);
 		
-		struct fs_dirent* dirstat;
-		int res = fs_stat(current, dirstat);
-		if(res = -ENOENT){
+		struct fs_dirent dirstat;
+		int res = fs_stat(current, &dirstat);
+		if(res == -ENOENT){
 				fs_mkdir(current);
 		}else{
 			
