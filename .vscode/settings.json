@@ -2,6 +2,8 @@
     "files.associations": {
         "tjpg.h": "c",
         "jpg.h": "c",
-        "common.h": "c"
-    }
+        "common.h": "c",
+        "log.h": "c"
+    },
+    "cortex-debug.variableUseNaturalFormat": true
 }

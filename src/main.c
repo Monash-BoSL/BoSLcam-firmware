@@ -274,6 +274,7 @@ void main(void){
 	NRF_TWIM2->ENABLE = 0;
 	
 	LOG_INF("begin!");
+	LOG_INF("sizeof int: %d", sizeof(int));
 	
 	ret = setup();
 	if(ret < 0){

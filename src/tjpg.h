@@ -1092,9 +1092,13 @@ static int tjei_encode_main(TJEState* state,
     uint32_t bitbuffer = 0;
     uint32_t location = 0;
 
-
+    int xstop = 0;
+    int ystop = 216;
     for ( int y = 0; y < height; y += 8 ) {
         for ( int x = 0; x < width; x += 8 ) {
+            if(y == ystop && x == xstop){
+                printf("heaps gooder");
+            }
             // Block loop: ====
             for ( int off_y = 0; off_y < 8; ++off_y ) {
                 for ( int off_x = 0; off_x < 8; ++off_x ) {
@@ -1113,6 +1117,7 @@ static int tjei_encode_main(TJEState* state,
                     }
                     assert(src_index < width * height * src_num_components);
 
+                    //this crashes because we are RGB 565 not RBG888
                     uint8_t r = src_data[src_index + 0];
                     uint8_t g = src_data[src_index + 1];
                     uint8_t b = src_data[src_index + 2];
