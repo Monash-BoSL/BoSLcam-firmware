@@ -33,6 +33,29 @@ void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
 	printk(msg);
 }
 
+int ftp_mkdirs(const char* path) {
+	int res;
+	size_t pathlen = strlen(path)+1;
+	if(pathlen > 256){return -ENAMETOOLONG;}//magic number of max path length
+	
+	char* current = k_malloc(pathlen);
+	memset(current, '\0', pathlen);//null terminate
+	
+	char* pos = path;
+	char* end = strchr(pos+1, '/');
+	while(NULL != (end = strchr(pos+1, '/'))){
+		strncpy(current+(pos-path), pos, end-pos);
+		printk("mkdir %s\n", current);
+		
+        ftp_mkd(current);
+			
+		pos = end;
+	}
+ 
+    k_free(current);
+	return res;//make sure that we return a nice error code here. 
+}
+
 int modem_network_register(struct ftp_config_t* ftp_cfg_p){
 	int ret;
 	// char response[256];
@@ -86,6 +109,7 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 	
 	ret = ftp_open(ftp_cfg_p->domain, 21, -1);
 	ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
+    ret = ftp_mkdirs(path);
 	ret = ftp_type(FTP_TYPE_BINARY);
 	ret = ftp_put(path, bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
 	ret = ftp_put(path, capture->data, capture->length, FTP_PUT_APPEND);
@@ -116,6 +140,7 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
 	
 	ret = ftp_open(ftp_cfg_p->domain, 21, -1);
 	ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
+    ret = ftp_mkdirs(path);
 	ret = ftp_type(FTP_TYPE_BINARY);
 	ret = ftp_put(ftp_cfg_p->status_path, path, strlen(path), FTP_PUT_APPEND);
 	ret = ftp_close();
