@@ -64,9 +64,9 @@ int lsdir(const char *path)
 		}
 
 		if (entry.type == FS_DIR_ENTRY_DIR) {
-			LOG_INF("[DIR ] %s\n", entry.name);
+			printk("[DIR ] %s\n", entry.name);
 		} else {
-			LOG_INF("[FILE] %s (size = %zu)\n",
+			printk("[FILE] %s (size = %zu)\n",
 				entry.name, entry.size);
 		}
 	}
@@ -75,6 +75,34 @@ int lsdir(const char *path)
 	fs_closedir(&dirp);
 
 	return res;
+}
+
+int fs_mkdirs(const char* path) {
+	int res;
+	size_t pathlen = strlen(path)+1;
+	if(pathlen > 256){return -ENAMETOOLONG;}//magic number of max path length
+	
+	char* current = k_malloc(pathlen);
+	memset(current, '\0', pathlen);//null terminate
+	
+	char* pos = path;
+	char* end = strchr(pos+1, '/');
+	while(NULL != (end = strchr(pos+1, '/'))){
+		strncpy(current+(pos-path), pos, end-pos);
+		printk("mkdir %s\n", current);
+		
+		struct fs_dirent dirstat;
+		int res = fs_stat(current, &dirstat);
+		if(res == -ENOENT){
+				fs_mkdir(current);
+		}else{
+			
+		}
+		pos = end;
+	}
+ 
+    k_free(current);
+	return res;//make sure that we return a nice error code here. 
 }
 
 void sdhc_info(void){
@@ -386,6 +414,7 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
 	
 	
 	fs_file_t_init(&imf);
+	fs_mkdirs(path);
 	fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE);
 	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
 	fs_write(&imf, capture->data, capture->length);
@@ -410,6 +439,7 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
 	strcat(path, sdhc_path);
 	
 	fs_file_t_init(&imf);
+    fs_mkdirs(path);
 	fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE | FS_O_APPEND);
 	//here is where we write what we want to log to file
 	unix_date(&cal, status->system_time);
@@ -424,4 +454,3 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
 
 	return 0;
 }
-

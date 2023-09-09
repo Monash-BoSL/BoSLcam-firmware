@@ -1,5 +1,6 @@
 
 #include <nrfx.h>
+#include <nrf_modem_at.h>
 #include <hal/nrf_gpio.h>
 
 #include <zephyr.h>
@@ -23,11 +24,11 @@
 #define SLEEP_TIME_MS	1
 
 /*************** TODO *******************************
--automatically make directories on sd card and ftp
--figure out how to name files when no network info
--add alarm based logging rather than delay based
--add jpeg mode
--issue with network time reset on low power sleep?
+[X] automatically make directories on sd card and ftp
+[ ] figure out how to name files when no network info
+[ ] add alarm based logging rather than delay based
+[ ] add jpeg mode
+[ ] issue with network time reset on low power sleep?
 ****************************************************/
 
 
