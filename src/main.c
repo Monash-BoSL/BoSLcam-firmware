@@ -6,6 +6,7 @@
 #include <zephyr.h>
 #include <device.h>
 
+
 #include <sys/util.h>
 #include <sys/printk.h>
 #include <inttypes.h>
@@ -153,24 +154,109 @@ int setup(void){
 	}
 	
 	
+	int d = mcfg.trig_cfg.logging_decimation_ftp;	
+	if(d > 0){//first try get time from network
+		ftp_setup();
+		
+		
+		
+		modem_init();
+		configure_low_power();
+
+		
+		//gets current network time
+		ret = modem_network_register(&mcfg.ftp_cfg);
+		if (ret < 0){return ret;}
+		
+		date_time_update_async(NULL);
+		LOG_INF("busy wait for valid time");
+		for(uint32_t i = 0; i < 1000; i++){
+			if(date_time_is_valid()){break;}
+			k_msleep(10);
+		}
+		stats.time_src = NETWORK_TIME;
+	}
+	
+	date_time_register_handler(time_source_stats_async);
+	
+	if(!date_time_is_valid()){//then from SD
+		LOG_ERR("no network time, resorting to SD");
+		struct tm cal;
+		ret = sdhc_load_last_status_time(mcfg.sd_cfg.status_path, &cal);
+		if(ret == 0){
+			ret = date_time_set(&cal);
+			stats.time_src = FS_TIME;
+		}
+	}
+	if(!date_time_is_valid()){//then from default time epoch
+		LOG_ERR("no valid time, resorting to default");
+		struct tm cal = {	.tm_sec = 0,
+							.tm_min = 0,
+							.tm_hour = 0,
+							.tm_mday = 1,
+							.tm_mon = 0,
+							.tm_year = 120,
+							.tm_wday = 0,
+							.tm_yday = 0,
+							.tm_isdst = 0,
+						};//2020/01/01-00:00:00 UTC	
+		ret = date_time_set(&cal);
+		stats.time_src = NO_TIME;
+	}
+	if(!date_time_is_valid()){return -ENODATA;}
+	
 	
 	return 0;
 }
 
 int loop(void){
+	int d = mcfg.trig_cfg.logging_decimation_ftp;
 	
+	get_capture_time(&capture.time);
+	update_status();
+	
+	LOG_INF("ov7675 initialisation");
+	ov7675_init(mcfg.im_cfg.auto_range_time);
+
+	LOG_INF("ov7675 capture");
+	ov7675_capture(capture.data);
+	
+	LOG_INF("image -> sdhc");
+	sdhc_write_image(mcfg.sd_cfg.image_path, 
+					 &capture);
 	sdhc_write_status(mcfg.sd_cfg.status_path, 
 					 &stats);
-				
-	lsdir("/SD:");
+					 
+	if ((d > 0) && (0 == (stats.captures % d))){
+		LOG_INF("image -> ftp");
+		ftp_write_image(&mcfg.ftp_cfg, 
+						&capture);
+		ftp_write_status(&mcfg.ftp_cfg, 
+					 &stats);
+	}
+	LOG_INF("done");
 	
-					
+	switch (mcfg.trig_cfg.trig_type){
+	case TIME_TIRGGER:
+		LOG_INF("time sleep");
+		sleepy(mcfg.trig_cfg.logging_interval);
+		break;		
+	case UART_TRIGGER:
+		LOG_INF("uart sleep");
+		// uart_sei();
+		sleepy(0);
+		// uart_cli();
+		break;
+	default:
+		LOG_ERR("trig_type misconfigred, oops!");
+		k_oops();
+		break;	
+	}
+	
 	stats.captures++;
-	k_msleep(10000);
 	
 	return 0;
 }
-
 
 
 void main(void){
