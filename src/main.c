@@ -28,6 +28,7 @@
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
 [ ] add jpeg mode
+[ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] issue with network time reset on low power sleep?
 ****************************************************/
 
