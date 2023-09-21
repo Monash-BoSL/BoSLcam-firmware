@@ -37,13 +37,12 @@ int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
     // typedef void tje_write_func(void* context, void* data, int size);
     ret = tje_encode_with_func(fs_write,
                         &imf,
-                        1,//make quality a config parameter
+                        2,//make quality a config parameter
                         IMAGE_WIDTH,
                         IMAGE_HEIGHT,
-                        3,//RGB
+                        TJE_RGB565,
                         capture->data);
-	//this crashes because we are RGB 565 not RBG888
-	//this crashes because we are RGB 565 not RBG888
+
 
 	fs_close(&imf);
 

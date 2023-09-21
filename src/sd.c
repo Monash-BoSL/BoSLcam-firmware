@@ -89,11 +89,11 @@ int fs_mkdirs(const char* path) {
 	char* end = strchr(pos+1, '/');
 	while(NULL != (end = strchr(pos+1, '/'))){
 		strncpy(current+(pos-path), pos, end-pos);
-		printk("mkdir %s\n", current);
+		// printk("mkdir %s\n", current);
 		
 		struct fs_dirent dirstat;
 		int res = fs_stat(current, &dirstat);
-		if(res == -ENOENT){
+		if(res == -ENOENT && strcmp(current, disk_mount_pt)){
 				fs_mkdir(current);
 		}else{
 			
