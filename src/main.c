@@ -24,6 +24,7 @@
 #define SLEEP_TIME_MS	1
 
 /*************** TODO *******************************
+[ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
