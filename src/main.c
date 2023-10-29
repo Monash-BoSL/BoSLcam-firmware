@@ -90,22 +90,17 @@ int update_status(){
 
 
 void time_source_stats_async(const struct date_time_evt* evt){
-	LOG_ERR("timesource update");
 	switch (evt->type){
 	case DATE_TIME_OBTAINED_MODEM:
-		LOG_ERR("modem timesource");
 		stats.time_src = NETWORK_TIME;
 		break;
 	case DATE_TIME_OBTAINED_NTP:
-		LOG_ERR("ntp timesource");
 		stats.time_src = NTP_TIME;
 		break;
 	case DATE_TIME_OBTAINED_EXT:
-		LOG_ERR("ext timesource");
 		stats.time_src = EXT_TIME;
 		break;
 	case DATE_TIME_NOT_OBTAINED:
-		LOG_ERR("not timesource");
 		stats.time_src = NO_TIME;
 		break;
 	} 
