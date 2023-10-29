@@ -283,8 +283,6 @@ void main(void){
 	
 	LOG_INF("begin!");
 
-	k_msleep(1000);//maybe we need to sleep before RTC is reset safe??
-
 	ret = setup();
 	if(ret < 0){
 		k_oops();
