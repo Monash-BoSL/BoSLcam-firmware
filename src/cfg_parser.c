@@ -48,9 +48,6 @@ int parse(){
 		if(!next_tok == value){goto syntax_error;}
 		line_option.vp = parse_val_tok(next_tok);
 
-
-
-
 	}
 
 syntax_error:
