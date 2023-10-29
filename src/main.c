@@ -25,6 +25,7 @@
 #define SLEEP_TIME_MS	1
 
 /*************** TODO *******************************
+[ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
 [ ] use yacc flex for parsing SD card config file
 [ ] add versioning in config file
@@ -33,6 +34,7 @@
 [ ] add alarm based logging rather than delay based
 [ ] add jpeg mode
 [ ] add option to switch to 640x480
+[ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] issue with network time reset on low power sleep?
 ****************************************************/
 
