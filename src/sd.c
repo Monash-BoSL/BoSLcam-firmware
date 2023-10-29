@@ -418,30 +418,22 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
 	char path[max_path_length];
 	struct fs_file_t imf;
 
-	LOG_UNIXTIME(__LINE__);
 
 	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
 	sprintf(path, "%s%s%08X.bmp", disk_mount_pt,sdhc_path, capture->time);
-	LOG_UNIXTIME(__LINE__);
 
 	
 	fs_file_t_init(&imf);
-	LOG_UNIXTIME(__LINE__);
 	fs_mkdirs(path);
-	LOG_UNIXTIME(__LINE__);
 
 	fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE);
-	LOG_UNIXTIME(__LINE__);
 	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
-	LOG_UNIXTIME(__LINE__);
 	fs_write(&imf, capture->data, capture->length);
-	LOG_UNIXTIME(__LINE__);
 	fs_close(&imf);
 
-	LOG_UNIXTIME(__LINE__);
 
 	return 0;
 }

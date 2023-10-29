@@ -219,31 +219,24 @@ int setup(void){
 int loop(void){
 	int d = mcfg.trig_cfg.logging_decimation_ftp;
 	
-	LOG_UNIXTIME(__LINE__);
 	get_capture_time(&capture.time);
 	update_status();
-	LOG_UNIXTIME(__LINE__);
 
 	
 	LOG_INF("ov7675 initialisation");
 	ov7675_init(mcfg.im_cfg.auto_range_time);
-	LOG_UNIXTIME(__LINE__);
 
 	LOG_INF("ov7675 capture");
 	ov7675_capture(capture.data);
-	LOG_UNIXTIME(__LINE__);
 	
 	LOG_INF("image -> sdhc");
 	sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
-	LOG_UNIXTIME(__LINE__);
 	sdhc_write_status(mcfg.sd_cfg.status_path, &stats);
-	LOG_UNIXTIME(__LINE__);
 
 	if(mcfg.im_cfg.format == JPG){
 		LOG_INF("jpg   -> sdhc");
 		sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
 	}
-	LOG_UNIXTIME(__LINE__);
 
 	if ((d > 0) && (0 == (stats.captures % d))){
 		LOG_INF("image -> ftp");
@@ -258,7 +251,6 @@ int loop(void){
 		}
 		ftp_write_status(&mcfg.ftp_cfg, &stats);
 	}
-	LOG_UNIXTIME(__LINE__);
 
 	
 	LOG_INF("done");
@@ -279,7 +271,6 @@ int loop(void){
 		k_oops();
 		break;	
 	}
-	LOG_UNIXTIME(__LINE__);
 	
 	stats.captures++;
 	

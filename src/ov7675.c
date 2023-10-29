@@ -82,7 +82,6 @@ void ov7675_init(uint32_t auto_time){
 	i2c_sccb = device_get_binding(DT_LABEL(DT_NODELABEL(i2c2)));
 	LOG_INF("bind %s\n", i2c_sccb->name);
 	
-	LOG_UNIXTIME(__LINE__);
 
 
 	//setup gpio for all pins
@@ -100,7 +99,6 @@ void ov7675_init(uint32_t auto_time){
 	NRF_P0->PIN_CNF[SCCB_XCLK] = 0b00000000000000000000000000000001; 
 
 
-	LOG_UNIXTIME(__LINE__);
 
 	//setup clock on XCLK pin at 8 MHz.
 	nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_16MHz);
@@ -122,7 +120,6 @@ void ov7675_init(uint32_t auto_time){
     /* Enable DPPI Channel */
     nrf_dppi_channels_enable(NRF_DPPIC, 0x01 << SCCB_CLK_DPPI_CH);
 
-	LOG_UNIXTIME(__LINE__);
 
 	// wr_reg(0x11,0);//set clock divider to 1, no need to slow it down!
 	k_msleep(100);
@@ -154,14 +151,12 @@ void ov7675_init(uint32_t auto_time){
 	wr_reg(REG_CLKRC, CLK_SCALE & 0x00);//set clock divider to 1, no need to slow it down!
 	////////////////////////////////////////////////////////////////////////////////
 
-	LOG_UNIXTIME(__LINE__);
 	
 	
 	if(auto_time){
 		k_msleep(auto_time);//delay for autoexposure awb, etc ...
 	}
 
-	LOG_UNIXTIME(__LINE__);
 
 }
 
