@@ -20,11 +20,13 @@
 #include "ov7675.h"
 #include "sd.h"
 #include "ftp.h"
+#include "jpg.h"
 
 #define SLEEP_TIME_MS	1
 
 /*************** TODO *******************************
 [X] automatically make directories on sd card and ftp
+[ ] use yacc flex for parsing SD card config file
 [ ] add versioning in config file
 [ ] use yacc to build config parser
 [ ] figure out how to name files when no network info
@@ -56,7 +58,6 @@ int sleepy(uint32_t ms_sleep){
 int get_capture_time(int32_t* ct){
 	
 	int ret;
-	// int d = mcfg.trig_cfg.logging_decimation_ftp;	
 
 	uint64_t unix_time_ms; 
 	ret = date_time_now(&unix_time_ms);
@@ -89,17 +90,22 @@ int update_status(){
 
 
 void time_source_stats_async(const struct date_time_evt* evt){
+	LOG_ERR("timesource update");
 	switch (evt->type){
 	case DATE_TIME_OBTAINED_MODEM:
+		LOG_ERR("modem timesource");
 		stats.time_src = NETWORK_TIME;
 		break;
 	case DATE_TIME_OBTAINED_NTP:
+		LOG_ERR("ntp timesource");
 		stats.time_src = NTP_TIME;
 		break;
 	case DATE_TIME_OBTAINED_EXT:
+		LOG_ERR("ext timesource");
 		stats.time_src = EXT_TIME;
 		break;
 	case DATE_TIME_NOT_OBTAINED:
+		LOG_ERR("not timesource");
 		stats.time_src = NO_TIME;
 		break;
 	} 
@@ -155,7 +161,7 @@ int setup(void){
 		LOG_ERR("failed to load config. halting");
 		return ret;
 	}
-	
+
 	
 	int d = mcfg.trig_cfg.logging_decimation_ftp;	
 	if(d > 0){//first try get time from network
@@ -213,33 +219,48 @@ int setup(void){
 int loop(void){
 	int d = mcfg.trig_cfg.logging_decimation_ftp;
 	
+	LOG_UNIXTIME(__LINE__);
 	get_capture_time(&capture.time);
 	update_status();
+	LOG_UNIXTIME(__LINE__);
+
 	
 	LOG_INF("ov7675 initialisation");
 	ov7675_init(mcfg.im_cfg.auto_range_time);
+	LOG_UNIXTIME(__LINE__);
 
 	LOG_INF("ov7675 capture");
 	ov7675_capture(capture.data);
+	LOG_UNIXTIME(__LINE__);
 	
 	LOG_INF("image -> sdhc");
-	sdhc_write_image(mcfg.sd_cfg.image_path, 
-					 &capture);
-	sdhc_write_status(mcfg.sd_cfg.status_path, 
-					 &stats);
+	sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
+	LOG_UNIXTIME(__LINE__);
+	sdhc_write_status(mcfg.sd_cfg.status_path, &stats);
+	LOG_UNIXTIME(__LINE__);
 
-	//mcfg.im_cfg.format
-	LOG_INF("jpg   -> sdhc");
-	sdhc_write_jpg(mcfg.sd_cfg.image_path, 
-					 &capture);
+	if(mcfg.im_cfg.format == JPG){
+		LOG_INF("jpg   -> sdhc");
+		sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
+	}
+	LOG_UNIXTIME(__LINE__);
 
 	if ((d > 0) && (0 == (stats.captures % d))){
 		LOG_INF("image -> ftp");
-		ftp_write_image(&mcfg.ftp_cfg, 
-						&capture);
-		ftp_write_status(&mcfg.ftp_cfg, 
-					 &stats);
+		switch(mcfg.im_cfg.format){
+		case BMP:
+				ftp_write_bmp(&mcfg.ftp_cfg, &capture);
+			break;
+		case JPG:
+				ftp_write_jpg(&mcfg.ftp_cfg, &capture);
+			break;
+
+		}
+		ftp_write_status(&mcfg.ftp_cfg, &stats);
 	}
+	LOG_UNIXTIME(__LINE__);
+
+	
 	LOG_INF("done");
 	
 	switch (mcfg.trig_cfg.trig_type){
@@ -258,6 +279,7 @@ int loop(void){
 		k_oops();
 		break;	
 	}
+	LOG_UNIXTIME(__LINE__);
 	
 	stats.captures++;
 	
@@ -274,7 +296,9 @@ void main(void){
 	NRF_TWIM2->ENABLE = 0;
 	
 	LOG_INF("begin!");
-	
+
+	k_msleep(1000);//maybe we need to sleep before RTC is reset safe??
+
 	ret = setup();
 	if(ret < 0){
 		k_oops();

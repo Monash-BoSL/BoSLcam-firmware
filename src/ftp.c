@@ -80,7 +80,7 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
 	return 0;
 }
 
-int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
+int ftp_write_bmp(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 	const uint32_t max_path_length = 256;
 	char path[256];
 	int ret;
@@ -119,18 +119,45 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 	return 0;
 }
 
+int ftp_write_jpg(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
+	const uint32_t max_path_length = 256;
+	char path[256];
+	int ret;
+	
+	LOG_INF("modem begin\n");
+	
+	if(strlen(ftp_cfg_p->image_path) > max_path_length + 12-1){//12 for unix time + extension
+		LOG_ERR("file name too long");
+		return -ENAMETOOLONG;
+	}
+	
+	sprintf(path, "%s%08X.jpg", ftp_cfg_p->image_path, capture->time);
+	
+	ret = modem_network_register(ftp_cfg_p);
+	if (ret < 0){return ret;}
+	
+	ret = ftp_open(ftp_cfg_p->domain, 21, -1);
+	ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
+    ret = ftp_mkdirs(path);
+	ret = ftp_type(FTP_TYPE_BINARY);
+	ret = ftp_put(path, capture->data, capture->length, FTP_PUT_NORMAL);
+	// ftp status
+	ret = ftp_close();
+	LOG_INF("UPLOAD SEQUENCE ENDED");
+	return 0;
+}
 
 int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
 	const uint32_t max_path_length = 256;
-	char path[256];
+	char statstr[256];
 	int ret;
 	struct tm cal;
 	
 	LOG_INF("modem begin\n");
 	
 	unix_date(&cal, status->system_time);
-	strftime(path, max_path_length, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
-	sprintf(path+strlen(path), ",%s,%d,%d\n", 
+	strftime(statstr, max_path_length, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
+	sprintf(statstr+strlen(statstr), ",%s,%d,%d\n", 
 								time_source_str[status->time_src],
 								status->captures, 
 								status->battery_voltage);
@@ -140,9 +167,9 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
 	
 	ret = ftp_open(ftp_cfg_p->domain, 21, -1);
 	ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
-    ret = ftp_mkdirs(path);
+    ret = ftp_mkdirs(ftp_cfg_p->status_path);
 	ret = ftp_type(FTP_TYPE_BINARY);
-	ret = ftp_put(ftp_cfg_p->status_path, path, strlen(path), FTP_PUT_APPEND);
+	ret = ftp_put(ftp_cfg_p->status_path, statstr, strlen(statstr), FTP_PUT_APPEND);
 	ret = ftp_close();
 	LOG_INF("UPLOAD SEQUENCE ENDED");
 	return 0;

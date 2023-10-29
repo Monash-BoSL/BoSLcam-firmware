@@ -163,12 +163,21 @@ int store_string(char* from_string, char** to){
 	return 0;
 }
 
+
+int store_format_type(char* from_string, enum image_format* to){
+	int enum_int;
+	store_int(from_string, &enum_int);
+	*to = enum_int;
+	return 0;
+}
+
 int store_cypher_type(char* from_string, enum cypher_type* to){
 	int enum_int;
 	store_int(from_string, &enum_int);
 	*to = enum_int;
 	return 0;
 }
+
 int store_trigger_type(char* from_string, enum trigger_type* to){
 	int enum_int;
 	store_int(from_string, &enum_int);
@@ -183,22 +192,25 @@ int store_value(char* val, uint32_t* index){
 		case 0://auto_range_time
 			store_int(val, &mcfg->im_cfg.auto_range_time);
 			break;
-		case 1://apn
+		case 1://format
+			store_format_type(val, &mcfg->im_cfg.format);
+			break;
+		case 2://apn
 			store_string(val, &mcfg->ftp_cfg.apn);
 			break;
-		case 2://network_operator
+		case 3://network_operator
 			store_string(val, &mcfg->ftp_cfg.network_operator);
 			break;
-		case 3://domain
+		case 4://domain
 			store_string(val, &mcfg->ftp_cfg.domain);
 			break;
-		case 4://username
+		case 5://username
 			store_string(val, &mcfg->ftp_cfg.username);
 			break;
-		case 5://cyphertype
+		case 6://cyphertype
 			store_cypher_type(val, &mcfg->ftp_cfg.cyph_type);
 			break;
-		case 6://password
+		case 7://password
 			store_string(val, &mcfg->ftp_cfg.password);
 			const char password[128];
 			const char* suffix = PW_SUFFIX;
@@ -220,28 +232,28 @@ int store_value(char* val, uint32_t* index){
 					break;
 			}
 			break;
-		case 7://image_path
+		case 8://image_path
 			store_string(val, &mcfg->ftp_cfg.image_path);
 			break;
-		case 8: //status_path
+		case 9: //status_path
 			store_string(val, &mcfg->ftp_cfg.status_path);
 			break;
-		case 9://image_path
+		case 10://image_path
 			store_string(val, &mcfg->sd_cfg.image_path);
 			break;
-		case 10://status_path
+		case 11://status_path
 			store_string(val, &mcfg->sd_cfg.status_path);
 			break;
-		case 11://logging_level
+		case 12://logging_level
 			store_int(val, &mcfg->sd_cfg.logging_level);
 			break;
-		case 12://trig_type
+		case 13://trig_type
 			store_trigger_type(val, &mcfg->trig_cfg.trig_type);
 			break;
-		case 13://logging_interval
+		case 14://logging_interval
 			store_int(val, &mcfg->trig_cfg.logging_interval);
 			break;
-		case 14://logging_decimation_ftp
+		case 15://logging_decimation_ftp
 			store_int(val, &mcfg->trig_cfg.logging_decimation_ftp);
 			break;
 	}
@@ -405,20 +417,31 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
 	const uint32_t max_path_length = 256;
 	char path[max_path_length];
 	struct fs_file_t imf;
-	
+
+	LOG_UNIXTIME(__LINE__);
+
 	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
 	sprintf(path, "%s%s%08X.bmp", disk_mount_pt,sdhc_path, capture->time);
-	
+	LOG_UNIXTIME(__LINE__);
+
 	
 	fs_file_t_init(&imf);
+	LOG_UNIXTIME(__LINE__);
 	fs_mkdirs(path);
+	LOG_UNIXTIME(__LINE__);
+
 	fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE);
+	LOG_UNIXTIME(__LINE__);
 	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
+	LOG_UNIXTIME(__LINE__);
 	fs_write(&imf, capture->data, capture->length);
+	LOG_UNIXTIME(__LINE__);
 	fs_close(&imf);
+
+	LOG_UNIXTIME(__LINE__);
 
 	return 0;
 }

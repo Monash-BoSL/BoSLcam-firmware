@@ -1,5 +1,7 @@
 #pragma once
 
+#include <date_time.h>
+
 #define KEY 37
 #define PW_SUFFIX "_Z4GQ3tjuzu"
 
@@ -126,3 +128,5 @@ struct status_t {
 	enum time_source time_src;
 };
 
+
+void LOG_UNIXTIME(const int32_t ln);

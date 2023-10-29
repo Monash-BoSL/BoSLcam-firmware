@@ -17,6 +17,7 @@ static const char* disk_mount_pt = "/SD:";
 LOG_MODULE_REGISTER(jpg);
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
+//overwrites the image buffer in ram with the jpg	  !!
 int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
 	int ret;
 	const uint32_t max_path_length = 256;
@@ -51,5 +52,14 @@ int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
 		return EINVAL;
 	}
 
-	return 0;
+	//overwrite capture with jpg data
+	ret = fs_open(&imf, path, FS_O_READ);
+	ret = fs_read(&imf, capture->data, capture->length);
+	if(ret > 0){
+		capture->length = ret;//store the new file size the capture length
+	}
+	fs_close(&imf);
+
+
+	return (0 > ret ? ret : 0);
 }
