@@ -186,6 +186,8 @@ int store_trigger_type(char* from_string, enum trigger_type* to){
 }
 
 
+
+
 int store_value(char* val, uint32_t* index){
 	
 	switch (*index){
