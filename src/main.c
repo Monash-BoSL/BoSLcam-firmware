@@ -20,15 +20,20 @@
 #include "ov7675.h"
 #include "sd.h"
 #include "ftp.h"
+#include "jpg.h"
 
 #define SLEEP_TIME_MS	1
 
 /*************** TODO *******************************
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
+[ ] use yacc flex for parsing SD card config file
+[ ] add versioning in config file
+[ ] use yacc to build config parser
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
 [ ] add jpeg mode
+[ ] add option to switch to 640x480
 [ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] issue with network time reset on low power sleep?
 ****************************************************/
@@ -55,7 +60,6 @@ int sleepy(uint32_t ms_sleep){
 int get_capture_time(int32_t* ct){
 	
 	int ret;
-	// int d = mcfg.trig_cfg.logging_decimation_ftp;	
 
 	uint64_t unix_time_ms; 
 	ret = date_time_now(&unix_time_ms);
@@ -154,13 +158,11 @@ int setup(void){
 		LOG_ERR("failed to load config. halting");
 		return ret;
 	}
-	
+
 	
 	int d = mcfg.trig_cfg.logging_decimation_ftp;	
 	if(d > 0){//first try get time from network
 		ftp_setup();
-		
-		
 		
 		modem_init();
 		configure_low_power();
@@ -216,6 +218,7 @@ int loop(void){
 	
 	get_capture_time(&capture.time);
 	update_status();
+
 	
 	LOG_INF("ov7675 initialisation");
 	ov7675_init(mcfg.im_cfg.auto_range_time);
@@ -224,18 +227,29 @@ int loop(void){
 	ov7675_capture(capture.data);
 	
 	LOG_INF("image -> sdhc");
-	sdhc_write_image(mcfg.sd_cfg.image_path, 
-					 &capture);
-	sdhc_write_status(mcfg.sd_cfg.status_path, 
-					 &stats);
-					 
+	sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
+	sdhc_write_status(mcfg.sd_cfg.status_path, &stats);
+
+	if(mcfg.im_cfg.format == JPG){
+		LOG_INF("jpg   -> sdhc");
+		sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
+	}
+
 	if ((d > 0) && (0 == (stats.captures % d))){
 		LOG_INF("image -> ftp");
-		ftp_write_image(&mcfg.ftp_cfg, 
-						&capture);
-		ftp_write_status(&mcfg.ftp_cfg, 
-					 &stats);
+		switch(mcfg.im_cfg.format){
+		case BMP:
+				ftp_write_bmp(&mcfg.ftp_cfg, &capture);
+			break;
+		case JPG:
+				ftp_write_jpg(&mcfg.ftp_cfg, &capture);
+			break;
+
+		}
+		ftp_write_status(&mcfg.ftp_cfg, &stats);
 	}
+
+	
 	LOG_INF("done");
 	
 	switch (mcfg.trig_cfg.trig_type){
@@ -270,7 +284,7 @@ void main(void){
 	NRF_TWIM2->ENABLE = 0;
 	
 	LOG_INF("begin!");
-	
+
 	ret = setup();
 	if(ret < 0){
 		k_oops();
