@@ -9,9 +9,9 @@
 	compatible = "BoSL,nativecamera";
 
 	chosen {
-		//zephyr,console = &uart0;
-		//zephyr,shell-uart = &uart0;
-		//zephyr,uart-mcumgr = &uart0;
+		zephyr,console = &uart0;
+		zephyr,shell-uart = &uart0;
+		zephyr,uart-mcumgr = &uart0;
 	};
 
 	leds {
@@ -61,17 +61,16 @@
 };
 
 
-//&uart0 {
-//	status = "okay";
-//	current-speed = <115200>;
-//	tx-pin = <0xFFFFFFFF>;
-//	rx-pin = <0xFFFFFFFF>;
-//	rx-pull-up;
-//	rts-pin = <0xFFFFFFFF>;
-//	cts-pin = <0xFFFFFFFF>;
-//	cts-pull-up;
-//};
-
+&uart0 {
+	status = "okay";
+	current-speed = <115200>;
+	tx-pin = <0xFFFFFFFF>;
+	rx-pin = <0xFFFFFFFF>;
+	rx-pull-up;
+	rts-pin = <0xFFFFFFFF>;
+	cts-pin = <0xFFFFFFFF>;
+	cts-pull-up;
+};
 
 arduino_serial: &uart1 {
 	status = "okay";
@@ -106,6 +105,10 @@ arduino_i2c: &i2c2 {
 	mosi-pin = <27>;
 	miso-pin = <29>;
 	cs-gpios = <&gpio0 28 GPIO_ACTIVE_LOW>;
+
+	spidev: spi-device@0 {
+		reg = <0>;
+	};
 };
 
 &spi3 {
@@ -125,8 +128,6 @@ arduino_i2c: &i2c2 {
                 spi-max-frequency = <8000000>;
         };
 };
-
-
 
 &timer0 {
 	status = "okay";

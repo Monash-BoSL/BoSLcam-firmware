@@ -43,6 +43,7 @@ LOG_MODULE_REGISTER(main);
 
 const struct device * gpio; 
 const struct device * i2c_sccb;
+const struct device * spi_sram;
 
 uint8_t image_buffer[IMAGE_SIZE_BYTES];
 
@@ -284,6 +285,8 @@ void main(void){
 	NRF_TWIM2->ENABLE = 0;
 	
 	LOG_INF("begin!");
+
+	ret = sram_test();
 
 	ret = setup();
 	if(ret < 0){

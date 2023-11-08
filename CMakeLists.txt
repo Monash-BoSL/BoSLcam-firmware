@@ -6,6 +6,7 @@ project(native_camera)
 
 target_sources(app PRIVATE src/main.c)
 target_sources(app PRIVATE src/ov7675.c)
+target_sources(app PRIVATE src/sram.c)
 target_sources(app PRIVATE src/ftp.c)
 target_sources(app PRIVATE src/sd.c)
 target_sources(app PRIVATE src/util.c)
