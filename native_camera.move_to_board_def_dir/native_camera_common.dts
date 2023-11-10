@@ -17,15 +17,15 @@
 	leds {
 		compatible = "gpio-leds";
 		led0: led_0 {
-			gpios = <&gpio0 17 0>;
-			label = "Green LED 1";
+			gpios = <&gpio0 20 0>;
+			label = "D1";
 		};
 	};
 
 	pwmleds {
 		compatible = "pwm-leds";
 		pwm_led0: pwm_led_0 {
-			pwms = <&pwm0 17>;
+			pwms = <&pwm0 20>;
 		};
 	};
 
@@ -95,7 +95,7 @@ arduino_i2c: &i2c2 {
 
 &pwm0 {
 	status = "okay";
-	ch0-pin = <17>;
+	ch0-pin = <20>;
 };
 
 &spi0 {

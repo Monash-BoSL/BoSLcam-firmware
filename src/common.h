@@ -2,8 +2,8 @@
 
 #include <date_time.h>
 
-#define KEY 37
 #define PW_SUFFIX "_Z4GQ3tjuzu"
+#define CEASER_KEY  37
 
 #define CAMADDR_WR  0x42
 #define CAMADDR_RD  0x43
@@ -130,3 +130,5 @@ struct status_t {
 
 
 void LOG_UNIXTIME(const int32_t ln);
+
+void led(bool on);

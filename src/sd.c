@@ -219,7 +219,7 @@ int store_value(char* val, uint32_t* index){
 				case NONE:
 					break;
 				case CAESAR:
-					decrypt(mcfg->ftp_cfg.password, KEY); 
+					decrypt(mcfg->ftp_cfg.password, CEASER_KEY); 
 					break;
 				case SUFFIX:
 					strcpy(password, mcfg->ftp_cfg.password);
