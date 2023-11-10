@@ -37,30 +37,33 @@ const struct spi_config spi_cfg = {
 void sram_test(){
 	int ret;
 
-    // NRF_UARTE0->ENABLE = 0;
-	// nrf_uarte_disable(NRF_UARTE0);
-    // NRF_SPIM0->ENABLE = 1;
-	// nrf_spim_enable(NRF_SPIM0);
-	// nrf_spim_pins_set(NRF_SPIM0,
-	//         26,//sck
-    //     	27,//mosi
-    //     	29 //miso
-	// );
-	// nrf_spim_frequency_set(NRF_SPIM0, NRF_SPIM_FREQ_1M);
-
 	spi_sram = device_get_binding(DT_LABEL(DT_NODELABEL(spi1)));
 	LOG_INF("bind %s\n", spi_sram->name);
 
-	uint8_t cmd = 0XA5;
-    struct spi_buf tx_buf = {.buf = &cmd, .len = 1};
+	uint8_t txdat[1] = {0b00000101};
+    struct spi_buf tx_buf = {.buf = txdat, .len = 1};
     struct spi_buf_set tx_bufs = {.buffers = &tx_buf, .count = 1};
+
+	uint8_t rxdat[1];
+	struct spi_buf rx_buf = {.buf = rxdat, .len = 1};
+    struct spi_buf_set rx_bufs = {.buffers = &rx_buf, .count = 1};
+
 
 
 	while (1) {
 		led(1);
 		LOG_INF("sending");
-        spi_write(spi_sram, &spi_cfg, &tx_bufs);
-        k_sleep(K_MSEC(300));
+        
+        spi_transceive(spi_sram, &spi_cfg, &tx_bufs, &rx_bufs);
+		
+		printk("recieved: ");
+		for(size_t i = 0; i < rx_bufs.buffers[0].len; i++){
+			printk("%02hhX", ((uint8_t*)rx_bufs.buffers[0].buf)[i]);
+			((uint8_t*)rx_bufs.buffers[0].buf)[i] = 0x0A;
+		}
+		printk("\n");
+
+		k_sleep(K_MSEC(300));
 		led(0);
 		k_sleep(K_MSEC(300));
     }

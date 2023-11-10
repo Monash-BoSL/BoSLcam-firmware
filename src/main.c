@@ -281,7 +281,7 @@ void main(void){
 	//some low power stuff
 	nrf_gpio_cfg_input( 28, NRF_GPIO_PIN_PULLUP);
 	NRF_UARTE0->ENABLE = 0;
-	NRF_UARTE1->ENABLE = 0;
+	NRF_SPIM1->ENABLE = 0;
 	NRF_TWIM2->ENABLE = 0;
 	
 	LOG_INF("begin!");
