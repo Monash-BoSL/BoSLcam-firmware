@@ -7,6 +7,7 @@
 #include <logging/log.h>
 
 #include <drivers/spi.h>
+#include <drivers/uart.h>
 
 #include <nrfx.h>
 
@@ -35,20 +36,20 @@ const struct spi_config spi_cfg = {
 
 void sram_test(){
 	int ret;
-	spi_sram = device_get_binding(DT_LABEL(DT_NODELABEL(spi0)));
-	LOG_INF("bind %s\n", spi_sram->name);
 
-    NRF_UARTE0->ENABLE = 0;
-	nrf_uarte_disable(NRF_UARTE0);
-    NRF_SPIM0->ENABLE = 1;
-	nrf_spim_enable(NRF_SPIM0);
-	nrf_spim_pins_set(NRF_SPIM0,
-	        26,//sck
-        	27,//mosi
-        	29 //miso
-	);
+    // NRF_UARTE0->ENABLE = 0;
+	// nrf_uarte_disable(NRF_UARTE0);
+    // NRF_SPIM0->ENABLE = 1;
+	// nrf_spim_enable(NRF_SPIM0);
+	// nrf_spim_pins_set(NRF_SPIM0,
+	//         26,//sck
+    //     	27,//mosi
+    //     	29 //miso
+	// );
 	// nrf_spim_frequency_set(NRF_SPIM0, NRF_SPIM_FREQ_1M);
 
+	spi_sram = device_get_binding(DT_LABEL(DT_NODELABEL(spi1)));
+	LOG_INF("bind %s\n", spi_sram->name);
 
 	uint8_t cmd = 0XA5;
     struct spi_buf tx_buf = {.buf = &cmd, .len = 1};
