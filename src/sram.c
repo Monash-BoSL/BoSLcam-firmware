@@ -8,7 +8,6 @@
 
 #include <drivers/spi.h>
 #include <drivers/uart.h>
-#include <drivers/gpio.h>
 
 #include <nrfx.h>
 
@@ -26,7 +25,6 @@
 LOG_MODULE_REGISTER(sram);
 
 extern const struct device * spi_sram;
-extern const struct device * gpio;
 
 const struct spi_config spi_cfg = {
     .frequency = 500000,
@@ -35,19 +33,12 @@ const struct spi_config spi_cfg = {
 				 | SPI_WORD_SET(8)
 				 | SPI_MODE_CPOL
 				 | SPI_MODE_CPHA,
-    // .cs = SPI_CS_CONTROL_PTR_DT(DT_NODELABEL(spidev), 10),
-    // .cs = SPI_CS_CONTROL_PTR_DT(DT_NODELABEL(spidev), 0),
-    .cs = NULL,
+    .cs = SPI_CS_CONTROL_PTR_DT(DT_NODELABEL(spi_sram0), 0),
 };
 
 
 void sram_test(){
 	int ret;
-
-	gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
-	gpio_pin_configure(gpio, 28, GPIO_OUTPUT);
-	gpio_pin_set_raw(gpio, 28, 0);
-
 
 	spi_sram = device_get_binding(DT_LABEL(DT_NODELABEL(spi1)));
 	LOG_INF("bind %s\n", spi_sram->name);
@@ -71,13 +62,9 @@ void sram_test(){
 		led(1);
 		LOG_INF("sending");
         
-		gpio_pin_set_raw(gpio, 28, 0);
         spi_write(spi_sram, &spi_cfg, &tx_bufswr);
-		gpio_pin_set_raw(gpio, 28, 1);
-		k_sleep(K_MSEC(20));
-		gpio_pin_set_raw(gpio, 28, 0);
+		// k_sleep(K_MSEC(20));
         spi_transceive(spi_sram, &spi_cfg, &tx_bufs, &rx_bufs);
-		gpio_pin_set_raw(gpio, 28, 1);
 		
 		printk("recieved: ");
 		for(size_t i = 0; i < rx_bufs.buffers[0].len; i++){

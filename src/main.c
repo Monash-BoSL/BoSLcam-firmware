@@ -36,6 +36,7 @@
 [ ] add option to switch to 640x480
 [ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] issue with network time reset on low power sleep?
+[ ] find best idle states for pins (eg: 28) for low power
 ****************************************************/
 
 
@@ -279,7 +280,10 @@ int loop(void){
 void main(void){
 	int ret;
 	//some low power stuff
-	nrf_gpio_cfg_input( 28, NRF_GPIO_PIN_PULLUP);
+
+	//try out high and low for min power
+	// nrf_gpio_cfg_input( 28, NRF_GPIO_PIN_PULLUP);
+	//
 	NRF_UARTE0->ENABLE = 0;
 	NRF_SPIM1->ENABLE = 0;
 	NRF_TWIM2->ENABLE = 0;

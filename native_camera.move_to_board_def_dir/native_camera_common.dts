@@ -107,7 +107,7 @@ arduino_i2c: &i2c2 {
 	miso-pin = <29>;
 	cs-gpios = <&gpio0 28 GPIO_ACTIVE_LOW>;
 
-	spidev: spi-device@0 {
+	spi_sram0: spi-device@0 {
 		reg = <0>;
 		status = "okay";
 		spi-max-frequency = <8000000>;
