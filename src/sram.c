@@ -37,6 +37,10 @@ const struct spi_config spi_cfg = {
     .cs = SPI_CS_CONTROL_PTR_DT(DT_NODELABEL(spi_sram0), 0),
 };
 
+#define SRAM_SIZE  		(0x20000)
+#define SRAM_PAGE_SIZE  (32)
+
+
 #define SRAM_INSTR_READ (0x03)
 #define SRAM_INSTR_WRITE (0x02)
 #define SRAM_INSTR_EDIO (0x3B)
@@ -50,23 +54,22 @@ const struct spi_config spi_cfg = {
 #define SRAM_MODE_RESV (0b11000000)
 
 int sram_rdmr(uint8_t* mode){
-	uint8_t txdat[1] = {SRAM_INSTR_RDMR};
+	int ret;
+	uint8_t txdat[2] = {SRAM_INSTR_RDMR};
     struct spi_buf tx_buf = {.buf = txdat, .len = sizeof(txdat)};
     struct spi_buf_set tx_bufs = {.buffers = &tx_buf, .count = 1};
 
-	uint8_t rxdat[4];
+	uint8_t rxdat[2];
 	struct spi_buf rx_buf = {.buf = rxdat, .len = sizeof(rxdat)};
     struct spi_buf_set rx_bufs = {.buffers = &rx_buf, .count = 1};
 
-	spi_transceive(spi_sram, &spi_cfg, &tx_bufs, &rx_bufs);
+	ret = spi_transceive(spi_sram, &spi_cfg, &tx_bufs, &rx_bufs);
+	if(ret){return ret;}
 
-	printk("recieved: ");
-	for(size_t i = 0; i < rx_bufs.buffers[0].len; i++){
-		printk("%02hhX ", ((uint8_t*)rx_bufs.buffers[0].buf)[i]);
-		((uint8_t*)rx_bufs.buffers[0].buf)[i] = 0x0A;
-	}
-	printk("\n");
+	*mode = rxdat[1];
 
+	
+	return ret;
 }
 
 int sram_wrmr(uint8_t mode){
@@ -76,7 +79,58 @@ int sram_wrmr(uint8_t mode){
     struct spi_buf tx_buf = {.buf = txdat, .len = sizeof(txdat)};
     struct spi_buf_set tx_bufs = {.buffers = &tx_buf, .count = 1};
 
-	ret = spi_write(spi_sram, &spi_cfg, &tx_bufs);
+	ret = spi_transceive(spi_sram, &spi_cfg, &tx_bufs, NULL);
+	if(ret){return ret;}
+
+	return ret;
+}
+
+//data must of size at least SRAM_PAGE_SIZE
+int sram_read_page(uint8_t* addr, uint8_t* data){
+	int ret;
+	ret = sram_wrmr(SRAM_MODE_PAGE);
+	if(ret){return ret;}
+
+	//if we have the buffers the same size then there is not a gap between reading and writing
+	uint8_t txdat[4] = {SRAM_INSTR_READ, 
+						(uint8_t)(0xFF & ((uintptr_t)addr >> (2*sizeof(uint8_t)*CHAR_BIT))),
+						(uint8_t)(0xFF & ((uintptr_t)addr >> (1*sizeof(uint8_t)*CHAR_BIT))),
+						(uint8_t)(0xFF & ((uintptr_t)addr >> (0*sizeof(uint8_t)*CHAR_BIT))),
+						};
+    struct spi_buf tx_buf = {.buf = txdat, .len = sizeof(txdat)};
+    struct spi_buf_set tx_bufs = {.buffers = &tx_buf, .count = 1};
+
+	uint8_t rxdat_dummy[sizeof(txdat)];
+	struct spi_buf rx_cmd_buf = {.buf = rxdat_dummy, .len = sizeof(rxdat_dummy)};
+	struct spi_buf rx_data_buf = {.buf = data, .len = SRAM_PAGE_SIZE};
+	struct spi_buf rxdat_bufs[2] = {rx_cmd_buf,rx_data_buf};
+
+    struct spi_buf_set rx_bufs = {.buffers = rxdat_bufs, .count = 2};
+
+	ret = spi_transceive(spi_sram, &spi_cfg, &tx_bufs, &rx_bufs);
+	if(ret){return ret;}
+
+	return ret;
+}
+
+//data must of size at least 32
+int sram_write_page(uint8_t* addr, uint8_t* data){
+	int ret;
+	ret = sram_wrmr(SRAM_MODE_PAGE);
+	if(ret){return ret;}
+
+	uint8_t txdat[4] = {
+						SRAM_INSTR_WRITE, 
+						(uint8_t)(0xFF & ((uintptr_t)addr >> (2*sizeof(uint8_t)*CHAR_BIT))),
+						(uint8_t)(0xFF & ((uintptr_t)addr >> (1*sizeof(uint8_t)*CHAR_BIT))),
+						(uint8_t)(0xFF & ((uintptr_t)addr >> (0*sizeof(uint8_t)*CHAR_BIT)))
+						};
+    struct spi_buf tx_cmd_buf = {.buf = txdat, .len = sizeof(txdat)};
+    struct spi_buf tx_data_buf = {.buf = data, .len = SRAM_PAGE_SIZE};
+	struct spi_buf txdat_bufs[2] = {tx_cmd_buf,tx_data_buf};
+    struct spi_buf_set tx_bufs = {.buffers = txdat_bufs, .count = 2};
+	
+	ret = spi_transceive(spi_sram, &spi_cfg, &tx_bufs, NULL);
 	return ret;
 }
 
@@ -85,33 +139,32 @@ int sram_read_byte(uint8_t* addr, uint8_t* data){
 	ret = sram_wrmr(SRAM_MODE_BYTE);
 	if(ret){return ret;}
 
-	uint8_t txdat[4] = {SRAM_INSTR_READ, 
+	//if we have the buffers the same size then there is not a gap between reading and writing
+	uint8_t txdat[5] = {SRAM_INSTR_READ, 
 						(uint8_t)(0xFF & ((uintptr_t)addr >> (2*sizeof(uint8_t)*CHAR_BIT))),
 						(uint8_t)(0xFF & ((uintptr_t)addr >> (1*sizeof(uint8_t)*CHAR_BIT))),
-						(uint8_t)(0xFF & ((uintptr_t)addr >> (0*sizeof(uint8_t)*CHAR_BIT)))
+						(uint8_t)(0xFF & ((uintptr_t)addr >> (0*sizeof(uint8_t)*CHAR_BIT))),
+						0x00
 						};
     struct spi_buf tx_buf = {.buf = txdat, .len = sizeof(txdat)};
     struct spi_buf_set tx_bufs = {.buffers = &tx_buf, .count = 1};
 
-	uint8_t rxdat[8];
+	uint8_t rxdat[5];
 	struct spi_buf rx_buf = {.buf = rxdat, .len = sizeof(rxdat)};
     struct spi_buf_set rx_bufs = {.buffers = &rx_buf, .count = 1};
 
-		spi_transceive(spi_sram, &spi_cfg, &tx_bufs, &rx_bufs);
-		
-	printk("recieved: ");
-	for(size_t i = 0; i < rx_bufs.buffers[0].len; i++){
-		printk("%02hhX ", ((uint8_t*)rx_bufs.buffers[0].buf)[i]);
-		((uint8_t*)rx_bufs.buffers[0].buf)[i] = 0x0A;
-	}
-	printk("\n");
+	ret = spi_transceive(spi_sram, &spi_cfg, &tx_bufs, &rx_bufs);
+	if(ret){return ret;}
 
+	*data = rxdat[4];
+
+	return ret;
 }
 
 int sram_write_byte(uint8_t* addr, uint8_t data){
 	int ret;
-	// ret = sram_wrmr(SRAM_MODE_BYTE);
-	// if(ret){return ret;}
+	ret = sram_wrmr(SRAM_MODE_BYTE);
+	if(ret){return ret;}
 
 	uint8_t txdat[5] = {
 						SRAM_INSTR_WRITE, 
@@ -123,7 +176,7 @@ int sram_write_byte(uint8_t* addr, uint8_t data){
     struct spi_buf tx_buf = {.buf = txdat, .len = sizeof(txdat)};
     struct spi_buf_set tx_bufs = {.buffers = &tx_buf, .count = 1};
 	
-	ret = spi_write(spi_sram, &spi_cfg, &tx_bufs);
+	ret = spi_transceive(spi_sram, &spi_cfg, &tx_bufs, NULL);
 	return ret;
 }
 
@@ -136,16 +189,23 @@ void sram_test(){
 
 	sram_wrmr(SRAM_MODE_BYTE);
 
+	uint8_t txpage[SRAM_PAGE_SIZE];
+	uint8_t rxpage[SRAM_PAGE_SIZE];
 
-	sram_write_byte((uint8_t*)0x0002F3, 0xDF);
+	for(size_t i = 0; i < SRAM_PAGE_SIZE; i++){
+		txpage[i] = i;
+	}
+
+	sram_write_page((uint8_t*)0x000220, txpage);
+	sram_write_byte((uint8_t*)0x000220, 0xDF);
+	sram_write_byte((uint8_t*)0x000221, 0xA4);
+	sram_write_byte((uint8_t*)0x000223, 0x9A);
+
 	while (1) {
 		led(1);
 		LOG_INF("sending");
         
-		// sram_wrmr(SRAM_MODE_PAGE);
-		// sram_rdmr(NULL);
-
-		sram_read_byte((uint8_t*)0x00002F3, NULL);
+		sram_read_page((uint8_t*)0x0000220, rxpage);
 
 		k_sleep(K_MSEC(300));
 		led(0);
