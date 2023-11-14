@@ -43,7 +43,7 @@ void sram_test(){
 	spi_sram = device_get_binding(DT_LABEL(DT_NODELABEL(spi1)));
 	LOG_INF("bind %s\n", spi_sram->name);
 
-	uint8_t txdatwr[2] = {0b00000001, 0b10000000};
+	uint8_t txdatwr[2] = {0b00000001, 0b11000000};
     struct spi_buf tx_bufwr = {.buf = txdatwr, .len = sizeof(txdatwr)};
     struct spi_buf_set tx_bufswr = {.buffers = &tx_bufwr, .count = 1};
 
@@ -63,7 +63,6 @@ void sram_test(){
 		LOG_INF("sending");
         
         spi_write(spi_sram, &spi_cfg, &tx_bufswr);
-		// k_sleep(K_MSEC(20));
         spi_transceive(spi_sram, &spi_cfg, &tx_bufs, &rx_bufs);
 		
 		printk("recieved: ");
