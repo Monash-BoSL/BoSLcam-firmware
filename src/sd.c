@@ -34,7 +34,6 @@ static struct fs_mount_t mp = {
 *  Note the fatfs library is able to mount only strings inside _VOLUME_STRS
 *  in ffconf.h
 */
-static const char* disk_mount_pt = "/SD:";
 
 static struct master_config_t* mcfg;
 
@@ -411,6 +410,25 @@ int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
 	return 0;
 }
 
+
+//ensure that your path beings with a / eg "/im1.bmp" !!
+int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
+	int ret;
+	const uint32_t max_path_length = 256;
+	char path[max_path_length];
+
+	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
+		LOG_ERR("file name too long");
+		return -ENAMETOOLONG;
+	}
+	sprintf(path, "%s%s%08X.bmp", disk_mount_pt,sdhc_path, capture->time);
+
+	
+	ret = fs_rename(scratch_file, path);
+	if(ret < 0){return ret;}
+
+	return ret;
+}
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
 int sdhc_write_image(char* sdhc_path, struct capture_t* capture){

@@ -121,6 +121,9 @@ static const char* time_source_str[] = {"GNSS_TIME",
 								"NO_TIME",
 								"EXT_TIME",};
 
+static const char* disk_mount_pt = "/SD:";
+static const char* scratch_file = "/SD:/scratch.bmp";
+
 struct status_t {
 	int32_t system_time;
 	int32_t battery_voltage;

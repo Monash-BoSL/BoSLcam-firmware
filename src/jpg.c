@@ -12,7 +12,6 @@
 #include "sd.h"
 #include "jpg.h"
 
-static const char* disk_mount_pt = "/SD:";
 
 LOG_MODULE_REGISTER(jpg);
 

@@ -226,10 +226,11 @@ int loop(void){
 	ov7675_init(mcfg.im_cfg.auto_range_time);
 
 	LOG_INF("ov7675 capture");
-	ov7675_capture(capture.data);
+	ov7675_capture_sdhc_buffered(capture.data);
 	
 	LOG_INF("image -> sdhc");
-	sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
+	sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
+	// sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
 	sdhc_write_status(mcfg.sd_cfg.status_path, &stats);
 
 	if(mcfg.im_cfg.format == JPG){
@@ -290,7 +291,6 @@ void main(void){
 	
 	LOG_INF("begin!");
 
-	ret = sram_test();
 
 	ret = setup();
 	if(ret < 0){

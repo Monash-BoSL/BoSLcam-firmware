@@ -16,6 +16,11 @@
 #include <hal/nrf_gpiote.h>
 #include <hal/nrf_gpio.h>
 
+#include <storage/disk_access.h>
+#include <fs/fs.h>
+#include <ff.h>
+
+
 #include "ov7675.h"
 #include "ov7675_regs.h"
 #include "common.h"
@@ -200,3 +205,48 @@ void ov7675_capture(uint8_t* buffer){
 		// buffer[p] = (x & ~(0x3)) | ((x >> 0x1)&0x1) | ((x << 1)&0x2);
 	// }
 }
+
+
+void ov7675_capture_sdhc_buffered(uint8_t* buffer){
+	uint16_t wg = QVGA_WIDTH;//line width in pixels
+	uint16_t hg = VGA_HEIGHT;//number of lines per frame
+	uint16_t lg2;
+	uint32_t p = 0;
+
+	struct fs_file_t imf;
+	fs_file_t_init(&imf);
+	fs_open(&imf, scratch_file, FS_O_WRITE | FS_O_CREATE);
+	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
+
+
+	LOG_INF("ready\n");
+	//Wait for vsync 
+	while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
+	while(nrf_gpio_pin_read(SCCB_VS));//wait for low
+	
+	while(hg--){//get line
+		lg2=wg;
+		// printk("%u\n", hg);
+		if(hg % 2){
+			while(!(NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
+		}else{
+		while(lg2--){//get pixel
+			//low byte
+			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
+			buffer[p+1] = (uint8_t) NRF_P0->IN;//read in D0 - D8
+			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
+			//high byte
+			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
+			buffer[p] = (uint8_t) NRF_P0->IN;//read in D0 - D8
+			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
+			
+			p += 2;
+		}
+		}
+		while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
+	}
+	fs_write(&imf, buffer, QVGA_WIDTH*VGA_HEIGHT);
+
+	fs_close(&imf);
+}
+
