@@ -196,6 +196,7 @@ void ov7675_capture(uint8_t* buffer){
 		}
 		}
 		while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
+
 	}
 
 	// //due to hardware error we need to swap the last 2 bits of buffer
@@ -243,7 +244,14 @@ void ov7675_capture_sdhc_buffered(uint8_t* buffer){
 			p += 2;
 		}
 		}
+
+		// nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_STOP);
+		// // ??
+		// nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_START);
+
+
 		while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
+
 	}
 	fs_write(&imf, buffer, QVGA_WIDTH*VGA_HEIGHT);
 
