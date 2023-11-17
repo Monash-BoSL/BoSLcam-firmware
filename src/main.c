@@ -12,6 +12,8 @@
 #include <inttypes.h>
 #include <logging/log.h>
 
+#include <SEGGER_RTT.h>
+
 #include <date_time.h>
 
 #include <modem/lte_lc.h>
@@ -299,9 +301,16 @@ void main(void){
 		//try call for help
 	}
 	
-		
+	const char* imgdmy = "sent over RTT";
+	void* rtt_image_buffer = malloc(80);
+
+
+	int rtt_image_upbuf = SEGGER_RTT_AllocUpBuffer("image_data", rtt_image_buffer, 80, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
+
 	while(1){
-		loop();
+		// loop();
+		SEGGER_RTT_Write(rtt_image_upbuf, imgdmy, sizeof(imgdmy));
+		k_msleep(1000);
 	}
 	
 	nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);

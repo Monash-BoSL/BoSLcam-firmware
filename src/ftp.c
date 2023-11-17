@@ -108,15 +108,26 @@ int ftp_write_bmp(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 	// printk(response);
 	
 	ret = ftp_open(ftp_cfg_p->domain, 21, -1);
+	if (ret < 0){return ret;}
+
 	ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
+	if (ret < 0){return ret;}
+
     ret = ftp_mkdirs(path);
+
 	ret = ftp_type(FTP_TYPE_BINARY);
+	if (ret < 0){return ret;}
+
 	ret = ftp_put(path, bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
+	if (ret < 0){return ret;}
+
 	ret = ftp_put(path, capture->data, capture->length, FTP_PUT_APPEND);
+	if (ret < 0){return ret;}
+
 	// ftp status
 	ret = ftp_close();
 	LOG_INF("UPLOAD SEQUENCE ENDED");
-	return 0;
+	return ret;
 }
 
 int ftp_write_jpg(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
@@ -137,14 +148,23 @@ int ftp_write_jpg(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 	if (ret < 0){return ret;}
 	
 	ret = ftp_open(ftp_cfg_p->domain, 21, -1);
+	if (ret < 0){return ret;}
+
 	ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
+	if (ret < 0){return ret;}
+
     ret = ftp_mkdirs(path);
+
 	ret = ftp_type(FTP_TYPE_BINARY);
+	if (ret < 0){return ret;}
+
 	ret = ftp_put(path, capture->data, capture->length, FTP_PUT_NORMAL);
+	if (ret < 0){return ret;}
+
 	// ftp status
 	ret = ftp_close();
 	LOG_INF("UPLOAD SEQUENCE ENDED");
-	return 0;
+	return ret;
 }
 
 int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
@@ -166,13 +186,21 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
 	if (ret < 0){return ret;}
 	
 	ret = ftp_open(ftp_cfg_p->domain, 21, -1);
+	if (ret < 0){return ret;}
+
 	ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
+	if (ret < 0){return ret;}
+
     ret = ftp_mkdirs(ftp_cfg_p->status_path);
 	ret = ftp_type(FTP_TYPE_BINARY);
+	if (ret < 0){return ret;}
+
 	ret = ftp_put(ftp_cfg_p->status_path, statstr, strlen(statstr), FTP_PUT_APPEND);
+	if (ret < 0){return ret;}
+
 	ret = ftp_close();
 	LOG_INF("UPLOAD SEQUENCE ENDED");
-	return 0;
+	return ret;
 }
 
 void ftp_setup(void){

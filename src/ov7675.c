@@ -245,9 +245,9 @@ void ov7675_capture_sdhc_buffered(uint8_t* buffer){
 		}
 		}
 
-		// nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_STOP);
-		// // ??
-		// nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_START);
+		nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_STOP);
+		k_msleep(1);//delay for autoexposure awb, etc ...
+		nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_START);
 
 
 		while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
