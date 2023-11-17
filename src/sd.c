@@ -10,6 +10,8 @@
 #include <sys/printk.h>
 #include <inttypes.h>
 #include <logging/log.h>
+#include <logging/log_ctrl.h>
+
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -531,6 +533,9 @@ int sdhc_file_to_rtt(char* sdhc_path){
 	int rtt_down_image = get_rtt_down_image();
 
 	LOG_INF("sending over rtt: %s", sdhc_path);
+	LOG_INF("wating for rtt connection...");
+	while(log_process(false));
+
 
 	if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
 		LOG_ERR("file name too long");
@@ -554,10 +559,13 @@ int sdhc_file_to_rtt(char* sdhc_path){
 		SEGGER_RTT_Read(rtt_down_image, rtt_image_ack_buffer, RTT_BUFFER_DOWN_SIZE); //read out data
 		
 
-		SEGGER_RTT_Write(rtt_up_image, &bytes_read, sizeof(bytes_read));
-		SEGGER_RTT_Write(rtt_up_image, rtt_image_buffer, bytes_read);
+		SEGGER_RTT_WriteNoLock(rtt_up_image, &bytes_read, sizeof(bytes_read));
+		SEGGER_RTT_WriteNoLock(rtt_up_image, rtt_image_buffer, bytes_read);
 	}
 	if(bytes_read < 0){goto cleanup;}
+	LOG_INF("file sent!");
+
+
 
 cleanup:
 	k_free(rtt_image_buffer);
