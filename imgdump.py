@@ -1,4 +1,5 @@
 import time
+import sys
 
 from pynrfjprog import LowLevel
 from pynrfjprog.API import DeviceFamily as NrfDeviceFamily
@@ -6,7 +7,7 @@ from pynrfjprog.API import DeviceFamily as NrfDeviceFamily
 JLINK_KHZ = 4000
 CHANNEL_INDEX = 1
 
-def read_rtt():
+def init_rtt() -> LowLevel.API:
     api = LowLevel.API(NrfDeviceFamily.NRF91)
     api.open()
 
@@ -24,7 +25,9 @@ def read_rtt():
         time.sleep(0.5)
         api.rtt_start()
         time.sleep(0.5)
+    return api
 
+def dump_rtt(api: LowLevel.API):
     with open("dump.bmp", 'wb') as f:
         chunk_size = 1
         while (chunk_size > 0):
@@ -38,8 +41,10 @@ def read_rtt():
 
             f.write(data)
 
-    # api.close()
 
 
 if __name__ == "__main__":
-    read_rtt()
+    api = init_rtt()
+    while True:
+        dump_rtt(api)
+        input("Press Any Key to Repeat")
