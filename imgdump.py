@@ -25,21 +25,28 @@ def init_rtt() -> LowLevel.API:
         time.sleep(0.5)
         api.rtt_start()
         time.sleep(0.5)
+
+    print("Connected")
     return api
 
 def dump_rtt(api: LowLevel.API):
+    print("Dumping ...", end='', flush=True)
+    tik = time.time()
     with open("dump.bmp", 'wb') as f:
         chunk_size = 1
+        data = bytearray()
         while (chunk_size > 0):
             api.rtt_write(CHANNEL_INDEX, bytearray([0xCC]), None)
             chunk_size_raw = api.rtt_read(CHANNEL_INDEX,4, None)
             chunk_size = int.from_bytes(chunk_size_raw, byteorder='little')
 
-            print("chunk size:", chunk_size, end = '')
-            data = api.rtt_read(CHANNEL_INDEX,chunk_size, None)
-            print(" OK")
+            # print("chunk size:", chunk_size, end = '')
+            data += api.rtt_read(CHANNEL_INDEX,chunk_size, None)
+            # print(" OK")
 
-            f.write(data)
+        f.write(data)
+    tok = time.time()
+    print(" Done ({:.2f} s)".format(tok-tik))
 
 
 
@@ -47,4 +54,4 @@ if __name__ == "__main__":
     api = init_rtt()
     while True:
         dump_rtt(api)
-        input("Press Any Key to Repeat")
+        input("Press Any Enter to Repeat")

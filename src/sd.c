@@ -486,7 +486,7 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
 	return 0;
 }
 
-#define RTT_BUFFER_UP_SIZE (0x400)
+#define RTT_BUFFER_UP_SIZE (0x1000)
 #define RTT_BUFFER_DOWN_SIZE (0x08)
 int _rtt_image_upbuf = -1;
 int _rtt_image_downbuf = -1;
