@@ -12,8 +12,6 @@
 #include <inttypes.h>
 #include <logging/log.h>
 
-#include <SEGGER_RTT.h>
-
 #include <date_time.h>
 
 #include <modem/lte_lc.h>
@@ -222,7 +220,6 @@ int loop(void){
 	
 	get_capture_time(&capture.time);
 	update_status();
-
 	
 	LOG_INF("ov7675 initialisation");
 	ov7675_init(mcfg.im_cfg.auto_range_time);
@@ -231,7 +228,10 @@ int loop(void){
 	ov7675_capture_sdhc_buffered(capture.data);
 	
 	LOG_INF("image -> sdhc");
+	
+	sdhc_file_to_rtt(SCRATCH_FILE);
 	sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
+
 	// sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
 	sdhc_write_status(mcfg.sd_cfg.status_path, &stats);
 
@@ -301,16 +301,8 @@ void main(void){
 		//try call for help
 	}
 	
-	const char* imgdmy = "sent over RTT";
-	void* rtt_image_buffer = malloc(80);
-
-
-	int rtt_image_upbuf = SEGGER_RTT_AllocUpBuffer("image_data", rtt_image_buffer, 80, SEGGER_RTT_MODE_NO_BLOCK_SKIP);
-
 	while(1){
-		// loop();
-		SEGGER_RTT_Write(rtt_image_upbuf, imgdmy, sizeof(imgdmy));
-		k_msleep(1000);
+		loop();
 	}
 	
 	nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);

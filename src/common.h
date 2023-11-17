@@ -24,6 +24,14 @@
 #define IMAGE_HEIGHT		(240)
 #define IMAGE_SIZE_BYTES 	(IMAGE_WIDTH*IMAGE_HEIGHT*2)
 
+#define MAX_PATH (256)
+
+#define DISK_MOUNT_PT "/SD:"
+#define SCRATCH_FILE  "/scratch.bmp"
+
+#define SDHC_PATH(strconst) DISK_MOUNT_PT strconst
+#define STRLEN(strconst) (sizeof(strconst)-1)
+
 static const char bmp_header[BMPIMAGEOFFSET] =
 {
   0x42, 0x4D, 0x36, 0x58, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x42, 0x00, 0x00, 0x00, 0x28, 0x00,
@@ -121,8 +129,6 @@ static const char* time_source_str[] = {"GNSS_TIME",
 								"NO_TIME",
 								"EXT_TIME",};
 
-static const char* disk_mount_pt = "/SD:";
-static const char* scratch_file = "/SD:/scratch.bmp";
 
 struct status_t {
 	int32_t system_time;

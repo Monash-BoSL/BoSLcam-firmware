@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#include <SEGGER_RTT.h>
+
 #include <sys/timeutil.h>
 
 #include "common.h"
@@ -39,26 +41,26 @@ static struct master_config_t* mcfg;
 
 int lsdir(const char *path)
 {
-	int res;
+	int ret;
 	struct fs_dir_t dirp;
 	static struct fs_dirent entry;
 
 	fs_dir_t_init(&dirp);
 
 	/* Verify fs_opendir() */
-	res = fs_opendir(&dirp, path);
-	if (res) {
-		LOG_ERR("Error opening dir %s [%d]\n", path, res);
-		return res;
+	ret = fs_opendir(&dirp, path);
+	if (ret) {
+		LOG_ERR("Error opening dir %s [%d]\n", path, ret);
+		return ret;
 	}
 
 	LOG_INF("\nListing dir %s ...\n", path);
 	for (;;) {
 		/* Verify fs_readdir() */
-		res = fs_readdir(&dirp, &entry);
+		ret = fs_readdir(&dirp, &entry);
 
 		/* entry.name[0] == 0 means end-of-dir */
-		if (res || entry.name[0] == 0) {
+		if (ret || entry.name[0] == 0) {
 			break;
 		}
 
@@ -73,11 +75,11 @@ int lsdir(const char *path)
 	/* Verify fs_closedir() */
 	fs_closedir(&dirp);
 
-	return res;
+	return ret;
 }
 
 int fs_mkdirs(const char* path) {
-	int res;
+	int ret;
 	size_t pathlen = strlen(path)+1;
 	if(pathlen > 256){return -ENAMETOOLONG;}//magic number of max path length
 	
@@ -92,7 +94,7 @@ int fs_mkdirs(const char* path) {
 		
 		struct fs_dirent dirstat;
 		int res = fs_stat(current, &dirstat);
-		if(res == -ENOENT && strcmp(current, disk_mount_pt)){
+		if(res == -ENOENT && strcmp(current, DISK_MOUNT_PT)){
 				fs_mkdir(current);
 		}else{
 			
@@ -101,7 +103,7 @@ int fs_mkdirs(const char* path) {
 	}
  
     k_free(current);
-	return res;//make sure that we return a nice error code here. 
+	return ret;//make sure that we return a nice error code here. 
 }
 
 void sdhc_info(void){
@@ -316,7 +318,7 @@ int parse_config_file(struct fs_file_t* zfp){
 
 int sdhc_mount(void){
 	int res;
-	mp.mnt_point = disk_mount_pt;
+	mp.mnt_point = DISK_MOUNT_PT;
 
 	res = fs_mount(&mp);
 
@@ -330,17 +332,16 @@ int sdhc_mount(void){
 }
 
 int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
-	const uint32_t max_path_length = 256;
-	char path[max_path_length];
+	char path[MAX_PATH];
 	struct fs_file_t imf;
 	mcfg = master_cfg;
 	
-	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
+	if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
-	strcpy(path, disk_mount_pt);
-	strcpy(path+sizeof(disk_mount_pt), sdhc_path);
+	strcpy(path, DISK_MOUNT_PT);
+	strcpy(path+STRLEN(DISK_MOUNT_PT), sdhc_path);
 	
 	fs_file_t_init(&imf);
 	fs_open(&imf, path, FS_O_READ);
@@ -354,17 +355,16 @@ int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
 
 
 int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
-	const uint32_t max_path_length = 256;
-	char path[max_path_length];
+	char path[MAX_PATH];
 	struct fs_file_t imf;
 	char strtime[80];
 	int ret;
 	
-	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
+	if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
-	strcpy(path, disk_mount_pt);
+	strcpy(path, DISK_MOUNT_PT);
 	strcat(path, sdhc_path);
 	
 	fs_file_t_init(&imf);
@@ -414,17 +414,15 @@ int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
 //ensure that your path beings with a / eg "/im1.bmp" !!
 int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
 	int ret;
-	const uint32_t max_path_length = 256;
-	char path[max_path_length];
+	char path[MAX_PATH];
 
-	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
+	if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
-	sprintf(path, "%s%s%08X.bmp", disk_mount_pt,sdhc_path, capture->time);
-
+	sprintf(path, "%s%s%08X.bmp", DISK_MOUNT_PT,sdhc_path, capture->time);
 	
-	ret = fs_rename(scratch_file, path);
+	ret = fs_rename(SDHC_PATH(SCRATCH_FILE), path);
 	if(ret < 0){return ret;}
 
 	return ret;
@@ -432,16 +430,15 @@ int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
 int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
-	const uint32_t max_path_length = 256;
-	char path[max_path_length];
+	char path[MAX_PATH];
 	struct fs_file_t imf;
 
 
-	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
+	if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
-	sprintf(path, "%s%s%08X.bmp", disk_mount_pt,sdhc_path, capture->time);
+	sprintf(path, "%s%s%08X.bmp", DISK_MOUNT_PT,sdhc_path, capture->time);
 
 	
 	fs_file_t_init(&imf);
@@ -458,17 +455,16 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
 int sdhc_write_status(char* sdhc_path, struct status_t* status){
-	const uint32_t max_path_length = 256;
-	char path[max_path_length];
+	char path[MAX_PATH];
 	struct fs_file_t imf;
 	struct tm cal;
+	int ret;
 	
-	
-	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
+	if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
-	strcpy(path, disk_mount_pt);
+	strcpy(path, DISK_MOUNT_PT);
 	strcat(path, sdhc_path);
 	
 	fs_file_t_init(&imf);
@@ -476,7 +472,7 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
 	fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE | FS_O_APPEND);
 	//here is where we write what we want to log to file
 	unix_date(&cal, status->system_time);
-	strftime(path, max_path_length, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
+	strftime(path, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
 	sprintf(path+strlen(path), ",%s,%d,%d\n", 
 								time_source_str[status->time_src],
 								status->captures, 
@@ -486,4 +482,61 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
 	fs_close(&imf);
 
 	return 0;
+}
+
+#define RTT_BUFFER_UP_SIZE (0x400)
+int _rtt_image_upbuf = -1;
+int get_rtt_image(void){
+	if(_rtt_image_upbuf < 0){
+		void* rtt_image_up_buffer = k_malloc(RTT_BUFFER_UP_SIZE);
+		_rtt_image_upbuf = SEGGER_RTT_AllocUpBuffer("image_data", rtt_image_up_buffer, RTT_BUFFER_UP_SIZE, SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL);
+	}
+	return _rtt_image_upbuf;
+}
+
+int clear_rtt_image(void){
+	LOG_ERR("cannot dealloc rtt_image");
+	k_oops();
+	// if(_rtt_image_upbuf < 0){
+	// 	return 0;
+	// }else{
+	// 	k_malloc(RTT_BUFFER_UP_SIZE)
+	// }
+	// return _rtt_image_upbuf;
+}
+
+
+int sdhc_file_to_rtt(char* sdhc_path){
+	int ret;
+	char path[MAX_PATH];
+	struct fs_file_t imf;
+
+	void* rtt_image_buffer = k_malloc(RTT_BUFFER_UP_SIZE);
+	int rtt_image = get_rtt_image();
+
+	if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
+		LOG_ERR("file name too long");
+		ret = -ENAMETOOLONG;
+		goto cleanup;
+	}
+	strcpy(path, DISK_MOUNT_PT);
+	strcat(path, sdhc_path);
+	
+
+	fs_file_t_init(&imf);
+
+	ret = fs_open(&imf, path, FS_O_READ);
+	if(ret < 0){goto cleanup;}
+
+
+	ssize_t bytes_read;
+	while((bytes_read = fs_read(&imf, rtt_image_buffer, RTT_BUFFER_UP_SIZE)) > 0){
+		SEGGER_RTT_Write(rtt_image, rtt_image_buffer, bytes_read);
+	}
+	if(bytes_read < 0){goto cleanup;}
+
+cleanup:
+	k_free(rtt_image_buffer);
+
+	return ret;
 }

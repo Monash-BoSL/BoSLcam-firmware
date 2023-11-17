@@ -81,13 +81,12 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
 }
 
 int ftp_write_bmp(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
-	const uint32_t max_path_length = 256;
-	char path[256];
+	char path[MAX_PATH];
 	int ret;
 	
 	LOG_INF("modem begin\n");
 	
-	if(strlen(ftp_cfg_p->image_path) > max_path_length + 12-1){//12 for unix time + extension
+	if(strlen(ftp_cfg_p->image_path) > MAX_PATH + 12-1){//12 for unix time + extension
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
@@ -131,13 +130,12 @@ int ftp_write_bmp(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 }
 
 int ftp_write_jpg(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
-	const uint32_t max_path_length = 256;
-	char path[256];
+	char path[MAX_PATH];
 	int ret;
 	
 	LOG_INF("modem begin\n");
 	
-	if(strlen(ftp_cfg_p->image_path) > max_path_length + 12-1){//12 for unix time + extension
+	if(strlen(ftp_cfg_p->image_path) > MAX_PATH + 12-1){//12 for unix time + extension
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
@@ -168,15 +166,14 @@ int ftp_write_jpg(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 }
 
 int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
-	const uint32_t max_path_length = 256;
-	char statstr[256];
+	char statstr[MAX_PATH];
 	int ret;
 	struct tm cal;
 	
 	LOG_INF("modem begin\n");
 	
 	unix_date(&cal, status->system_time);
-	strftime(statstr, max_path_length, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
+	strftime(statstr, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
 	sprintf(statstr+strlen(statstr), ",%s,%d,%d\n", 
 								time_source_str[status->time_src],
 								status->captures, 

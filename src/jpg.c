@@ -19,15 +19,14 @@ LOG_MODULE_REGISTER(jpg);
 //overwrites the image buffer in ram with the jpg	  !!
 int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
 	int ret;
-	const uint32_t max_path_length = 256;
-	char path[max_path_length];
+	char path[MAX_PATH];
 	struct fs_file_t imf;
 	
-	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
+	if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
-	sprintf(path, "%s%s%08X.jpg", disk_mount_pt,sdhc_path, capture->time);
+	sprintf(path, "%s%s%08X.jpg", DISK_MOUNT_PT,sdhc_path, capture->time);
 	
 	
 	fs_file_t_init(&imf);
