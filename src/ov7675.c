@@ -106,6 +106,7 @@ void ov7675_init(uint32_t auto_time){
 
 
 	//setup clock on XCLK pin at 8 MHz.
+	// nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_16MHz);
 	nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_16MHz);
 	nrf_timer_mode_set(NRF_TIMER0, NRF_TIMER_MODE_TIMER);
 	nrf_timer_cc_set(NRF_TIMER0,NRF_TIMER_CC_CHANNEL0, 0x01);
@@ -154,6 +155,7 @@ void ov7675_init(uint32_t auto_time){
 	
 	wr_reg(REG_DBLV, DBLV_BYPASS);//maybe?
 	wr_reg(REG_CLKRC, CLK_SCALE & 0x00);//set clock divider to 1, no need to slow it down!
+	wr_reg(REG_COM14, COM14_DCWEN | 0b0100);//set clock divider to 1, no need to slow it down!
 	////////////////////////////////////////////////////////////////////////////////
 
 	
@@ -213,6 +215,7 @@ void ov7675_capture_sdhc_buffered(uint8_t* buffer){
 	uint16_t hg = VGA_HEIGHT;//number of lines per frame
 	uint16_t lg2;
 	uint32_t p = 0;
+	uint32_t ps = 0;
 
 	struct fs_file_t imf;
 	fs_file_t_init(&imf);
@@ -231,23 +234,31 @@ void ov7675_capture_sdhc_buffered(uint8_t* buffer){
 		if(hg % 2){
 			while(!(NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
 		}else{
-		while(lg2--){//get pixel
-			//low byte
-			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
-			buffer[p+1] = (uint8_t) NRF_P0->IN;//read in D0 - D8
-			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
-			//high byte
-			while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
-			buffer[p] = (uint8_t) NRF_P0->IN;//read in D0 - D8
-			while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
+			ps = p;
+			while(lg2--){//get pixel
+				//low byte
+				while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
+				buffer[p+1] = (uint8_t) NRF_P0->IN;//read in D0 - D8
+				while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
+				//high byte
+				while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
+				buffer[p] = (uint8_t) NRF_P0->IN;//read in D0 - D8
+				while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
+				
+				p += 2;
+			}
 			
-			p += 2;
-		}
+			nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_STOP);
+			// nrf_gpiote_task_disable(NRF_GPIOTE,GPIOTE_CLK_TSK);
+
+			// k_msleep(10);//delay for autoexposure awb, etc ...
+			// fs_write(&imf, buffer+ps, p-ps);
+			// nrf_gpiote_task_enable(NRF_GPIOTE,GPIOTE_CLK_TSK);
+			// nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_START);
+
+
 		}
 
-		nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_STOP);
-		k_msleep(1);//delay for autoexposure awb, etc ...
-		nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_START);
 
 
 		while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF

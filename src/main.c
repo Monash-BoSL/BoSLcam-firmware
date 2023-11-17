@@ -229,7 +229,7 @@ int loop(void){
 	
 	LOG_INF("image -> sdhc");
 	
-	sdhc_file_to_rtt(SCRATCH_FILE);
+	// sdhc_file_to_rtt(SCRATCH_FILE);
 	sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
 
 	// sdhc_write_image(mcfg.sd_cfg.image_path, &capture);

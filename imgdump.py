@@ -29,7 +29,16 @@ def init_rtt() -> LowLevel.API:
     print("Connected")
     return api
 
-def dump_rtt(api: LowLevel.API):
+BMP_HEADER_SIZE = 66
+
+def twizzle(data):
+    for p in range(BMP_HEADER_SIZE,len(data)):
+        x = data[p]
+        data[p] = (x & ~(0x3)) | ((x >> 0x1) & 0x1) | ((x << 1) & 0x2)
+    return data
+
+
+def dump_rtt(api: LowLevel.API, debug_board: bool):
     print("Dumping ...", end='', flush=True)
     tik = time.time()
     with open("dump.bmp", 'wb') as f:
@@ -44,14 +53,22 @@ def dump_rtt(api: LowLevel.API):
             data += api.rtt_read(CHANNEL_INDEX,chunk_size, None)
             # print(" OK")
 
+        if debug_board:
+            data = twizzle(data)
+
         f.write(data)
+
+
     tok = time.time()
     print(" Done ({:.2f} s)".format(tok-tik))
 
 
 
+
 if __name__ == "__main__":
+    debug_board = ("-d" in sys.argv)
+
     api = init_rtt()
     while True:
-        dump_rtt(api)
+        dump_rtt(api, debug_board)
         input("Press Any Enter to Repeat")
