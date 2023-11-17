@@ -25,11 +25,20 @@ def read_rtt():
         api.rtt_start()
         time.sleep(0.5)
 
-    while True:
-        rd = api.rtt_read(CHANNEL_INDEX,1)
-        print(rd, end = '', flush=True)
+    with open("dump.bmp", 'wb') as f:
+        chunk_size = 1
+        while (chunk_size > 0):
+            api.rtt_write(CHANNEL_INDEX, bytearray([0xCC]), None)
+            chunk_size_raw = api.rtt_read(CHANNEL_INDEX,4, None)
+            chunk_size = int.from_bytes(chunk_size_raw, byteorder='little')
 
-    api.close()
+            print("chunk size:", chunk_size, end = '')
+            data = api.rtt_read(CHANNEL_INDEX,chunk_size, None)
+            print(" OK")
+
+            f.write(data)
+
+    # api.close()
 
 
 if __name__ == "__main__":

@@ -216,7 +216,7 @@ void ov7675_capture_sdhc_buffered(uint8_t* buffer){
 
 	struct fs_file_t imf;
 	fs_file_t_init(&imf);
-	fs_open(&imf, SCRATCH_FILE, FS_O_WRITE | FS_O_CREATE);
+	fs_open(&imf, SDHC_PATH(SCRATCH_FILE), FS_O_WRITE | FS_O_CREATE);
 	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
 
 

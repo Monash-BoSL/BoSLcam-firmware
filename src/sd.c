@@ -369,7 +369,7 @@ int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
 	
 	fs_file_t_init(&imf);
 	ret = fs_open(&imf, path, FS_O_READ);
-	if(ret < 0){return ret;}
+	if(ret < 0){goto cleanup;}
 	{//get date string from file
 		char next;
 		bool date = 1;
@@ -377,7 +377,7 @@ int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
 		
 		do{
 			ret = fs_read(&imf, &next, 1);
-			if(ret < 0){return ret;}
+			if(ret < 0){goto cleanup;}
 		
 			if(next == '\n'){date = 1; i = 0; continue;}
 			if(next == ','){date = 0; strtime[i] = '\0'; continue;}
@@ -389,7 +389,7 @@ int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
 		
 		}while(ret > 0);
 	}
-	fs_close(&imf);
+
 	
 	
 	ret = sscanf(strtime, "%d/%d/%d-%d:%d:%d", 	
@@ -406,8 +406,10 @@ int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
 	cal->tm_isdst = 0;
 	
 	// *ct = timeutil_timegm64(&cal);
+cleanup:
+	fs_close(&imf);
 
-	return 0;
+	return ret;
 }
 
 
@@ -485,13 +487,24 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
 }
 
 #define RTT_BUFFER_UP_SIZE (0x400)
+#define RTT_BUFFER_DOWN_SIZE (0x08)
 int _rtt_image_upbuf = -1;
-int get_rtt_image(void){
+int _rtt_image_downbuf = -1;
+
+int get_rtt_up_image(void){
 	if(_rtt_image_upbuf < 0){
 		void* rtt_image_up_buffer = k_malloc(RTT_BUFFER_UP_SIZE);
 		_rtt_image_upbuf = SEGGER_RTT_AllocUpBuffer("image_data", rtt_image_up_buffer, RTT_BUFFER_UP_SIZE, SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL);
 	}
 	return _rtt_image_upbuf;
+}
+
+int get_rtt_down_image(void){
+	if(_rtt_image_downbuf < 0){
+		void* rtt_image_down_buffer = k_malloc(RTT_BUFFER_DOWN_SIZE);
+		_rtt_image_downbuf = SEGGER_RTT_AllocDownBuffer("image_data", rtt_image_down_buffer, RTT_BUFFER_DOWN_SIZE, SEGGER_RTT_MODE_BLOCK_IF_FIFO_FULL);
+	}
+	return _rtt_image_downbuf;
 }
 
 int clear_rtt_image(void){
@@ -512,7 +525,12 @@ int sdhc_file_to_rtt(char* sdhc_path){
 	struct fs_file_t imf;
 
 	void* rtt_image_buffer = k_malloc(RTT_BUFFER_UP_SIZE);
-	int rtt_image = get_rtt_image();
+	void* rtt_image_ack_buffer = k_malloc(RTT_BUFFER_DOWN_SIZE);
+
+	int rtt_up_image = get_rtt_up_image();
+	int rtt_down_image = get_rtt_down_image();
+
+	LOG_INF("sending over rtt: %s", sdhc_path);
 
 	if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
 		LOG_ERR("file name too long");
@@ -531,12 +549,21 @@ int sdhc_file_to_rtt(char* sdhc_path){
 
 	ssize_t bytes_read;
 	while((bytes_read = fs_read(&imf, rtt_image_buffer, RTT_BUFFER_UP_SIZE)) > 0){
-		SEGGER_RTT_Write(rtt_image, rtt_image_buffer, bytes_read);
+		memset(rtt_image_ack_buffer, 0, RTT_BUFFER_DOWN_SIZE);
+		while(!SEGGER_RTT_HasData(rtt_down_image));
+		SEGGER_RTT_Read(rtt_down_image, rtt_image_ack_buffer, RTT_BUFFER_DOWN_SIZE); //read out data
+		
+
+		SEGGER_RTT_Write(rtt_up_image, &bytes_read, sizeof(bytes_read));
+		SEGGER_RTT_Write(rtt_up_image, rtt_image_buffer, bytes_read);
 	}
 	if(bytes_read < 0){goto cleanup;}
 
 cleanup:
 	k_free(rtt_image_buffer);
+	k_free(rtt_image_ack_buffer);
+	fs_close(&imf);
+
 
 	return ret;
 }
