@@ -81,6 +81,7 @@ static void ov7670_set_hw(int hstart, int hstop, int vstart, int vstop)
 
 }
 
+#define DBGPIN (18)
 void ov7675_init(uint32_t auto_time){
 	gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
 	LOG_INF("bind %s\n", gpio->name);
@@ -92,6 +93,7 @@ void ov7675_init(uint32_t auto_time){
 	//setup gpio for all pins
 	gpio_pin_configure(gpio, SCCB_PEN, GPIO_OUTPUT);
 	gpio_pin_configure(gpio, SCCB_PDN, GPIO_OUTPUT);
+	gpio_pin_configure(gpio, DBGPIN, GPIO_OUTPUT);
 	for(int i = 0; i < 8; i++){
 		gpio_pin_configure(gpio, i, GPIO_INPUT);
 	}
@@ -106,7 +108,6 @@ void ov7675_init(uint32_t auto_time){
 
 
 	//setup clock on XCLK pin at 8 MHz.
-	// nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_16MHz);
 	nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_16MHz);
 	nrf_timer_mode_set(NRF_TIMER0, NRF_TIMER_MODE_TIMER);
 	nrf_timer_cc_set(NRF_TIMER0,NRF_TIMER_CC_CHANNEL0, 0x01);
@@ -155,7 +156,7 @@ void ov7675_init(uint32_t auto_time){
 	
 	wr_reg(REG_DBLV, DBLV_BYPASS);//maybe?
 	wr_reg(REG_CLKRC, CLK_SCALE & 0x00);//set clock divider to 1, no need to slow it down!
-	wr_reg(REG_COM14, COM14_DCWEN | 0b0100);//set clock divider to 1, no need to slow it down!
+	// wr_reg(REG_COM14, COM14_DCWEN | 0b0100);//pixel clock divider
 	////////////////////////////////////////////////////////////////////////////////
 
 	
@@ -215,7 +216,6 @@ void ov7675_capture_sdhc_buffered(uint8_t* buffer){
 	uint16_t hg = VGA_HEIGHT;//number of lines per frame
 	uint16_t lg2;
 	uint32_t p = 0;
-	uint32_t ps = 0;
 
 	struct fs_file_t imf;
 	fs_file_t_init(&imf);
@@ -234,7 +234,6 @@ void ov7675_capture_sdhc_buffered(uint8_t* buffer){
 		if(hg % 2){
 			while(!(NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
 		}else{
-			ps = p;
 			while(lg2--){//get pixel
 				//low byte
 				while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
@@ -247,23 +246,26 @@ void ov7675_capture_sdhc_buffered(uint8_t* buffer){
 				
 				p += 2;
 			}
-			
-			nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_STOP);
-			// nrf_gpiote_task_disable(NRF_GPIOTE,GPIOTE_CLK_TSK);
-
-			// k_msleep(10);//delay for autoexposure awb, etc ...
-			// fs_write(&imf, buffer+ps, p-ps);
-			// nrf_gpiote_task_enable(NRF_GPIOTE,GPIOTE_CLK_TSK);
-			// nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_START);
-
-
 		}
-
-
-
 		while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
 
 	}
+
+	// 	// gpio_pin_set_raw(gpio, DBGPIN, 1);
+	// 	// nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_STOP);
+	// 	// nrf_gpiote_task_disable(NRF_GPIOTE,GPIOTE_CLK_TSK);
+
+	// 	// k_msleep(10);//delay for autoexposure awb, etc ...
+	// 	// for(uint32_t i = 0; i < 0x1000; i++);
+
+	// 	// fs_write(&imf, buffer+ps, p-ps);
+	// 	// nrf_gpiote_task_enable(NRF_GPIOTE,GPIOTE_CLK_TSK);
+	// 	// nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_START);
+
+	// 	while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
+
+	// 	// gpio_pin_set_raw(gpio, DBGPIN, 0);
+
 	fs_write(&imf, buffer, QVGA_WIDTH*VGA_HEIGHT);
 
 	fs_close(&imf);
