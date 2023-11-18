@@ -230,9 +230,11 @@ void ov7675_capture_sdhc_buffered(uint8_t* buffer){
 	
 	while(hg--){//get line
 		lg2=wg;
-		// printk("%u\n", hg);
 		if(hg % 2){
 			while(!(NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
+
+			while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
+
 		}else{
 			while(lg2--){//get pixel
 				//low byte
@@ -246,25 +248,31 @@ void ov7675_capture_sdhc_buffered(uint8_t* buffer){
 				
 				p += 2;
 			}
-		}
-		while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
 
+			gpio_pin_set_raw(gpio, DBGPIN, 1);
+
+			while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
+			// nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_STOP);
+			nrf_gpiote_task_disable(NRF_GPIOTE,GPIOTE_CLK_TSK);
+
+			gpio_pin_set_raw(gpio, SCCB_XCLK, 0);//need to bring the clock low when stopped otherwise image corruption
+			for(uint32_t i = 0; i < 0x4000; i++);
+			for(uint32_t i = 0; i < 0x4000; i++);
+			for(uint32_t i = 0; i < 0x4000; i++);
+			// nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_START);
+			nrf_gpiote_task_enable(NRF_GPIOTE,GPIOTE_CLK_TSK);
+
+			gpio_pin_set_raw(gpio, DBGPIN, 0);
+
+
+		}
+		
 	}
 
-	// 	// gpio_pin_set_raw(gpio, DBGPIN, 1);
-	// 	// nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_STOP);
-	// 	// nrf_gpiote_task_disable(NRF_GPIOTE,GPIOTE_CLK_TSK);
-
-	// 	// k_msleep(10);//delay for autoexposure awb, etc ...
-	// 	// for(uint32_t i = 0; i < 0x1000; i++);
 
 	// 	// fs_write(&imf, buffer+ps, p-ps);
-	// 	// nrf_gpiote_task_enable(NRF_GPIOTE,GPIOTE_CLK_TSK);
-	// 	// nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_START);
 
-	// 	while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
 
-	// 	// gpio_pin_set_raw(gpio, DBGPIN, 0);
 
 	fs_write(&imf, buffer, QVGA_WIDTH*VGA_HEIGHT);
 
