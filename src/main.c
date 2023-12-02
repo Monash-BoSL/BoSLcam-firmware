@@ -49,7 +49,7 @@ const struct device * spi_sram;
 uint8_t image_buffer[IMAGE_SIZE_BYTES];
 
 static struct master_config_t mcfg;
-struct capture_t capture = {.data = image_buffer, .length = IMAGE_SIZE_BYTES, .time = 0};
+struct capture_t capture = {.data = image_buffer, .size = IMAGE_SIZE_BYTES, .time = 0};
 struct status_t stats = {.system_time = 0, .battery_voltage = -1, .captures = 0};
 
 int sleepy(uint32_t ms_sleep){
@@ -225,7 +225,7 @@ int loop(void){
 	ov7675_init(mcfg.im_cfg.auto_range_time);
 
 	LOG_INF("ov7675 capture");
-	ov7675_capture_sdhc_buffered(capture.data);
+	ov7675_capture_sdhc_buffered(capture.data, capture.size);
 	
 	// LOG_INF("image -> sdhc");
 	

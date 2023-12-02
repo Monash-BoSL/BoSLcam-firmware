@@ -52,9 +52,9 @@ int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
 
 	//overwrite capture with jpg data
 	ret = fs_open(&imf, path, FS_O_READ);
-	ret = fs_read(&imf, capture->data, capture->length);
+	ret = fs_read(&imf, capture->data, capture->size);
 	if(ret > 0){
-		capture->length = ret;//store the new file size the capture length
+		capture->size = ret;//store the new file size the capture length
 	}
 	fs_close(&imf);
 

@@ -168,7 +168,7 @@ void ov7675_init(uint32_t auto_time){
 
 }
 
-void ov7675_capture(uint8_t* buffer){
+void ov7675_capture(uint8_t* buffer, size_t buffer_size){
 	uint16_t wg = QVGA_WIDTH;//line width in pixels
 	uint16_t hg = VGA_HEIGHT;//number of lines per frame
 	uint16_t lg2;
@@ -210,8 +210,59 @@ void ov7675_capture(uint8_t* buffer){
 	// }
 }
 
+#define EBUFFERTOOSMALL 1
+int ov7675_capture_sdhc_buffered(uint8_t* buffer, const size_t buffer_size){
+	const uint16_t lines = VGA_HEIGHT;//number of lines per frame
+	const uint16_t line_width = QVGA_WIDTH;//line width in pixels
+	const uint16_t buffer_size_lines = buffer_size/(PIXEL_SIZE_BYTES*line_width);
+	LOG_INF("num: %d", buffer_size);
+	LOG_INF("dom: %d", (PIXEL_SIZE_BYTES*line_width));
+	LOG_INF("res: %d", buffer_size_lines);
 
-void ov7675_capture_sdhc_buffered(uint8_t* buffer){
+	if(buffer_size_lines < 1){return -EBUFFERTOOSMALL;}
+
+	struct fs_file_t imf;
+	fs_file_t_init(&imf);
+	fs_open(&imf, SDHC_PATH(SCRATCH_FILE), FS_O_WRITE | FS_O_CREATE);
+	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
+
+	LOG_INF("todo!() lock the exposure")
+
+	LOG_INF("ready\n");
+	uint16_t current_line = lines+1;
+	for(int16_t lines_remaining = lines; lines_remaining > 0; lines_remaining -= buffer_size_lines){
+		uint32_t buffer_index = 0;
+		//Wait for vsync 
+		while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
+		while(nrf_gpio_pin_read(SCCB_VS));//wait for low
+		
+		for(uint16_t line = lines; line > 0; line--){//get line
+			// if(line % 2 && current_line >= line && buffer_index >= buffer_size){
+			if(current_line < line || buffer_index >= buffer_size){
+				while(!(NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
+			}else{
+				current_line = line;
+				for(uint16_t pixel = line_width; pixel > 0; pixel--){//get pixel
+					//low byte
+					while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
+					buffer[buffer_index+1] = (uint8_t) NRF_P0->IN;//read in D0 - D8
+					while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
+					//high byte
+					while(NRF_P0->IN & (0x1 << SCCB_PCLK));//wait for high on PCLK
+					buffer[buffer_index] = (uint8_t) NRF_P0->IN;//read in D0 - D8
+					while(!(NRF_P0->IN & (0x1 << SCCB_PCLK)));//wait for low on PCLK
+					buffer_index += 2;
+				}
+			}
+			while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
+		}
+		fs_write(&imf, buffer, buffer_index);
+	}
+	fs_close(&imf);
+	return 0;
+}
+
+void ov7675_capture_stop_test(uint8_t* buffer){
 	uint16_t wg = QVGA_WIDTH;//line width in pixels
 	uint16_t hg = VGA_HEIGHT;//number of lines per frame
 	uint16_t lg2;
@@ -263,7 +314,6 @@ void ov7675_capture_sdhc_buffered(uint8_t* buffer){
 			nrf_gpiote_task_enable(NRF_GPIOTE,GPIOTE_CLK_TSK);
 
 			gpio_pin_set_raw(gpio, DBGPIN, 0);
-
 
 		}
 		

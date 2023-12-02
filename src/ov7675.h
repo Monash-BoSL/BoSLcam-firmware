@@ -7,8 +7,8 @@ enum COLORSPACE{YUV422,RGB565,BAYER_RGB};
 void set_color_space(enum COLORSPACE color);
 void set_res(enum image_size res);
 void ov7675_init(uint32_t auto_time);
-void ov7675_capture(uint8_t* buffer);
-void ov7675_capture_sdhc_buffered(uint8_t* buffer);
+void ov7675_capture(uint8_t* buffer, size_t buffer_size);
+int ov7675_capture_sdhc_buffered(uint8_t* buffer, size_t buffer_size);
 
 struct regval_list{
 	uint8_t reg_num;

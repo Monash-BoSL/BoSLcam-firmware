@@ -120,7 +120,7 @@ int ftp_write_bmp(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 	ret = ftp_put(path, bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
 	if (ret < 0){return ret;}
 
-	ret = ftp_put(path, capture->data, capture->length, FTP_PUT_APPEND);
+	ret = ftp_put(path, capture->data, capture->size, FTP_PUT_APPEND);
 	if (ret < 0){return ret;}
 
 	// ftp status
@@ -156,7 +156,7 @@ int ftp_write_jpg(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 	ret = ftp_type(FTP_TYPE_BINARY);
 	if (ret < 0){return ret;}
 
-	ret = ftp_put(path, capture->data, capture->length, FTP_PUT_NORMAL);
+	ret = ftp_put(path, capture->data, capture->size, FTP_PUT_NORMAL);
 	if (ret < 0){return ret;}
 
 	// ftp status

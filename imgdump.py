@@ -60,7 +60,7 @@ def dump_rtt(api: LowLevel.API, debug_board: bool):
 
 
     tok = time.time()
-    print(" Done ({:.2f} s)".format(tok-tik))
+    print(" Done {:03d} kB in {:.2f} s".format(len(data) >> 10, tok-tik))
 
 
 
