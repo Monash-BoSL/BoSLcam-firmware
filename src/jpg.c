@@ -17,7 +17,7 @@ LOG_MODULE_REGISTER(jpg);
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
 //overwrites the image buffer in ram with the jpg	  !!
-int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
+int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture, enum image_size im_size){
 	int ret;
 	char path[MAX_PATH];
 	struct fs_file_t imf;

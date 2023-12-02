@@ -33,27 +33,27 @@ extern const struct device * i2c_sccb;
 
 
 void wr_reg(uint8_t reg,uint8_t dat){
-	i2c_reg_write_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, dat);
+	i2c_reg_write_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, dat);
 }
 
 uint8_t rd_reg(uint8_t reg){
 	uint8_t val;
-	i2c_reg_read_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, &val);
+	i2c_reg_read_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, &val);
 	return val;
 }
 
 void se_reg(uint8_t reg,uint8_t flags){
 	uint8_t val;
-	i2c_reg_read_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, &val);
+	i2c_reg_read_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, &val);
 	val |= flags;
-	i2c_reg_write_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, val);
+	i2c_reg_write_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, val);
 }
 
 void cl_reg(uint8_t reg,uint8_t flags){
 	uint8_t val;
-	i2c_reg_read_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, &val);
+	i2c_reg_read_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, &val);
 	val &= ~flags;
-	i2c_reg_write_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, val);
+	i2c_reg_write_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, val);
 }
 
 static void wr_sensor_regs8_8(const struct regval_list reglist[]){
@@ -115,14 +115,12 @@ void ov7675_awb(int on){
 	_ov7675_write_flag(REG_COM8, COM8_AWB, on);
 }
 
-void ov7675_init(uint32_t auto_time){
+void ov7675_init(uint32_t auto_time, enum image_size im_size){
 	gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
 	LOG_INF("bind %s\n", gpio->name);
 	i2c_sccb = device_get_binding(DT_LABEL(DT_NODELABEL(i2c2)));
 	LOG_INF("bind %s\n", i2c_sccb->name);
 	
-
-
 	//setup gpio for all pins
 	gpio_pin_configure(gpio, SCCB_PEN, GPIO_OUTPUT);
 	gpio_pin_configure(gpio, SCCB_PDN, GPIO_OUTPUT);
@@ -137,8 +135,6 @@ void ov7675_init(uint32_t auto_time){
 	gpio_pin_set_raw(gpio, SCCB_PDN, 0);
 				
 	NRF_P0->PIN_CNF[SCCB_XCLK] = 0b00000000000000000000000000000001; 
-
-
 
 	//setup clock on XCLK pin at 8 MHz.
 	nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_16MHz);
@@ -164,7 +160,7 @@ void ov7675_init(uint32_t auto_time){
 	// wr_reg(0x11,0);//set clock divider to 1, no need to slow it down!
 	k_msleep(100);
 	////////////////////////////////////////////////////////////////////////////////
-	struct ov7670_win_size *wsize = &ov7675_win_sizes[2];
+	struct ov7675_image_size *wsize = &ov7675_image_sizes[im_size];
 	
 	wr_reg(REG_COM7, COM7_RESET);//Reset the camera.
 	k_msleep(100);
@@ -196,11 +192,17 @@ void ov7675_init(uint32_t auto_time){
 	}
 }
 
-void ov7675_capture(uint8_t* buffer, size_t buffer_size){
+#define EBADIMAGESIZE 2
+int ov7675_capture(uint8_t* buffer, size_t buffer_size, enum image_size im_size){
 	uint16_t wg = QVGA_WIDTH;//line width in pixels
 	uint16_t hg = VGA_HEIGHT;//number of lines per frame
 	uint16_t lg2;
 	uint32_t p = 0;
+	
+	if(im_size != QVGA){
+		LOG_ERR("SRAM capture only supports QVGA");
+		return -EBADIMAGESIZE;
+	}
 
 	LOG_INF("ready\n");
 	//Wait for vsync 
@@ -236,23 +238,27 @@ void ov7675_capture(uint8_t* buffer, size_t buffer_size){
 		
 		// buffer[p] = (x & ~(0x3)) | ((x >> 0x1)&0x1) | ((x << 1)&0x2);
 	// }
+	return 0;
 }
 
 #define EBUFFERTOOSMALL 1
-int ov7675_capture_sdhc_buffered(uint8_t* buffer, const size_t buffer_size){
-	const uint16_t line_width = QVGA_WIDTH;//line width in pixels
+int ov7675_capture_sdhc_buffered(uint8_t* buffer, const size_t buffer_size, enum image_size im_size){
+	const uint16_t line_width = ov7675_image_sizes[im_size].width;//line width in pixels
 
-	const uint16_t line_skip = 1;
+	const uint16_t line_skip = ov7675_image_sizes[im_size].line_skip;
 	const uint16_t physical_lines = VGA_HEIGHT;//number of lines per frame which get sent over SCCB
 	const uint16_t logical_lines = physical_lines/line_skip;//number of lines per frame which form the image
 	const uint16_t buffer_size_lines = buffer_size/(PIXEL_SIZE_BYTES*line_width);//number of lines of the image which the buffer can fit
 
-	if(buffer_size_lines < 1){return -EBUFFERTOOSMALL;}
+	if(buffer_size_lines < 1){
+		LOG_ERR("image buffer too small (<1 line)");
+		return -EBUFFERTOOSMALL;
+		}
 
 	struct fs_file_t imf;
 	fs_file_t_init(&imf);
 	fs_open(&imf, SDHC_PATH(SCRATCH_FILE), FS_O_WRITE | FS_O_CREATE);
-	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
+	fs_write(&imf, bmp_headers[im_size], BMPIMAGEOFFSET);
 
 	ov7675_aec(0); 
 	ov7675_agc(0);
@@ -306,7 +312,7 @@ void __ov7675_capture_stop_test(uint8_t* buffer){
 	struct fs_file_t imf;
 	fs_file_t_init(&imf);
 	fs_open(&imf, SDHC_PATH(SCRATCH_FILE), FS_O_WRITE | FS_O_CREATE);
-	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
+	fs_write(&imf, bmp_headers[QVGA], BMPIMAGEOFFSET);
 
 
 	LOG_INF("ready\n");

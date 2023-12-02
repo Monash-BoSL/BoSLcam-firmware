@@ -433,7 +433,7 @@ int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
 }
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
-int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
+int sdhc_write_image(char* sdhc_path, struct capture_t* capture, enum image_size im_size){
 	char path[MAX_PATH];
 	struct fs_file_t imf;
 
@@ -449,7 +449,7 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
 	fs_mkdirs(path);
 
 	fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE);
-	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
+	fs_write(&imf, bmp_headers[im_size], BMPIMAGEOFFSET);
 	fs_write(&imf, capture->data, capture->size);
 	fs_close(&imf);
 

@@ -198,35 +198,15 @@ static struct regval_list ov7670_default_regs[] = {
 	{ 0xff, 0xff },	/* END MARKER */
 };
 
-static struct ov7670_win_size ov7675_win_sizes[] = {
+static struct ov7675_image_size ov7675_image_sizes[] = {
 	/*
 	 * Values copied from ov7670_win_sizes and verified to work. 
 	 * The QCIF and QQVGA values were changed to center the cropped window.
 	 */
-	{
-		.width		= VGA_WIDTH,
-		.height		= VGA_HEIGHT,
-		.com7_bit	= COM7_FMT_VGA,
-		.hstart		= 158,	/* These values from */
-		.hstop		=  14,	/* Omnivision */
-		.vstart		=  14,  /* Empirically determined */
-		.vstop		= 494,
-		.regs		= NULL,
-	},
-		/* CIF */
-	{
-		.width		= CIF_WIDTH,
-		.height		= CIF_HEIGHT,
-		.com7_bit	= COM7_FMT_CIF,
-		.hstart		= 170,	/* Copied from ov7670 and verified*/
-		.hstop		=  90,
-		.vstart		=  14,
-		.vstop		= 494,
-		.regs		= NULL,
-	},
 	/* QVGA */
 	{
 		.width		= QVGA_WIDTH,
+		.line_skip  = 2,
 		.height		= QVGA_HEIGHT,
 		.com7_bit	= COM7_FMT_QVGA,
 		.hstart		= 168,	/* Copied from ov7670 and verified*/
@@ -235,9 +215,46 @@ static struct ov7670_win_size ov7675_win_sizes[] = {
 		.vstop		= 492,
 		.regs		= NULL,
 	},
+	/* VGA */
+	{
+		.width		= VGA_WIDTH,
+		.line_skip  = 1,
+		.height		= VGA_HEIGHT,
+		.com7_bit	= COM7_FMT_VGA,
+		.hstart		= 158,	/* These values from */
+		.hstop		=  14,	/* Omnivision */
+		.vstart		=  14,  /* Empirically determined */
+		.vstop		= 494,
+		.regs		= NULL,
+	},
+	/* QQVGA */
+	{
+		.width		= QQVGA_WIDTH,
+		.line_skip  = 1,//todo!!
+		.height		= QQVGA_HEIGHT,
+		.com7_bit	= COM7_FMT_VGA, /* see comment above */
+		.hstart		= 0x16,	/* Empirically determined and different from ov7670*/
+		.hstop		= 0x04,
+		.vstart		= 0x22, /* These values seem to be overridden by the regs */
+		.vstop		= 0x7a,
+		.regs		= ov7675_qqvga_regs,/* changed to better center on OV7675 */
+	},
+	/* CIF */
+	{
+		.width		= CIF_WIDTH,
+		.line_skip  = 1,//todo!!
+		.height		= CIF_HEIGHT,
+		.com7_bit	= COM7_FMT_CIF,
+		.hstart		= 170,	/* Copied from ov7670 and verified*/
+		.hstop		=  90,
+		.vstart		=  14,
+		.vstop		= 494,
+		.regs		= NULL,
+	},
 	/* QCIF */
 	{
 		.width		= QCIF_WIDTH,
+		.line_skip  = 1,//todo!!
 		.height		= QCIF_HEIGHT,
 		.com7_bit	= COM7_FMT_VGA, /* see comment above */
 		.hstart		= 250,	/* Empirically determined and different from ov7670*/
@@ -246,15 +263,4 @@ static struct ov7670_win_size ov7675_win_sizes[] = {
 		.vstop		= 180,
 		.regs		= ov7670_qcif_regs,
 	},
-	/* QQVGA */
-	{
-		.width		= QQVGA_WIDTH,
-		.height		= QQVGA_HEIGHT,
-		.com7_bit	= COM7_FMT_VGA, /* see comment above */
-		.hstart		= 0x16,	/* Empirically determined and different from ov7670*/
-		.hstop		= 0x04,
-		.vstart		= 0x22, /* These values seem to be overridden by the regs */
-		.vstop		= 0x7a,
-		.regs		= ov7675_qqvga_regs,/* changed to better center on OV7675 */
-	}
 };

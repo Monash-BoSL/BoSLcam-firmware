@@ -80,7 +80,7 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
 	return 0;
 }
 
-int ftp_write_bmp(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
+int ftp_write_bmp(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture, enum image_size im_size){
 	char path[MAX_PATH];
 	int ret;
 	
@@ -117,7 +117,7 @@ int ftp_write_bmp(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 	ret = ftp_type(FTP_TYPE_BINARY);
 	if (ret < 0){return ret;}
 
-	ret = ftp_put(path, bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
+	ret = ftp_put(path, bmp_headers[im_size], BMPIMAGEOFFSET, FTP_PUT_NORMAL);
 	if (ret < 0){return ret;}
 
 	ret = ftp_put(path, capture->data, capture->size, FTP_PUT_APPEND);

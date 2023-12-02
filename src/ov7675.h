@@ -6,17 +6,18 @@ uint8_t rd_reg(uint8_t reg);
 enum COLORSPACE{YUV422,RGB565,BAYER_RGB};
 void set_color_space(enum COLORSPACE color);
 void set_res(enum image_size res);
-void ov7675_init(uint32_t auto_time);
-void ov7675_capture(uint8_t* buffer, size_t buffer_size);
-int ov7675_capture_sdhc_buffered(uint8_t* buffer, size_t buffer_size);
+void ov7675_init(uint32_t auto_time, enum image_size im_size);
+int ov7675_capture(uint8_t* buffer, size_t buffer_size, enum image_size im_size);
+int ov7675_capture_sdhc_buffered(uint8_t* buffer, size_t buffer_size, enum image_size im_size);
 
 struct regval_list{
 	uint8_t reg_num;
 	uint8_t value;
 };
 
-struct ov7670_win_size {
+struct ov7675_image_size {
 	int	width;
+	int line_skip;
 	int	height;
 	unsigned char com7_bit;
 	int	hstart;		/* Start/stop values for the camera.  Note */
@@ -26,8 +27,9 @@ struct ov7670_win_size {
 	struct regval_list *regs; /* Regs to tweak */
 };
 
+#define PIXEL_SIZE_BYTES 	(2)
 
-#define OV7670_I2C_ADDRESS	0x21
+#define OV7675_I2C_ADDRESS	(0x21)
 
 
 #define VGA_WIDTH 		(640)
@@ -44,18 +46,18 @@ struct ov7670_win_size {
 #define PLL_FACTOR	(4)
 
 /* Registers */
-#define REG_GAIN	0x00			/* Gain lower 8 bits (rest in vref) */
-#define REG_BLUE	0x01			/* blue gain */
-#define REG_RED		0x02			/* red gain */
-#define REG_VREF	0x03			/* Pieces of GAIN, VSTART, VSTOP */
-#define REG_COM1	0x04			/* Control 1 */
-#define  COM1_CCIR656	  0x40  	/* CCIR656 enable */
-#define REG_BAVE	0x05			/* U/B Average level */
-#define REG_GbAVE	0x06			/* Y/Gb Average level */
-#define REG_AECHH	0x07			/* AEC MS 5 bits */
-#define REG_RAVE	0x08			/* V/R Average level */
-#define REG_COM2	0x09			/* Control 2 */
-#define  COM2_SSLEEP	  0x10		/* Soft sleep mode */
+#define REG_GAIN	(0x00)			/* Gain lower 8 bits (rest in vref) */
+#define REG_BLUE	(0x01)			/* blue gain */
+#define REG_RED		(0x02)			/* red gain */
+#define REG_VREF	(0x03)			/* Pieces of GAIN, VSTART, VSTOP */
+#define REG_COM1	(0x04)			/* Control 1 */
+#define  COM1_CCIR656	  (0x40)  	/* CCIR656 enable */
+#define REG_BAVE	(0x05)			/* U/B Average level */
+#define REG_GbAVE	(0x06)			/* Y/Gb Average level */
+#define REG_AECHH	(0x07)			/* AEC MS 5 bits */
+#define REG_RAVE	(0x08)			/* V/R Average level */
+#define REG_COM2	(0x09)			/* Control 2 */
+#define  COM2_SSLEEP	  (0x10)	/* Soft sleep mode */
 #define REG_PID		0x0a			/* Product ID MSB */
 #define REG_VER		0x0b			/* Product ID LSB */
 #define REG_COM3	0x0c			/* Control 3 */

@@ -46,7 +46,7 @@ const struct device * gpio;
 const struct device * i2c_sccb;
 const struct device * spi_sram;
 
-uint8_t image_buffer[IMAGE_SIZE_BYTES];
+uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
 static struct master_config_t mcfg;
 struct capture_t capture = {.data = image_buffer, .size = sizeof(image_buffer), .time = 0};
@@ -222,10 +222,10 @@ int loop(void){
 	update_status();
 	
 	LOG_INF("ov7675 initialisation");
-	ov7675_init(mcfg.im_cfg.auto_range_time);
+	ov7675_init(mcfg.im_cfg.auto_range_time, mcfg.im_cfg.size);
 
 	LOG_INF("ov7675 capture");
-	ov7675_capture_sdhc_buffered(capture.data, capture.size);
+	ov7675_capture_sdhc_buffered(capture.data, capture.size, mcfg.im_cfg.size);
 	
 	// LOG_INF("image -> sdhc");
 	
