@@ -3,23 +3,25 @@
 #include <date_time.h>
 
 #define PW_SUFFIX "_Z4GQ3tjuzu"
-#define CEASER_KEY  37
+#define CEASER_KEY  (37)
 
-#define CAMADDR_WR  0x42
-#define CAMADDR_RD  0x43
-#define CAMADDR		0x21
+#define CAMADDR_WR  (0x42)
+#define CAMADDR_RD  (0x43)
+#define CAMADDR		(0x21)
 
-#define SCCB_VS		11
-#define SCCB_HREF	12
-#define SCCB_PCLK	13
-#define SCCB_XCLK	14
-#define SCCB_PEN	15
-#define SCCB_PDN	16
+#define SCCB_VS		(11)
+#define SCCB_HREF	(12)
+#define SCCB_PCLK	(13)
+#define SCCB_XCLK	(14)
+#define SCCB_PEN	(15)
+#define SCCB_PDN	(16)
 
-#define SCCB_CLK_DPPI_CH 0
-#define GPIOTE_CLK_TSK 0
+#define DBGPIN		(18)
 
-#define BMPIMAGEOFFSET 66
+#define SCCB_CLK_DPPI_CH 	(0)
+#define GPIOTE_CLK_TSK 		(0)
+
+#define BMPIMAGEOFFSET 		(66)
 #define IMAGE_WIDTH			(320)
 #define IMAGE_HEIGHT		(240)
 #define IMAGE_SIZE_BYTES 	(IMAGE_WIDTH*IMAGE_HEIGHT*2)

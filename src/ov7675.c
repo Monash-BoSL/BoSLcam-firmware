@@ -41,6 +41,21 @@ uint8_t rd_reg(uint8_t reg){
 	i2c_reg_read_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, &val);
 	return val;
 }
+
+void se_reg(uint8_t reg,uint8_t flags){
+	uint8_t val;
+	i2c_reg_read_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, &val);
+	val |= flags;
+	i2c_reg_write_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, val);
+}
+
+void cl_reg(uint8_t reg,uint8_t flags){
+	uint8_t val;
+	i2c_reg_read_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, &val);
+	val &= ~flags;
+	i2c_reg_write_byte(i2c_sccb, OV7670_I2C_ADDRESS, reg, val);
+}
+
 static void wr_sensor_regs8_8(const struct regval_list reglist[]){
 	const struct regval_list *next = reglist;
 	for(;;){
@@ -81,7 +96,25 @@ static void ov7670_set_hw(int hstart, int hstop, int vstart, int vstop)
 
 }
 
-#define DBGPIN (18)
+void _ov7675_write_flag(uint8_t reg, uint8_t flag, int on){
+	if(on){	se_reg(reg, flag);}
+	else{	cl_reg(reg, flag);}
+}
+
+void ov7675_aec(int on){
+	_ov7675_write_flag(REG_COM8, COM8_AEC, on);
+}
+
+
+void ov7675_agc(int on){
+	// _ov7675_write_flag(REG_COM13, COM13_AGC, on);
+	_ov7675_write_flag(REG_COM8, COM8_AGC, on);
+}
+
+void ov7675_awb(int on){
+	_ov7675_write_flag(REG_COM8, COM8_AWB, on);
+}
+
 void ov7675_init(uint32_t auto_time){
 	gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
 	LOG_INF("bind %s\n", gpio->name);
@@ -215,9 +248,6 @@ int ov7675_capture_sdhc_buffered(uint8_t* buffer, const size_t buffer_size){
 	const uint16_t lines = VGA_HEIGHT;//number of lines per frame
 	const uint16_t line_width = QVGA_WIDTH;//line width in pixels
 	const uint16_t buffer_size_lines = buffer_size/(PIXEL_SIZE_BYTES*line_width);
-	LOG_INF("num: %d", buffer_size);
-	LOG_INF("dom: %d", (PIXEL_SIZE_BYTES*line_width));
-	LOG_INF("res: %d", buffer_size_lines);
 
 	if(buffer_size_lines < 1){return -EBUFFERTOOSMALL;}
 
@@ -226,7 +256,14 @@ int ov7675_capture_sdhc_buffered(uint8_t* buffer, const size_t buffer_size){
 	fs_open(&imf, SDHC_PATH(SCRATCH_FILE), FS_O_WRITE | FS_O_CREATE);
 	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
 
-	LOG_INF("todo!() lock the exposure")
+	ov7675_aec(0); 
+	ov7675_agc(0);
+	ov7675_awb(0);
+
+	while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
+	while(nrf_gpio_pin_read(SCCB_VS));//wait for low 
+	while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
+	while(nrf_gpio_pin_read(SCCB_VS));//wait for low 
 
 	LOG_INF("ready\n");
 	uint16_t current_line = lines+1;
@@ -237,7 +274,7 @@ int ov7675_capture_sdhc_buffered(uint8_t* buffer, const size_t buffer_size){
 		while(nrf_gpio_pin_read(SCCB_VS));//wait for low
 		
 		for(uint16_t line = lines; line > 0; line--){//get line
-			// if(line % 2 && current_line >= line && buffer_index >= buffer_size){
+			//todo: div by 2 to get QVGA
 			if(current_line < line || buffer_index >= buffer_size){
 				while(!(NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
 			}else{
@@ -259,6 +296,11 @@ int ov7675_capture_sdhc_buffered(uint8_t* buffer, const size_t buffer_size){
 		fs_write(&imf, buffer, buffer_index);
 	}
 	fs_close(&imf);
+
+	ov7675_aec(1);
+	ov7675_agc(1);
+	ov7675_awb(1);
+
 	return 0;
 }
 
