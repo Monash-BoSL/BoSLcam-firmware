@@ -169,7 +169,6 @@ void ov7675_init(uint32_t auto_time){
 	wr_reg(REG_COM7, COM7_RESET);//Reset the camera.
 	k_msleep(100);
 	wr_sensor_regs8_8(ov7670_default_regs);
-
 	
 	uint8_t com7 = ov7670_fmt_rgb565[0].value;
 	com7 |= wsize->com7_bit;
@@ -192,13 +191,9 @@ void ov7675_init(uint32_t auto_time){
 	// wr_reg(REG_COM14, COM14_DCWEN | 0b0100);//pixel clock divider
 	////////////////////////////////////////////////////////////////////////////////
 
-	
-	
 	if(auto_time){
 		k_msleep(auto_time);//delay for autoexposure awb, etc ...
 	}
-
-
 }
 
 void ov7675_capture(uint8_t* buffer, size_t buffer_size){
@@ -302,7 +297,7 @@ int ov7675_capture_sdhc_buffered(uint8_t* buffer, const size_t buffer_size){
 	return 0;
 }
 
-void ov7675_capture_stop_test(uint8_t* buffer){
+void __ov7675_capture_stop_test(uint8_t* buffer){
 	uint16_t wg = QVGA_WIDTH;//line width in pixels
 	uint16_t hg = VGA_HEIGHT;//number of lines per frame
 	uint16_t lg2;
