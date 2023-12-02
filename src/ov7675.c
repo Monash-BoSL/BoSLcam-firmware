@@ -260,11 +260,6 @@ int ov7675_capture_sdhc_buffered(uint8_t* buffer, const size_t buffer_size){
 	ov7675_agc(0);
 	ov7675_awb(0);
 
-	while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
-	while(nrf_gpio_pin_read(SCCB_VS));//wait for low 
-	while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
-	while(nrf_gpio_pin_read(SCCB_VS));//wait for low 
-
 	LOG_INF("ready\n");
 	uint16_t current_line = lines+1;
 	for(int16_t lines_remaining = lines; lines_remaining > 0; lines_remaining -= buffer_size_lines){
