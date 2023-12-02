@@ -49,7 +49,7 @@ const struct device * spi_sram;
 uint8_t image_buffer[IMAGE_SIZE_BYTES];
 
 static struct master_config_t mcfg;
-struct capture_t capture = {.data = image_buffer, .size = IMAGE_SIZE_BYTES, .time = 0};
+struct capture_t capture = {.data = image_buffer, .size = sizeof(image_buffer), .time = 0};
 struct status_t stats = {.system_time = 0, .battery_voltage = -1, .captures = 0};
 
 int sleepy(uint32_t ms_sleep){

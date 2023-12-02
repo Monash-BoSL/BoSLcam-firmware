@@ -245,9 +245,12 @@ void ov7675_capture(uint8_t* buffer, size_t buffer_size){
 
 #define EBUFFERTOOSMALL 1
 int ov7675_capture_sdhc_buffered(uint8_t* buffer, const size_t buffer_size){
-	const uint16_t lines = VGA_HEIGHT;//number of lines per frame
 	const uint16_t line_width = QVGA_WIDTH;//line width in pixels
-	const uint16_t buffer_size_lines = buffer_size/(PIXEL_SIZE_BYTES*line_width);
+
+	const uint16_t line_skip = 1;
+	const uint16_t physical_lines = VGA_HEIGHT;//number of lines per frame which get sent over SCCB
+	const uint16_t logical_lines = physical_lines/line_skip;//number of lines per frame which form the image
+	const uint16_t buffer_size_lines = buffer_size/(PIXEL_SIZE_BYTES*line_width);//number of lines of the image which the buffer can fit
 
 	if(buffer_size_lines < 1){return -EBUFFERTOOSMALL;}
 
@@ -261,16 +264,16 @@ int ov7675_capture_sdhc_buffered(uint8_t* buffer, const size_t buffer_size){
 	ov7675_awb(0);
 
 	LOG_INF("ready\n");
-	uint16_t current_line = lines+1;
-	for(int16_t lines_remaining = lines; lines_remaining > 0; lines_remaining -= buffer_size_lines){
+	uint16_t current_line = physical_lines;
+	for(int16_t lines_remaining = logical_lines; lines_remaining > 0; lines_remaining -= buffer_size_lines){
 		uint32_t buffer_index = 0;
 		//Wait for vsync 
 		while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
 		while(nrf_gpio_pin_read(SCCB_VS));//wait for low
 		
-		for(uint16_t line = lines; line > 0; line--){//get line
+		for(uint16_t line = physical_lines; line > 0; line--){//get line
 			//todo: div by 2 to get QVGA
-			if(current_line < line || buffer_index >= buffer_size){
+			if((line % line_skip != 0) || current_line < line || buffer_index >= buffer_size){
 				while(!(NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
 			}else{
 				current_line = line;
