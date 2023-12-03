@@ -49,7 +49,7 @@ const struct device * spi_sram;
 uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
 static struct master_config_t mcfg;
-struct capture_t capture = {.data = image_buffer, .size = sizeof(image_buffer), .time = 0};
+struct capture_t capture = {.data = image_buffer, .size = sizeof(image_buffer), .resolution = QVGA, .format = BMP, .time = 0};
 struct status_t stats = {.system_time = 0, .battery_voltage = -1, .captures = 0};
 
 int sleepy(uint32_t ms_sleep){
@@ -59,8 +59,7 @@ int sleepy(uint32_t ms_sleep){
 	return k_msleep(ms_sleep);
 }
 
-int get_capture_time(int32_t* ct){
-	
+int get_time(int32_t* ct){
 	int ret;
 
 	uint64_t unix_time_ms; 
@@ -161,7 +160,6 @@ int setup(void){
 		return ret;
 	}
 
-	
 	int d = mcfg.trig_cfg.logging_decimation_ftp;	
 	if(d > 0){//first try get time from network
 		ftp_setup();
@@ -218,14 +216,18 @@ int setup(void){
 int loop(void){
 	int d = mcfg.trig_cfg.logging_decimation_ftp;
 	
-	get_capture_time(&capture.time);
+	get_time(&capture.time);
 	update_status();
 	
 	LOG_INF("ov7675 initialisation");
-	ov7675_init(mcfg.im_cfg.auto_range_time, mcfg.im_cfg.size);
+	mcfg.im_cfg.resolution = QVGA;//dbg
+	// mcfg.im_cfg.resolution = VGA;//dbg
+	ov7675_init(mcfg.im_cfg.auto_range_time, mcfg.im_cfg.resolution, mcfg.im_cfg.format, &capture);
+
+	// capture.resolution = VGA;//dbg
 
 	LOG_INF("ov7675 capture");
-	ov7675_capture_sdhc_buffered(capture.data, capture.size, mcfg.im_cfg.size);
+	ov7675_capture_sdhc_buffered(&capture);
 	
 	// LOG_INF("image -> sdhc");
 	

@@ -1,14 +1,16 @@
 #pragma once
 #include <stdint.h>
 
+#include "common.h"
+
 void wr_reg(uint8_t reg,uint8_t dat);
 uint8_t rd_reg(uint8_t reg);
 enum COLORSPACE{YUV422,RGB565,BAYER_RGB};
-void set_color_space(enum COLORSPACE color);
-void set_res(enum image_size res);
-void ov7675_init(uint32_t auto_time, enum image_size im_size);
-int ov7675_capture(uint8_t* buffer, size_t buffer_size, enum image_size im_size);
-int ov7675_capture_sdhc_buffered(uint8_t* buffer, size_t buffer_size, enum image_size im_size);
+// void set_color_space(enum COLORSPACE color);
+// void set_res(enum image_resolution res);
+void ov7675_init(uint32_t auto_time, enum image_resolution resolution, enum image_format format, struct capture_t* capture);
+int ov7675_capture(struct capture_t* capture);
+int ov7675_capture_sdhc_buffered(struct capture_t* capture);
 
 struct regval_list{
 	uint8_t reg_num;
@@ -30,18 +32,6 @@ struct ov7675_image_size {
 #define PIXEL_SIZE_BYTES 	(2)
 
 #define OV7675_I2C_ADDRESS	(0x21)
-
-
-#define VGA_WIDTH 		(640)
-#define VGA_HEIGHT 		(480)
-#define CIF_WIDTH 		(352)
-#define CIF_HEIGHT 		(240)
-#define QVGA_WIDTH 		(320)
-#define QVGA_HEIGHT 	(240)
-#define QCIF_WIDTH 		(176)
-#define QCIF_HEIGHT 	(144)
-#define QQVGA_WIDTH 	(160)
-#define QQVGA_HEIGHT 	(120)
 
 #define PLL_FACTOR	(4)
 
