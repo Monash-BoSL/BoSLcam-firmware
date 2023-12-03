@@ -220,11 +220,9 @@ int loop(void){
 	update_status();
 	
 	LOG_INF("ov7675 initialisation");
-	// mcfg.im_cfg.resolution = QVGA;//dbg
-	mcfg.im_cfg.resolution = VGA;//dbg
+	mcfg.im_cfg.resolution = QVGA;//dbg
+	// mcfg.im_cfg.resolution = VGA;//dbg
 	ov7675_init(mcfg.im_cfg.auto_range_time, mcfg.im_cfg.resolution, mcfg.im_cfg.format, &capture);
-
-	// capture.resolution = VGA;//dbg
 
 	LOG_INF("ov7675 capture");
 	ov7675_capture_sdhc_buffered(&capture);

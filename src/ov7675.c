@@ -186,8 +186,7 @@ void ov7675_init(uint32_t auto_time, enum image_resolution resolution, enum imag
 	}
 	
 	wr_reg(REG_DBLV, DBLV_BYPASS);//maybe?
-	wr_reg(REG_CLKRC, CLK_SCALE & 0x02);//set clock divider to 1, no need to slow it down!
-	// wr_reg(REG_COM14, COM14_DCWEN | 0b0100);//pixel clock divider
+	wr_reg(REG_CLKRC, CLK_SCALE & 0x02);//set clock divider to 2, needed for vga, qvga works fine with just 0x01
 	////////////////////////////////////////////////////////////////////////////////
 
 	if(auto_time){
