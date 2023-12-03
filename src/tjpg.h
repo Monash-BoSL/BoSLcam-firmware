@@ -1145,7 +1145,7 @@ static int tjei_encode_main(TJEState* state,
                         b = (rgb & 0b1111100000000000) >> 8;
                         break;
                     }
-                    
+
                     float luma = 0.299f   * r + 0.587f    * g + 0.114f    * b - 128;
                     float cb   = -0.1687f * r - 0.3313f   * g + 0.5f      * b;
                     float cr   = 0.5f     * r - 0.4187f   * g - 0.0813f   * b;

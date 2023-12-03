@@ -4,17 +4,17 @@
 
 
 void LOG_UNIXTIME(const int32_t ln){
-	int ret;
-	int32_t ct;
-	uint64_t unix_time_ms; 
-	ret = date_time_now(&unix_time_ms);
-	if(ret < 0){return ret;}
-	ct = (uint32_t) (unix_time_ms/1000);
+    int ret;
+    int32_t ct;
+    uint64_t unix_time_ms;
+    ret = date_time_now(&unix_time_ms);
+    if(ret < 0){return ret;}
+    ct = (uint32_t) (unix_time_ms/1000);
 
-	printk("%d: UNIX TIME: %d s\n", ln, ct);
+    printk("%d: UNIX TIME: %d s\n", ln, ct);
 
 
-	return 0;
+    return 0;
 }
 
 #include <zephyr.h>
@@ -32,14 +32,14 @@ void LOG_UNIXTIME(const int32_t ln){
 const struct device *leddev;
 
 void led(bool on) {
-	int ret;
+    int ret;
 
-	leddev = device_get_binding(LED0);
+    leddev = device_get_binding(LED0);
 
-	ret = gpio_pin_configure(leddev, PIN, GPIO_OUTPUT_ACTIVE | FLAGS);
-	if (ret < 0) {
-		return;
-	}
-		
-	gpio_pin_set(leddev, PIN, (int)on);
+    ret = gpio_pin_configure(leddev, PIN, GPIO_OUTPUT_ACTIVE | FLAGS);
+    if (ret < 0) {
+        return;
+    }
+
+    gpio_pin_set(leddev, PIN, (int)on);
 }

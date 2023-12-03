@@ -13,20 +13,20 @@ int ov7675_capture(struct capture_t* capture);
 int ov7675_capture_sdhc_buffered(struct capture_t* capture);
 
 struct regval_list{
-	uint8_t reg_num;
-	uint8_t value;
+    uint8_t reg_num;
+    uint8_t value;
 };
 
 struct ov7675_image_size {
-	int	width;
-	int line_skip;
-	int	height;
-	unsigned char com7_bit;
-	int	hstart;		/* Start/stop values for the camera.  Note */
-	int	hstop;		/* that they do not always make complete */
-	int	vstart;		/* sense to humans, but evidently the sensor */
-	int	vstop;		/* will do the right thing... */
-	struct regval_list *regs; /* Regs to tweak */
+    int	width;
+    int line_skip;
+    int	height;
+    unsigned char com7_bit;
+    int	hstart;		/* Start/stop values for the camera.  Note */
+    int	hstop;		/* that they do not always make complete */
+    int	vstart;		/* sense to humans, but evidently the sensor */
+    int	vstop;		/* will do the right thing... */
+    struct regval_list *regs; /* Regs to tweak */
 };
 
 #define PIXEL_SIZE_BYTES 	(2)
