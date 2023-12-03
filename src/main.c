@@ -32,10 +32,11 @@
 [ ] use yacc to build config parser
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
-[ ] add jpeg mode
+[X] add jpeg mode
 [ ] add option to switch to 640x480
 [ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] issue with network time reset on low power sleep?
+[ ] find best idle states for pins (eg: 28) for low power
 ****************************************************/
 
 
@@ -43,11 +44,12 @@ LOG_MODULE_REGISTER(main);
 
 const struct device * gpio; 
 const struct device * i2c_sccb;
+const struct device * spi_sram;
 
-uint8_t image_buffer[IMAGE_SIZE_BYTES];
+uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
 static struct master_config_t mcfg;
-struct capture_t capture = {.data = image_buffer, .length = IMAGE_SIZE_BYTES, .time = 0};
+struct capture_t capture = {.data = image_buffer, .size = sizeof(image_buffer), .resolution = QVGA, .format = BMP, .time = 0};
 struct status_t stats = {.system_time = 0, .battery_voltage = -1, .captures = 0};
 
 int sleepy(uint32_t ms_sleep){
@@ -57,8 +59,7 @@ int sleepy(uint32_t ms_sleep){
 	return k_msleep(ms_sleep);
 }
 
-int get_capture_time(int32_t* ct){
-	
+int get_time(int32_t* ct){
 	int ret;
 
 	uint64_t unix_time_ms; 
@@ -159,7 +160,6 @@ int setup(void){
 		return ret;
 	}
 
-	
 	int d = mcfg.trig_cfg.logging_decimation_ftp;	
 	if(d > 0){//first try get time from network
 		ftp_setup();
@@ -216,18 +216,25 @@ int setup(void){
 int loop(void){
 	int d = mcfg.trig_cfg.logging_decimation_ftp;
 	
-	get_capture_time(&capture.time);
+	get_time(&capture.time);
 	update_status();
-
 	
 	LOG_INF("ov7675 initialisation");
-	ov7675_init(mcfg.im_cfg.auto_range_time);
+	mcfg.im_cfg.resolution = QVGA;//dbg
+	// mcfg.im_cfg.resolution = VGA;//dbg
+	ov7675_init(mcfg.im_cfg.auto_range_time, mcfg.im_cfg.resolution, mcfg.im_cfg.format, &capture);
 
 	LOG_INF("ov7675 capture");
-	ov7675_capture(capture.data);
-	
+	ov7675_capture_sdhc_buffered(&capture);
+
+#ifdef _DBG_SEND_IMAGE_RTT
+	sdhc_file_to_rtt(SCRATCH_FILE);
+#endif
+
 	LOG_INF("image -> sdhc");
-	sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
+	sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
+
+	// sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
 	sdhc_write_status(mcfg.sd_cfg.status_path, &stats);
 
 	if(mcfg.im_cfg.format == JPG){
@@ -278,12 +285,16 @@ int loop(void){
 void main(void){
 	int ret;
 	//some low power stuff
-	nrf_gpio_cfg_input( 28, NRF_GPIO_PIN_PULLUP);
+
+	//try out high and low for min power
+	// nrf_gpio_cfg_input( 28, NRF_GPIO_PIN_PULLUP);
+	//
 	NRF_UARTE0->ENABLE = 0;
-	NRF_UARTE1->ENABLE = 0;
+	NRF_SPIM1->ENABLE = 0;
 	NRF_TWIM2->ENABLE = 0;
 	
 	LOG_INF("begin!");
+
 
 	ret = setup();
 	if(ret < 0){
@@ -292,7 +303,6 @@ void main(void){
 		//try call for help
 	}
 	
-		
 	while(1){
 		loop();
 	}
@@ -304,7 +314,4 @@ void main(void){
 	while(1){
 		k_msleep(1000);
 	}
-	// k_msleep(5000);
-	
-	// while(1){}
 }

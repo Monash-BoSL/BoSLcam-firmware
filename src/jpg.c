@@ -12,7 +12,6 @@
 #include "sd.h"
 #include "jpg.h"
 
-static const char* disk_mount_pt = "/SD:";
 
 LOG_MODULE_REGISTER(jpg);
 
@@ -20,15 +19,14 @@ LOG_MODULE_REGISTER(jpg);
 //overwrites the image buffer in ram with the jpg	  !!
 int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
 	int ret;
-	const uint32_t max_path_length = 256;
-	char path[max_path_length];
+	char path[MAX_PATH];
 	struct fs_file_t imf;
 	
-	if(strlen(sdhc_path) > max_path_length + sizeof(disk_mount_pt)-1){
+	if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
-	sprintf(path, "%s%s%08X.jpg", disk_mount_pt,sdhc_path, capture->time);
+	sprintf(path, "%s%s%08X.jpg", DISK_MOUNT_PT,sdhc_path, capture->time);
 	
 	
 	fs_file_t_init(&imf);
@@ -39,8 +37,8 @@ int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
     ret = tje_encode_with_func(fs_write,
                         &imf,
                         2,//make quality a config parameter
-                        IMAGE_WIDTH,
-                        IMAGE_HEIGHT,
+                        image_resolutions[capture->resolution].width,
+                        image_resolutions[capture->resolution].height,
                         TJE_RGB565,
                         capture->data);
 
@@ -54,9 +52,9 @@ int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
 
 	//overwrite capture with jpg data
 	ret = fs_open(&imf, path, FS_O_READ);
-	ret = fs_read(&imf, capture->data, capture->length);
+	ret = fs_read(&imf, capture->data, capture->size);
 	if(ret > 0){
-		capture->length = ret;//store the new file size the capture length
+		capture->size = ret;//store the new file size the capture length
 	}
 	fs_close(&imf);
 

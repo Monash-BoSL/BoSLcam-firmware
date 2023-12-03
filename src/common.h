@@ -2,54 +2,71 @@
 
 #include <date_time.h>
 
-#define KEY 37
+// #define _DBG_SEND_IMAGE_RTT //enable to switch logic out for sending image over RTT after taken
+
 #define PW_SUFFIX "_Z4GQ3tjuzu"
+#define CEASER_KEY  (37)
 
-#define CAMADDR_WR  0x42
-#define CAMADDR_RD  0x43
-#define CAMADDR		0x21
+#define CAMADDR_WR  (0x42)
+#define CAMADDR_RD  (0x43)
+#define CAMADDR		(0x21)
 
-#define SCCB_VS		11
-#define SCCB_HREF	12
-#define SCCB_PCLK	13
-#define SCCB_XCLK	14
-#define SCCB_PEN	15
-#define SCCB_PDN	16
+#define SCCB_VS		(11)
+#define SCCB_HREF	(12)
+#define SCCB_PCLK	(13)
+#define SCCB_XCLK	(14)
+#define SCCB_PEN	(15)
+#define SCCB_PDN	(16)
 
-#define SCCB_CLK_DPPI_CH 0
-#define GPIOTE_CLK_TSK 0
+#define DBGPIN		(18)
 
-#define BMPIMAGEOFFSET 66
-#define IMAGE_WIDTH			(320)
-#define IMAGE_HEIGHT		(240)
-#define IMAGE_SIZE_BYTES 	(IMAGE_WIDTH*IMAGE_HEIGHT*2)
+#define SCCB_CLK_DPPI_CH 	(0)
+#define GPIOTE_CLK_TSK 		(0)
 
-static const char bmp_header[BMPIMAGEOFFSET] =
-{
-  0x42, 0x4D, 0x36, 0x58, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x42, 0x00, 0x00, 0x00, 0x28, 0x00,
-  0x00, 0x00, 0x40, 0x01, 0x00, 0x00, 0xF0, 0x00, 0x00, 0x00, 0x01, 0x00, 0x10, 0x00, 0x03, 0x00,
-  0x00, 0x00, 0x00, 0x58, 0x02, 0x00, 0xC4, 0x0E, 0x00, 0x00, 0xC4, 0x0E, 0x00, 0x00, 0x00, 0x00,
-  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xF8, 0x00, 0x00, 0xE0, 0x07, 0x00, 0x00, 0x1F, 0x00,
-  0x00, 0x00
-};
+#define MAX_PATH (256)
 
+#define BMPIMAGEOFFSET 		(66)
+
+#define VGA_WIDTH 		(640)
+#define VGA_HEIGHT 		(480)
+#define CIF_WIDTH 		(352)
+#define CIF_HEIGHT 		(240)
+#define QVGA_WIDTH 		(320)
+#define QVGA_HEIGHT 	(240)
+#define QCIF_WIDTH 		(176)
+#define QCIF_HEIGHT 	(144)
+#define QQVGA_WIDTH 	(160)
+#define QQVGA_HEIGHT 	(120)
+
+
+#define DISK_MOUNT_PT "/SD:"
+#define SCRATCH_FILE  "/scratch.bmp"
+
+#define SDHC_PATH(strconst) DISK_MOUNT_PT strconst
+#define STRLEN(strconst) (sizeof(strconst)-1)
 
 enum image_format {
     BMP = 0,
     JPG,
 };
 
-enum image_size {
-    QVGA = 0,
-    VGA,
+enum image_resolution {
+    VGA = 0,
+    QVGA,
     QQVGA,
 };
 
+struct image_resolution_properties {
+	uint16_t width;
+	uint16_t height;
+	char* bmp_header;
+};
+
+
 struct image_config_t {
 	uint32_t auto_range_time;
-  enum image_format format;
-  enum image_size   size;
-	//image size 
+  	enum image_format format;
+  	enum image_resolution  resolution;
 	//awb enable
 	//ae enable
 	//...
@@ -101,7 +118,9 @@ struct master_config_t {
 
 struct capture_t {
 	uint8_t* data;
-	uint32_t length;
+	size_t size;
+	enum image_resolution resolution;
+	enum image_format format;
 	int32_t time;
 };
 
@@ -114,12 +133,15 @@ enum time_source {
 	EXT_TIME,
 };
 
-static const char* time_source_str[] = {"GNSS_TIME",
-								"NETWORK_TIME",
-								"NTP_TIME",
-								"FS_TIME",
-								"NO_TIME",
-								"EXT_TIME",};
+static const char* time_source_str[] = {
+										"GNSS_TIME",
+										"NETWORK_TIME",
+										"NTP_TIME",
+										"FS_TIME",
+										"NO_TIME",
+										"EXT_TIME",
+										};
+
 
 struct status_t {
 	int32_t system_time;
@@ -129,4 +151,52 @@ struct status_t {
 };
 
 
+static const char bmp_header_vga[BMPIMAGEOFFSET] =
+{
+  0x42, 0x4D, 0x36, 0x58, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x42, 0x00, 0x00, 
+  0x00, 0x28, 0x00, 0x00, 0x00, 
+  0x80, 0x02, 0x00, 0x00, //pixel width (little endian)		[640]
+  0xE0, 0x01, 0x00, 0x00, //pixel height (little endian)	[480]
+  0x01, 0x00, 0x10, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x58, 0x02, 0x00, 0xC4, 
+  0x0E, 0x00, 0x00, 0xC4, 0x0E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+  0x00, 0x00, 0x00, 0xF8, 0x00, 0x00, 0xE0, 0x07, 0x00, 0x00, 0x1F, 0x00, 0x00, 
+  0x00
+};
+
+static const char bmp_header_qvga[BMPIMAGEOFFSET] =
+{
+  0x42, 0x4D, 0x36, 0x58, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x42, 0x00, 0x00, 
+  0x00, 0x28, 0x00, 0x00, 0x00, 
+  0x40, 0x01, 0x00, 0x00, //pixel width (little endian)  [320]
+  0xF0, 0x00, 0x00, 0x00, //pixel height (little endian) [240]
+  0x01, 0x00, 0x10, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x58, 0x02, 0x00, 0xC4, 
+  0x0E, 0x00, 0x00, 0xC4, 0x0E, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+  0x00, 0x00, 0x00, 0xF8, 0x00, 0x00, 0xE0, 0x07, 0x00, 0x00, 0x1F, 0x00, 0x00, 
+  0x00
+};
+
+
+static struct image_resolution_properties image_resolutions[] = {
+								/*VGA*/
+								{
+									.width = VGA_WIDTH,
+									.height = VGA_WIDTH,
+									.bmp_header = bmp_header_vga,
+								},
+								/*QVGA*/
+								{
+									.width = QVGA_WIDTH,
+									.height = QVGA_WIDTH,
+									.bmp_header = bmp_header_qvga,
+								},
+								/*QQVGA*/
+								{
+									.width = QQVGA_WIDTH,
+									.height = QQVGA_WIDTH,
+									.bmp_header = NULL,
+								},
+							};
+
 void LOG_UNIXTIME(const int32_t ln);
+
+void led(bool on);

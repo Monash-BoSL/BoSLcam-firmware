@@ -81,13 +81,12 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
 }
 
 int ftp_write_bmp(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
-	const uint32_t max_path_length = 256;
-	char path[256];
+	char path[MAX_PATH];
 	int ret;
 	
 	LOG_INF("modem begin\n");
 	
-	if(strlen(ftp_cfg_p->image_path) > max_path_length + 12-1){//12 for unix time + extension
+	if(strlen(ftp_cfg_p->image_path) > MAX_PATH + 12-1){//12 for unix time + extension
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
@@ -108,25 +107,35 @@ int ftp_write_bmp(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 	// printk(response);
 	
 	ret = ftp_open(ftp_cfg_p->domain, 21, -1);
+	if (ret < 0){return ret;}
+
 	ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
+	if (ret < 0){return ret;}
+
     ret = ftp_mkdirs(path);
+
 	ret = ftp_type(FTP_TYPE_BINARY);
-	ret = ftp_put(path, bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
-	ret = ftp_put(path, capture->data, capture->length, FTP_PUT_APPEND);
+	if (ret < 0){return ret;}
+
+	ret = ftp_put(path, image_resolutions[capture->resolution].bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
+	if (ret < 0){return ret;}
+
+	ret = ftp_put(path, capture->data, capture->size, FTP_PUT_APPEND);
+	if (ret < 0){return ret;}
+
 	// ftp status
 	ret = ftp_close();
 	LOG_INF("UPLOAD SEQUENCE ENDED");
-	return 0;
+	return ret;
 }
 
 int ftp_write_jpg(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
-	const uint32_t max_path_length = 256;
-	char path[256];
+	char path[MAX_PATH];
 	int ret;
 	
 	LOG_INF("modem begin\n");
 	
-	if(strlen(ftp_cfg_p->image_path) > max_path_length + 12-1){//12 for unix time + extension
+	if(strlen(ftp_cfg_p->image_path) > MAX_PATH + 12-1){//12 for unix time + extension
 		LOG_ERR("file name too long");
 		return -ENAMETOOLONG;
 	}
@@ -137,26 +146,34 @@ int ftp_write_jpg(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 	if (ret < 0){return ret;}
 	
 	ret = ftp_open(ftp_cfg_p->domain, 21, -1);
+	if (ret < 0){return ret;}
+
 	ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
+	if (ret < 0){return ret;}
+
     ret = ftp_mkdirs(path);
+
 	ret = ftp_type(FTP_TYPE_BINARY);
-	ret = ftp_put(path, capture->data, capture->length, FTP_PUT_NORMAL);
+	if (ret < 0){return ret;}
+
+	ret = ftp_put(path, capture->data, capture->size, FTP_PUT_NORMAL);
+	if (ret < 0){return ret;}
+
 	// ftp status
 	ret = ftp_close();
 	LOG_INF("UPLOAD SEQUENCE ENDED");
-	return 0;
+	return ret;
 }
 
 int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
-	const uint32_t max_path_length = 256;
-	char statstr[256];
+	char statstr[MAX_PATH];
 	int ret;
 	struct tm cal;
 	
 	LOG_INF("modem begin\n");
 	
 	unix_date(&cal, status->system_time);
-	strftime(statstr, max_path_length, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
+	strftime(statstr, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
 	sprintf(statstr+strlen(statstr), ",%s,%d,%d\n", 
 								time_source_str[status->time_src],
 								status->captures, 
@@ -166,13 +183,21 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
 	if (ret < 0){return ret;}
 	
 	ret = ftp_open(ftp_cfg_p->domain, 21, -1);
+	if (ret < 0){return ret;}
+
 	ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
+	if (ret < 0){return ret;}
+
     ret = ftp_mkdirs(ftp_cfg_p->status_path);
 	ret = ftp_type(FTP_TYPE_BINARY);
+	if (ret < 0){return ret;}
+
 	ret = ftp_put(ftp_cfg_p->status_path, statstr, strlen(statstr), FTP_PUT_APPEND);
+	if (ret < 0){return ret;}
+
 	ret = ftp_close();
 	LOG_INF("UPLOAD SEQUENCE ENDED");
-	return 0;
+	return ret;
 }
 
 void ftp_setup(void){

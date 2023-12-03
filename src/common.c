@@ -1,5 +1,8 @@
 #include "common.h"
 
+#include <drivers/led.h>
+
+
 void LOG_UNIXTIME(const int32_t ln){
 	int ret;
 	int32_t ct;
@@ -12,4 +15,31 @@ void LOG_UNIXTIME(const int32_t ln){
 
 
 	return 0;
+}
+
+#include <zephyr.h>
+#include <device.h>
+#include <devicetree.h>
+#include <drivers/gpio.h>
+
+
+#define LED0_NODE DT_ALIAS(led0)
+
+#define LED0	DT_GPIO_LABEL(LED0_NODE, gpios)
+#define PIN	DT_GPIO_PIN(LED0_NODE, gpios)
+#define FLAGS	DT_GPIO_FLAGS(LED0_NODE, gpios)
+
+const struct device *leddev;
+
+void led(bool on) {
+	int ret;
+
+	leddev = device_get_binding(LED0);
+
+	ret = gpio_pin_configure(leddev, PIN, GPIO_OUTPUT_ACTIVE | FLAGS);
+	if (ret < 0) {
+		return;
+	}
+		
+	gpio_pin_set(leddev, PIN, (int)on);
 }
