@@ -32,7 +32,7 @@
 [ ] use yacc to build config parser
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
-[ ] add jpeg mode
+[X] add jpeg mode
 [ ] add option to switch to 640x480
 [ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] issue with network time reset on low power sleep?
@@ -226,53 +226,55 @@ int loop(void){
 
 	LOG_INF("ov7675 capture");
 	ov7675_capture_sdhc_buffered(&capture);
-	
-	// LOG_INF("image -> sdhc");
-	
+
+#ifdef _DBG_SEND_IMAGE_RTT
 	sdhc_file_to_rtt(SCRATCH_FILE);
-	// sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
+#endif
 
-	// // sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
-	// sdhc_write_status(mcfg.sd_cfg.status_path, &stats);
+	LOG_INF("image -> sdhc");
+	sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
 
-	// if(mcfg.im_cfg.format == JPG){
-	// 	LOG_INF("jpg   -> sdhc");
-	// 	sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
-	// }
+	// sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
+	sdhc_write_status(mcfg.sd_cfg.status_path, &stats);
 
-	// if ((d > 0) && (0 == (stats.captures % d))){
-	// 	LOG_INF("image -> ftp");
-	// 	switch(mcfg.im_cfg.format){
-	// 	case BMP:
-	// 			ftp_write_bmp(&mcfg.ftp_cfg, &capture);
-	// 		break;
-	// 	case JPG:
-	// 			ftp_write_jpg(&mcfg.ftp_cfg, &capture);
-	// 		break;
+	if(mcfg.im_cfg.format == JPG){
+		LOG_INF("jpg   -> sdhc");
+		sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
+	}
 
-	// 	}
-	// 	ftp_write_status(&mcfg.ftp_cfg, &stats);
-	// }
+	if ((d > 0) && (0 == (stats.captures % d))){
+		LOG_INF("image -> ftp");
+		switch(mcfg.im_cfg.format){
+		case BMP:
+				ftp_write_bmp(&mcfg.ftp_cfg, &capture);
+			break;
+		case JPG:
+				ftp_write_jpg(&mcfg.ftp_cfg, &capture);
+			break;
+
+		}
+		ftp_write_status(&mcfg.ftp_cfg, &stats);
+	}
 
 	
-	// LOG_INF("done");
+	LOG_INF("done");
 	
-	// switch (mcfg.trig_cfg.trig_type){
-	// case TIME_TIRGGER:
-	// 	LOG_INF("time sleep");
-	// 	sleepy(mcfg.trig_cfg.logging_interval);
-	// 	break;		
-	// case UART_TRIGGER:
-	// 	LOG_INF("uart sleep");
-	// 	// uart_sei();
-	// 	sleepy(0);
-	// 	// uart_cli();
-	// 	break;
-	// default:
-	// 	LOG_ERR("trig_type misconfigred, oops!");
-	// 	k_oops();
-	// 	break;	
-	// }
+	switch (mcfg.trig_cfg.trig_type){
+	case TIME_TIRGGER:
+		LOG_INF("time sleep");
+		sleepy(mcfg.trig_cfg.logging_interval);
+		break;		
+	case UART_TRIGGER:
+		LOG_INF("uart sleep");
+		// uart_sei();
+		sleepy(0);
+		// uart_cli();
+		break;
+	default:
+		LOG_ERR("trig_type misconfigred, oops!");
+		k_oops();
+		break;	
+	}
 	
 	stats.captures++;
 	
@@ -312,7 +314,4 @@ void main(void){
 	while(1){
 		k_msleep(1000);
 	}
-	// k_msleep(5000);
-	
-	// while(1){}
 }
