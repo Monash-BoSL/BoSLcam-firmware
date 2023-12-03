@@ -449,7 +449,7 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
 	fs_mkdirs(path);
 
 	fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE);
-	fs_write(&imf, bmp_header, BMPIMAGEOFFSET);
+	fs_write(&imf, image_resolutions[capture->resolution].bmp_header, BMPIMAGEOFFSET);
 	fs_write(&imf, capture->data, capture->size);
 	fs_close(&imf);
 

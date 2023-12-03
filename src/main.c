@@ -32,7 +32,7 @@
 [ ] use yacc to build config parser
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
-[ ] add jpeg mode
+[X] add jpeg mode
 [ ] add option to switch to 640x480
 [ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] issue with network time reset on low power sleep?
@@ -46,10 +46,10 @@ const struct device * gpio;
 const struct device * i2c_sccb;
 const struct device * spi_sram;
 
-uint8_t image_buffer[IMAGE_SIZE_BYTES];
+uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
 static struct master_config_t mcfg;
-struct capture_t capture = {.data = image_buffer, .size = sizeof(image_buffer), .time = 0};
+struct capture_t capture = {.data = image_buffer, .size = sizeof(image_buffer), .resolution = QVGA, .format = BMP, .time = 0};
 struct status_t stats = {.system_time = 0, .battery_voltage = -1, .captures = 0};
 
 int sleepy(uint32_t ms_sleep){
@@ -59,8 +59,7 @@ int sleepy(uint32_t ms_sleep){
 	return k_msleep(ms_sleep);
 }
 
-int get_capture_time(int32_t* ct){
-	
+int get_time(int32_t* ct){
 	int ret;
 
 	uint64_t unix_time_ms; 
@@ -161,7 +160,6 @@ int setup(void){
 		return ret;
 	}
 
-	
 	int d = mcfg.trig_cfg.logging_decimation_ftp;	
 	if(d > 0){//first try get time from network
 		ftp_setup();
@@ -218,61 +216,65 @@ int setup(void){
 int loop(void){
 	int d = mcfg.trig_cfg.logging_decimation_ftp;
 	
-	get_capture_time(&capture.time);
+	get_time(&capture.time);
 	update_status();
 	
 	LOG_INF("ov7675 initialisation");
-	ov7675_init(mcfg.im_cfg.auto_range_time);
+	mcfg.im_cfg.resolution = QVGA;//dbg
+	// mcfg.im_cfg.resolution = VGA;//dbg
+	ov7675_init(mcfg.im_cfg.auto_range_time, mcfg.im_cfg.resolution, mcfg.im_cfg.format, &capture);
 
 	LOG_INF("ov7675 capture");
-	ov7675_capture_sdhc_buffered(capture.data, capture.size);
-	
-	// LOG_INF("image -> sdhc");
-	
+	ov7675_capture_sdhc_buffered(&capture);
+
+#ifdef _DBG_SEND_IMAGE_RTT
 	sdhc_file_to_rtt(SCRATCH_FILE);
-	// sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
+#endif
 
-	// // sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
-	// sdhc_write_status(mcfg.sd_cfg.status_path, &stats);
+	LOG_INF("image -> sdhc");
+	sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
 
-	// if(mcfg.im_cfg.format == JPG){
-	// 	LOG_INF("jpg   -> sdhc");
-	// 	sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
-	// }
+	// sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
+	sdhc_write_status(mcfg.sd_cfg.status_path, &stats);
 
-	// if ((d > 0) && (0 == (stats.captures % d))){
-	// 	LOG_INF("image -> ftp");
-	// 	switch(mcfg.im_cfg.format){
-	// 	case BMP:
-	// 			ftp_write_bmp(&mcfg.ftp_cfg, &capture);
-	// 		break;
-	// 	case JPG:
-	// 			ftp_write_jpg(&mcfg.ftp_cfg, &capture);
-	// 		break;
+	if(mcfg.im_cfg.format == JPG){
+		LOG_INF("jpg   -> sdhc");
+		sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
+	}
 
-	// 	}
-	// 	ftp_write_status(&mcfg.ftp_cfg, &stats);
-	// }
+	if ((d > 0) && (0 == (stats.captures % d))){
+		LOG_INF("image -> ftp");
+		switch(mcfg.im_cfg.format){
+		case BMP:
+				ftp_write_bmp(&mcfg.ftp_cfg, &capture);
+			break;
+		case JPG:
+				ftp_write_jpg(&mcfg.ftp_cfg, &capture);
+			break;
+
+		}
+		ftp_write_status(&mcfg.ftp_cfg, &stats);
+	}
 
 	
-	// LOG_INF("done");
+	LOG_INF("done");
 	
-	// switch (mcfg.trig_cfg.trig_type){
-	// case TIME_TIRGGER:
-	// 	LOG_INF("time sleep");
-	// 	sleepy(mcfg.trig_cfg.logging_interval);
-	// 	break;		
-	// case UART_TRIGGER:
-	// 	LOG_INF("uart sleep");
-	// 	// uart_sei();
-	// 	sleepy(0);
-	// 	// uart_cli();
-	// 	break;
-	// default:
-	// 	LOG_ERR("trig_type misconfigred, oops!");
-	// 	k_oops();
-	// 	break;	
-	// }
+	switch (mcfg.trig_cfg.trig_type){
+	case TIME_TIRGGER:
+		LOG_INF("time sleep");
+		sleepy(mcfg.trig_cfg.logging_interval);
+		break;		
+	case UART_TRIGGER:
+		LOG_INF("uart sleep");
+		// uart_sei();
+		sleepy(0);
+		// uart_cli();
+		break;
+	default:
+		LOG_ERR("trig_type misconfigred, oops!");
+		k_oops();
+		break;	
+	}
 	
 	stats.captures++;
 	
@@ -312,7 +314,4 @@ void main(void){
 	while(1){
 		k_msleep(1000);
 	}
-	// k_msleep(5000);
-	
-	// while(1){}
 }

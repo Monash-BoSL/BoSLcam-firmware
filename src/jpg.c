@@ -37,8 +37,8 @@ int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
     ret = tje_encode_with_func(fs_write,
                         &imf,
                         2,//make quality a config parameter
-                        IMAGE_WIDTH,
-                        IMAGE_HEIGHT,
+                        image_resolutions[capture->resolution].width,
+                        image_resolutions[capture->resolution].height,
                         TJE_RGB565,
                         capture->data);
 
