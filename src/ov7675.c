@@ -267,6 +267,10 @@ int ov7675_capture_sdhc_buffered(struct capture_t* capture){
     ov7675_aec(0);
     ov7675_agc(0);
     ov7675_awb(0);
+    
+    //this is to make sure the auto exposure settings have stuck.
+    while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
+    while(nrf_gpio_pin_read(SCCB_VS));//wait for low
 
     LOG_INF("ready\n");
     uint16_t current_line = physical_lines;
