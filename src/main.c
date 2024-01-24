@@ -27,13 +27,16 @@
 /*************** TODO *******************************
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
+    [ ] automatically make 'images' folder on sd card. 
 [ ] use yacc flex for parsing SD card config file
 [ ] add versioning in config file
 [ ] use yacc to build config parser
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
 [X] add jpeg mode
-[ ] add option to switch to 640x480
+    [ ] make jpeg compression work on VGA images.
+    [ ] does jpeg work now that the data in capture may not be the image data (investigate)
+[X] add option to switch to 640x480
 [ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] issue with network time reset on low power sleep?
 [ ] find best idle states for pins (eg: 28) for low power
@@ -221,7 +224,7 @@ int loop(void){
 
     LOG_INF("ov7675 initialisation");
     // mcfg.im_cfg.resolution = QVGA;//dbg
-    mcfg.im_cfg.resolution = VGA;//dbg
+    // mcfg.im_cfg.resolution = VGA;//dbg
     ov7675_init(mcfg.im_cfg.auto_range_time, mcfg.im_cfg.resolution, mcfg.im_cfg.format, &capture);
 
     LOG_INF("ov7675 capture");

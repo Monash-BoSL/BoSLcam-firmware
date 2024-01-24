@@ -24,7 +24,7 @@
 
 //image_config_t
 uint32_t auto_range_time = 1000
-enum format = 1 //0 BMP, 1 JPG
+enum resolution = 1 //0 VGA, 1 QVGA.
 //ftp_config_t
 char* apn = "hologram"
 char* network_operator = "50501"

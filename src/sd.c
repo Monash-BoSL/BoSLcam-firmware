@@ -196,24 +196,27 @@ int store_value(char* val, uint32_t* index){
             store_int(val, &mcfg->im_cfg.auto_range_time);
             break;
         case 1://format
+            store_format_type(val, &mcfg->im_cfg.resolution);
+            break;
+        case 2://format
             store_format_type(val, &mcfg->im_cfg.format);
             break;
-        case 2://apn
+        case 3://apn
             store_string(val, &mcfg->ftp_cfg.apn);
             break;
-        case 3://network_operator
+        case 4://network_operator
             store_string(val, &mcfg->ftp_cfg.network_operator);
             break;
-        case 4://domain
+        case 5://domain
             store_string(val, &mcfg->ftp_cfg.domain);
             break;
-        case 5://username
+        case 6://username
             store_string(val, &mcfg->ftp_cfg.username);
             break;
-        case 6://cyphertype
+        case 7://cyphertype
             store_cypher_type(val, &mcfg->ftp_cfg.cyph_type);
             break;
-        case 7://password
+        case 8://password
             store_string(val, &mcfg->ftp_cfg.password);
             const char password[128];
             const char* suffix = PW_SUFFIX;
@@ -235,28 +238,28 @@ int store_value(char* val, uint32_t* index){
                     break;
             }
             break;
-        case 8://image_path
+        case 9://image_path
             store_string(val, &mcfg->ftp_cfg.image_path);
             break;
-        case 9: //status_path
+        case 10: //status_path
             store_string(val, &mcfg->ftp_cfg.status_path);
             break;
-        case 10://image_path
+        case 11://image_path
             store_string(val, &mcfg->sd_cfg.image_path);
             break;
-        case 11://status_path
+        case 12://status_path
             store_string(val, &mcfg->sd_cfg.status_path);
             break;
-        case 12://logging_level
+        case 13://logging_level
             store_int(val, &mcfg->sd_cfg.logging_level);
             break;
-        case 13://trig_type
+        case 14://trig_type
             store_trigger_type(val, &mcfg->trig_cfg.trig_type);
             break;
-        case 14://logging_interval
+        case 15://logging_interval
             store_int(val, &mcfg->trig_cfg.logging_interval);
             break;
-        case 15://logging_decimation_ftp
+        case 16://logging_decimation_ftp
             store_int(val, &mcfg->trig_cfg.logging_decimation_ftp);
             break;
     }
