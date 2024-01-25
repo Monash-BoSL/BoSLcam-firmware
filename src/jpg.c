@@ -15,6 +15,20 @@
 
 LOG_MODULE_REGISTER(jpg);
 
+
+
+int buffer_closure_from_sram(struct buffer_closure* bc, void* data){
+    return bc->lines;
+};
+
+int buffer_closure_from_file(struct buffer_closure* bc, void* data){
+    int ret = fs_read(&bc->imfp, data, bc->buffer_size_lines); 
+    return ret;
+};
+
+
+
+
 //ensure that your path beings with a / eg "/im1.bmp" !!
 //overwrites the image buffer in ram with the jpg	  !!
 int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
@@ -40,7 +54,8 @@ int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
                         image_resolutions[capture->resolution].width,
                         image_resolutions[capture->resolution].height,
                         TJE_RGB565,
-                        capture->data);
+                        capture->data
+                        );
 
 
     fs_close(&imf);

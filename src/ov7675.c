@@ -302,6 +302,8 @@ int ov7675_capture_sdhc_buffered(struct capture_t* capture){
         fs_write(&imf, capture->data, buffer_index);
     }
     fs_close(&imf);
+    capture->where = DISK;
+    capture->fp = SDHC_PATH(SCRATCH_FILE);
 
     ov7675_aec(1);
     ov7675_agc(1);

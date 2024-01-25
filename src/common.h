@@ -116,8 +116,11 @@ struct master_config_t {
     struct sd_config_t sd_cfg;
 };
 
+enum data_location { SRAM = 0, DISK };
 struct capture_t {
+    enum data_location where;
     uint8_t* data;
+    char* fp;
     size_t size;
     enum image_resolution resolution;
     enum image_format format;
