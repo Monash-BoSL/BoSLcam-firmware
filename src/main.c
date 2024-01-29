@@ -52,7 +52,7 @@ const struct device * spi_sram;
 uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
 static struct master_config_t mcfg;
-struct capture_t capture = {.data = image_buffer, .size = sizeof(image_buffer), .resolution = QVGA, .format = BMP, .time = 0};
+struct capture_t capture = {.data = image_buffer, .capacity = sizeof(image_buffer), .size = 0, .resolution = QVGA, .format = BMP, .time = 0};
 struct status_t stats = {.system_time = 0, .battery_voltage = -1, .captures = 0};
 
 int sleepy(uint32_t ms_sleep){
@@ -234,8 +234,8 @@ int loop(void){
     sdhc_file_to_rtt(SCRATCH_FILE);
 #endif
 
-    // LOG_INF("image -> sdhc");
-    // sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
+    LOG_INF("image -> sdhc");
+    sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
 
     // sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
     sdhc_write_status(mcfg.sd_cfg.status_path, &stats);
@@ -249,6 +249,7 @@ int loop(void){
         LOG_INF("image -> ftp");
         switch(mcfg.im_cfg.format){
         case BMP:
+                //This expects image in sram
                 ftp_write_bmp(&mcfg.ftp_cfg, &capture);
             break;
         case JPG:

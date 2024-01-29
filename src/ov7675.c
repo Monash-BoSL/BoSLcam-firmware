@@ -245,23 +245,26 @@ int ov7675_capture(struct capture_t* capture){
 
 #define EBUFFERTOOSMALL 1
 int ov7675_capture_sdhc_buffered(struct capture_t* capture){
+    int ret;
     const uint16_t line_width = ov7675_resolutions[capture->resolution].width;//line width in pixels
 
     const uint16_t line_skip = ov7675_resolutions[capture->resolution].line_skip;
     const uint16_t physical_lines = VGA_HEIGHT;//number of lines per frame which get sent over SCCB
     const uint16_t logical_lines = physical_lines/line_skip;//number of lines per frame which form the image
-    const uint16_t buffer_size_lines = capture->size/(PIXEL_SIZE_BYTES*line_width);//number of lines of the image which the buffer can fit
+    const uint16_t buffer_size_lines = capture->capacity/(RBG565_PIXEL_SIZE_BYTES*line_width);//number of lines of the image which the buffer can fit
 
     if(buffer_size_lines < 1){
         LOG_ERR("image buffer too small (<1 line)");
         return -EBUFFERTOOSMALL;
         }
 
+    strcpy(capture->fp, SDHC_PATH(SCRATCH_FILE));
+
     struct fs_file_t imf;
     fs_file_t_init(&imf);
-    fs_unlink(SDHC_PATH(SCRATCH_FILE));
-    fs_open(&imf, SDHC_PATH(SCRATCH_FILE), FS_O_WRITE | FS_O_CREATE);
-    // fs_truncate(&imf, BMPIMAGEOFFSET+(PIXEL_SIZE_BYTES*logical_lines*line_width));
+    fs_unlink(capture->fp);
+    fs_open(&imf, capture->fp, FS_O_WRITE | FS_O_CREATE);
+    // fs_truncate(&imf, BMPIMAGEOFFSET+(RBG565_PIXEL_SIZE_BYTES*logical_lines*line_width));
     fs_write(&imf, image_resolutions[capture->resolution].bmp_header, BMPIMAGEOFFSET);
 
     ov7675_aec(0);
@@ -281,7 +284,7 @@ int ov7675_capture_sdhc_buffered(struct capture_t* capture){
         while(nrf_gpio_pin_read(SCCB_VS));//wait for low
 
         for(uint16_t line = physical_lines; line > 0; line--){//get line
-            if((line % line_skip != 0) || current_line < line || buffer_index >= capture->size){
+            if((line % line_skip != 0) || current_line < line || buffer_index >= capture->capacity){
                 while(!(NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
             }else{
                 current_line = line;
@@ -299,11 +302,11 @@ int ov7675_capture_sdhc_buffered(struct capture_t* capture){
             }
             while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
         }
-        fs_write(&imf, capture->data, buffer_index);
+        ret = fs_write(&imf, capture->data, buffer_index);
+        capture->size = buffer_index;
     }
     fs_close(&imf);
     capture->where = DISK;
-    capture->fp = SDHC_PATH(SCRATCH_FILE);
 
     ov7675_aec(1);
     ov7675_agc(1);

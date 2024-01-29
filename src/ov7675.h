@@ -29,7 +29,7 @@ struct ov7675_image_size {
     struct regval_list *regs; /* Regs to tweak */
 };
 
-#define PIXEL_SIZE_BYTES 	(2)
+#define RBG565_PIXEL_SIZE_BYTES 	(2)
 
 #define OV7675_I2C_ADDRESS	(0x21)
 

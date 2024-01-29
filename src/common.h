@@ -25,6 +25,8 @@
 
 #define MAX_PATH (256)
 
+#define RBG565_PIXEL_SIZE_BYTES 	(2)
+
 #define BMPIMAGEOFFSET 		(66)
 
 #define VGA_WIDTH 		(640)
@@ -119,8 +121,9 @@ struct master_config_t {
 enum data_location { SRAM = 0, DISK };
 struct capture_t {
     enum data_location where;
-    uint8_t* data;
-    char* fp;
+    uint8_t* const data;
+    char fp[MAX_PATH];
+    const size_t capacity;
     size_t size;
     enum image_resolution resolution;
     enum image_format format;
@@ -183,19 +186,19 @@ static struct image_resolution_properties image_resolutions[] = {
                                 /*VGA*/
                                 {
                                     .width = VGA_WIDTH,
-                                    .height = VGA_WIDTH,
+                                    .height = VGA_HEIGHT,
                                     .bmp_header = bmp_header_vga,
                                 },
                                 /*QVGA*/
                                 {
                                     .width = QVGA_WIDTH,
-                                    .height = QVGA_WIDTH,
+                                    .height = QVGA_HEIGHT,
                                     .bmp_header = bmp_header_qvga,
                                 },
                                 /*QQVGA*/
                                 {
                                     .width = QQVGA_WIDTH,
-                                    .height = QQVGA_WIDTH,
+                                    .height = QQVGA_HEIGHT,
                                     .bmp_header = NULL,
                                 },
                             };

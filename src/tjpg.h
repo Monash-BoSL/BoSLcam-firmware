@@ -115,13 +115,12 @@ typedef int buffer_fill_func(struct buffer_closure* bc, void* data);
 
 struct buffer_closure {
     int lines;
+    int line_size_bytes;
     int buffer_size_lines;
     const unsigned char* src_data;
-    struct fs_file_t* imfp;
+    struct fs_file_t* ibfp;
     buffer_fill_func* fill;
 };
-
-
 
 // - tje_encode_to_file -
 //
@@ -1126,26 +1125,29 @@ static int tjei_encode_main(TJEState* state,
     uint32_t location = 0;
 
     uint16_t buffered_lines;
-    
-    for ( int y = 0; y < height; y += 8 ) {
+    int yindex = 0;
+    for ( int y = 0; y < height; y += 8) {
         if(buffered_lines == 0){
             //buffer lines (must be a multiple of 8)
             buffered_lines = (*(bc->fill))(bc,(void*)bc->src_data);
+            yindex = 0;
         } 
-        buffered_lines -= 1;
+        buffered_lines -= 8;
         for ( int x = 0; x < width; x += 8 ) {
             // Block loop: ====
             for ( int off_y = 0; off_y < 8; ++off_y ) {
                 for ( int off_x = 0; off_x < 8; ++off_x ) {
                     int block_index = (off_y * 8 + off_x);
 
-                    int src_index = (((y + off_y) * width) + (x + off_x)) * color_format;
+                    int src_index = (((yindex + off_y) * width) + (x + off_x)) * color_format;
 
                     int col = x + off_x;
-                    int row = y + off_y;
+                    int row = yindex + off_y;
 
-                    if(row >= height) {
-                        src_index -= (width * (row - height + 1)) * color_format;
+                    // if(row >= height) {
+                    if(row >= bc->buffer_size_lines) {
+                        src_index -= (width * (row - bc->buffer_size_lines + 1)) * color_format;
+                        // src_index -= (width * (row - height + 1)) * color_format;
                     }
                     if(col >= width) {
                         src_index -= (col - width + 1) * color_format;
@@ -1169,9 +1171,9 @@ static int tjei_encode_main(TJEState* state,
                         break;
                     case TJE_RGB565:
                         rgb = (bc->src_data[src_index + 1] << __CHAR_BIT__ | bc->src_data[src_index + 0]);
-                        r = (rgb & 0b0000000000011111) << 3;
+                        r = (rgb & 0b1111100000000000) >> 8;
                         g = (rgb & 0b0000011111100000) >> 3;
-                        b = (rgb & 0b1111100000000000) >> 8;
+                        b = (rgb & 0b0000000000011111) << 3;
                         break;
                     }
 
@@ -1215,6 +1217,7 @@ static int tjei_encode_main(TJEState* state,
 
 
         }
+        yindex += 8;
     }
 
     // Finish the image.
