@@ -14,6 +14,7 @@
 #include <modem/at_monitor.h>
 
 #include <net/ftp_client.h>
+#include <fs/fs.h>
 
 #include <stdio.h>
 #include <time.h>
@@ -80,7 +81,7 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     return 0;
 }
 
-int ftp_write_bmp(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
+int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
     char path[MAX_PATH];
     int ret;
 
@@ -91,8 +92,14 @@ int ftp_write_bmp(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
         return -ENAMETOOLONG;
     }
 
-    sprintf(path, "%s%08X.bmp", ftp_cfg_p->image_path, capture->time);
-
+    switch(capture->format){
+        case BMP:
+            sprintf(path, "%s%08X.bmp", ftp_cfg_p->image_path, capture->time);
+        break;
+        case JPG:
+            sprintf(path, "%s%08X.jpg", ftp_cfg_p->image_path, capture->time);
+        break;
+    }
 
     // ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CGMR");
     // printk(response);
@@ -117,53 +124,76 @@ int ftp_write_bmp(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
     ret = ftp_type(FTP_TYPE_BINARY);
     if (ret < 0){return ret;}
 
-    ret = ftp_put(path, image_resolutions[capture->resolution].bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
-    if (ret < 0){return ret;}
+    struct fs_file_t imf;
+    switch(capture->where){
+        case SRAM:
+            ret = ftp_put(path, image_resolutions[capture->resolution].bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
+            if (ret < 0){return ret;}
 
-    ret = ftp_put(path, capture->data, capture->size, FTP_PUT_APPEND);
-    if (ret < 0){return ret;}
+            ret = ftp_put(path, capture->data, capture->size, FTP_PUT_APPEND);
+            if (ret < 0){return ret;}
 
-    // ftp status
-    ret = ftp_close();
-    LOG_INF("UPLOAD SEQUENCE ENDED");
-    return ret;
-}
-
-int ftp_write_jpg(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
-    char path[MAX_PATH];
-    int ret;
-
-    LOG_INF("modem begin\n");
-
-    if(strlen(ftp_cfg_p->image_path) > MAX_PATH + 12-1){//12 for unix time + extension
-        LOG_ERR("file name too long");
-        return -ENAMETOOLONG;
+        break;
+        case DISK:
+            fs_file_t_init(&imf);
+            ret = fs_open(&imf, capture->fp, FS_O_READ);
+            // printf("%s\n",capture->fp);
+            int read_bytes;
+            int first = 1;
+            while((read_bytes = fs_read(&imf,capture->data, capture->capacity)) > 0){
+                enum ftp_put_type put_type = first ? FTP_PUT_NORMAL : FTP_PUT_APPEND;
+                ret = ftp_put(path, capture->data, read_bytes, put_type);
+                if (ret < 0) { 
+                    fs_close(&imf);
+                    return ret;
+                }
+                first = 0;
+            }
+            fs_close(&imf);
+        break;
     }
 
-    sprintf(path, "%s%08X.jpg", ftp_cfg_p->image_path, capture->time);
-
-    ret = modem_network_register(ftp_cfg_p);
-    if (ret < 0){return ret;}
-
-    ret = ftp_open(ftp_cfg_p->domain, 21, -1);
-    if (ret < 0){return ret;}
-
-    ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
-    if (ret < 0){return ret;}
-
-    ret = ftp_mkdirs(path);
-
-    ret = ftp_type(FTP_TYPE_BINARY);
-    if (ret < 0){return ret;}
-
-    ret = ftp_put(path, capture->data, capture->size, FTP_PUT_NORMAL);
-    if (ret < 0){return ret;}
-
     // ftp status
     ret = ftp_close();
     LOG_INF("UPLOAD SEQUENCE ENDED");
     return ret;
 }
+
+// int ftp_write_jpg(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
+//     char path[MAX_PATH];
+//     int ret;
+
+//     LOG_INF("modem begin\n");
+
+//     if(strlen(ftp_cfg_p->image_path) > MAX_PATH + 12-1){//12 for unix time + extension
+//         LOG_ERR("file name too long");
+//         return -ENAMETOOLONG;
+//     }
+
+//     sprintf(path, "%s%08X.jpg", ftp_cfg_p->image_path, capture->time);
+
+//     ret = modem_network_register(ftp_cfg_p);
+//     if (ret < 0){return ret;}
+
+//     ret = ftp_open(ftp_cfg_p->domain, 21, -1);
+//     if (ret < 0){return ret;}
+
+//     ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
+//     if (ret < 0){return ret;}
+
+//     ret = ftp_mkdirs(path);
+
+//     ret = ftp_type(FTP_TYPE_BINARY);
+//     if (ret < 0){return ret;}
+
+//     ret = ftp_put(path, capture->data, capture->size, FTP_PUT_NORMAL);
+//     if (ret < 0){return ret;}
+
+//     // ftp status
+//     ret = ftp_close();
+//     LOG_INF("UPLOAD SEQUENCE ENDED");
+//     return ret;
+// }
 
 int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
     char statstr[MAX_PATH];

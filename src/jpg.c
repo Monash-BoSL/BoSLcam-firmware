@@ -64,7 +64,7 @@ int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
     // typedef void tje_write_func(void* context, void* data, int size);
     ret = tje_encode_with_func(fs_write,
                         &jpgf,
-                        3,//make quality a config parameter
+                        2,//make quality a config parameter
                         image_resolutions[capture->resolution].width,
                         image_resolutions[capture->resolution].height,
                         TJE_RGB565,
@@ -80,13 +80,16 @@ int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
         return EINVAL;
     }
 
-    //overwrite capture with jpg data
-    ret = fs_open(&jpgf, path, FS_O_READ);
-    ret = fs_read(&jpgf, capture->data, capture->size);
-    if(ret > 0){
-        capture->size = ret;//store the new file size the capture length
-    }
-    fs_close(&jpgf);
+    // //overwrite capture with jpg data
+    // ret = fs_open(&jpgf, path, FS_O_READ);
+    // ret = fs_read(&jpgf, capture->data, capture->capacity);
+    // if(ret > 0){
+    //     capture->size = ret;//store the new file size the capture length
+    // }
+    // fs_close(&jpgf);
+    strcpy(capture->fp,path);
+    capture->format=JPG;
+    capture->where=DISK;
 
 
     return (0 > ret ? ret : 0);

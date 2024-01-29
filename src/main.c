@@ -223,8 +223,6 @@ int loop(void){
     update_status();
 
     LOG_INF("ov7675 initialisation");
-    // mcfg.im_cfg.resolution = QVGA;//dbg
-    // mcfg.im_cfg.resolution = VGA;//dbg
     ov7675_init(mcfg.im_cfg.auto_range_time, mcfg.im_cfg.resolution, mcfg.im_cfg.format, &capture);
 
     LOG_INF("ov7675 capture");
@@ -247,16 +245,17 @@ int loop(void){
 
     if ((d > 0) && (0 == (stats.captures % d))){
         LOG_INF("image -> ftp");
-        switch(mcfg.im_cfg.format){
-        case BMP:
-                //This expects image in sram
-                ftp_write_bmp(&mcfg.ftp_cfg, &capture);
-            break;
-        case JPG:
-                ftp_write_jpg(&mcfg.ftp_cfg, &capture);
-            break;
+        // switch(mcfg.im_cfg.format){
+        // case BMP:
+        //         //This expects image in sram
+        //         ftp_write_bmp(&mcfg.ftp_cfg, &capture);
+        //     break;
+        // case JPG:
+        //         ftp_write_jpg(&mcfg.ftp_cfg, &capture);
+        //     break;
 
-        }
+        // }
+        ftp_write_image(&mcfg.ftp_cfg, &capture);
         ftp_write_status(&mcfg.ftp_cfg, &stats);
     }
 

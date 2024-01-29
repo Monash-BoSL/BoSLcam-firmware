@@ -121,8 +121,8 @@ struct master_config_t {
 enum data_location { SRAM = 0, DISK };
 struct capture_t {
     enum data_location where;
-    uint8_t* const data;
     char fp[MAX_PATH];
+    uint8_t* const data;
     const size_t capacity;
     size_t size;
     enum image_resolution resolution;

@@ -258,12 +258,11 @@ int ov7675_capture_sdhc_buffered(struct capture_t* capture){
         return -EBUFFERTOOSMALL;
         }
 
-    strcpy(capture->fp, SDHC_PATH(SCRATCH_FILE));
 
     struct fs_file_t imf;
     fs_file_t_init(&imf);
-    fs_unlink(capture->fp);
-    fs_open(&imf, capture->fp, FS_O_WRITE | FS_O_CREATE);
+    fs_unlink(SDHC_PATH(SCRATCH_FILE));
+    fs_open(&imf, SDHC_PATH(SCRATCH_FILE), FS_O_WRITE | FS_O_CREATE);
     // fs_truncate(&imf, BMPIMAGEOFFSET+(RBG565_PIXEL_SIZE_BYTES*logical_lines*line_width));
     fs_write(&imf, image_resolutions[capture->resolution].bmp_header, BMPIMAGEOFFSET);
 
@@ -306,7 +305,10 @@ int ov7675_capture_sdhc_buffered(struct capture_t* capture){
         capture->size = buffer_index;
     }
     fs_close(&imf);
+    
+    strcpy(capture->fp, SDHC_PATH(SCRATCH_FILE));
     capture->where = DISK;
+    capture->format = BMP;
 
     ov7675_aec(1);
     ov7675_agc(1);
