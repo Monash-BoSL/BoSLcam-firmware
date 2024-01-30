@@ -17,7 +17,9 @@
 #include <stdio.h>
 #include <time.h>
 
-#include <SEGGER_RTT.h>
+#ifdef CONFIG_CONFIG_USE_SEGGER_RTT
+    #include <SEGGER_RTT.h>
+#endif
 
 #include <sys/timeutil.h>
 
@@ -492,6 +494,10 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
     return 0;
 }
 
+
+
+#ifdef CONFIG_CONFIG_USE_SEGGER_RTT
+
 #define RTT_BUFFER_UP_SIZE (0x1000)
 #define RTT_BUFFER_DOWN_SIZE (0x08)
 int _rtt_image_upbuf = -1;
@@ -579,3 +585,4 @@ cleanup:
 
     return ret;
 }
+#endif

@@ -298,6 +298,9 @@ void main(void){
 
     LOG_INF("begin!");
 
+    led(1);
+    k_msleep(1000);
+    led(0);
 
     ret = setup();
     if(ret < 0){
