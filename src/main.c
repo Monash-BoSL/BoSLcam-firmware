@@ -225,6 +225,7 @@ int loop(void){
     while(1){
         ftp_write_status(&mcfg.ftp_cfg, &stats);
         k_msleep(60000);
+        modem_network_deregister();
     }
 
 

@@ -81,6 +81,20 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     return 0;
 }
 
+int modem_network_deregister(void){
+    int ret = 0;
+
+    ret = nrf_modem_at_printf("AT");
+    if(ret == 0){LOG_INF("AT initialised");}
+    else if (ret < 0){LOG_ERR("AT initialisation error"); return ret;}
+
+    ret = nrf_modem_at_printf("AT+CFUN=0");
+    if(ret == 0){LOG_INF("CFUN off ok");}
+    else if (ret < 0){LOG_ERR("CFUN off error"); return ret;}
+
+    return 0;
+}
+
 int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
     char path[MAX_PATH];
     int ret = 0;
