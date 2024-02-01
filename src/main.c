@@ -25,6 +25,7 @@
 #define SLEEP_TIME_MS	1
 
 /*************** TODO *******************************
+[ ] add automatic detection of when image is exposed well/remembering of last exposure settings
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
     [ ] automatically make 'images' folder on sd card. 
@@ -168,7 +169,7 @@ int setup(void){
         ftp_setup();
 
         modem_init();
-        // configure_low_power();
+        // configure_low_power();//this does not seem to work at the moment 
 
 
         //gets current network time
@@ -222,13 +223,6 @@ int loop(void){
     get_time(&capture.time);
     update_status();
 
-    while(1){
-        ftp_write_status(&mcfg.ftp_cfg, &stats);
-        k_msleep(60000);
-        modem_network_deregister();
-    }
-
-
     LOG_INF("ov7675 initialisation");
     ov7675_init(mcfg.im_cfg.auto_range_time, mcfg.im_cfg.resolution, mcfg.im_cfg.format, &capture);
 
@@ -252,16 +246,8 @@ int loop(void){
 
     if ((d > 0) && (0 == (stats.captures % d))){
         LOG_INF("image -> ftp");
-        // switch(mcfg.im_cfg.format){
-        // case BMP:
-        //         //This expects image in sram
-        //         ftp_write_bmp(&mcfg.ftp_cfg, &capture);
-        //     break;
-        // case JPG:
-        //         ftp_write_jpg(&mcfg.ftp_cfg, &capture);
-        //     break;
 
-        // }
+        modem_network_deregister();//this is because there is currently a bug where we cannot do DNS queries if the modem remains on but idle for longer than a minute
         ftp_write_image(&mcfg.ftp_cfg, &capture);
         ftp_write_status(&mcfg.ftp_cfg, &stats);
     }

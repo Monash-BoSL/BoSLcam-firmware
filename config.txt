@@ -23,7 +23,7 @@
 //**********************************************
 
 //image_config_t
-uint32_t auto_range_time = 1000
+uint32_t auto_range_time = 10000
 enum resolution = 0 //0 VGA, 1 QVGA.
 enum format = 1 //0 BMP, 1 JPG
 //ftp_config_t
