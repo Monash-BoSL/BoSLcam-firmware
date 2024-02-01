@@ -45,7 +45,7 @@ static struct master_config_t* mcfg;
 
 int lsdir(const char *path)
 {
-    int ret;
+    int ret = 0;
     struct fs_dir_t dirp;
     static struct fs_dirent entry;
 
@@ -83,7 +83,7 @@ int lsdir(const char *path)
 }
 
 int fs_mkdirs(const char* path) {
-    int ret;
+    int ret = 0;
     size_t pathlen = strlen(path)+1;
     if(pathlen > 256){return -ENAMETOOLONG;}//magic number of max path length
 
@@ -279,7 +279,7 @@ int parse_config_file(struct fs_file_t* zfp){
     bool pre_comment = 0;
     bool string = 0;
     enum parse_state state = NAME;
-    int ret;
+    int ret = 0;
 
     do{
         ret = fs_read(zfp, &next, 1);
@@ -365,7 +365,7 @@ int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
     char path[MAX_PATH];
     struct fs_file_t imf;
     char strtime[80];
-    int ret;
+    int ret = 0;
 
     if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
         LOG_ERR("file name too long");
@@ -422,7 +422,7 @@ cleanup:
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
 int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
-    int ret;
+    int ret = 0;
     char path[MAX_PATH];
 
     if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
@@ -468,7 +468,7 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
     char path[MAX_PATH];
     struct fs_file_t imf;
     struct tm cal;
-    int ret;
+    int ret = 0;
 
     if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
         LOG_ERR("file name too long");
@@ -532,7 +532,7 @@ int clear_rtt_image(void){
 
 
 int sdhc_file_to_rtt(char* sdhc_path){
-    int ret;
+    int ret = 0;
     char path[MAX_PATH];
     struct fs_file_t imf;
 

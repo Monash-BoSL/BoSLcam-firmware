@@ -31,7 +31,7 @@ int buffer_closure_from_file(struct buffer_closure* bc, void* data){
 //ensure that your path beings with a / eg "/im1.bmp" !!
 //overwrites the image buffer in ram with the jpg	  !!
 int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
-    int ret;
+    int ret = 0;
     char path[MAX_PATH];
     struct fs_file_t jpgf;
     struct fs_file_t ibf;

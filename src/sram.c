@@ -54,7 +54,7 @@ const struct spi_config spi_cfg = {
 #define SRAM_MODE_RESV (0b11000000)
 
 int sram_rdmr(uint8_t* mode){
-    int ret;
+    int ret = 0;
     uint8_t txdat[2] = {SRAM_INSTR_RDMR};
     struct spi_buf tx_buf = {.buf = txdat, .len = sizeof(txdat)};
     struct spi_buf_set tx_bufs = {.buffers = &tx_buf, .count = 1};
@@ -73,7 +73,7 @@ int sram_rdmr(uint8_t* mode){
 }
 
 int sram_wrmr(uint8_t mode){
-    int ret;
+    int ret = 0;
 
     uint8_t txdat[2] = {SRAM_INSTR_WRMR, mode};
     struct spi_buf tx_buf = {.buf = txdat, .len = sizeof(txdat)};
@@ -87,7 +87,7 @@ int sram_wrmr(uint8_t mode){
 
 //data must of size at least SRAM_PAGE_SIZE
 int sram_read_page(uint8_t* addr, uint8_t* data){
-    int ret;
+    int ret = 0;
     ret = sram_wrmr(SRAM_MODE_PAGE);
     if(ret){return ret;}
 
@@ -115,7 +115,7 @@ int sram_read_page(uint8_t* addr, uint8_t* data){
 
 //data must of size at least 32
 int sram_write_page(uint8_t* addr, uint8_t* data){
-    int ret;
+    int ret = 0;
     ret = sram_wrmr(SRAM_MODE_PAGE);
     if(ret){return ret;}
 
@@ -135,7 +135,7 @@ int sram_write_page(uint8_t* addr, uint8_t* data){
 }
 
 int sram_read_byte(uint8_t* addr, uint8_t* data){
-    int ret;
+    int ret = 0;
     ret = sram_wrmr(SRAM_MODE_BYTE);
     if(ret){return ret;}
 
@@ -162,7 +162,7 @@ int sram_read_byte(uint8_t* addr, uint8_t* data){
 }
 
 int sram_write_byte(uint8_t* addr, uint8_t data){
-    int ret;
+    int ret = 0;
     ret = sram_wrmr(SRAM_MODE_BYTE);
     if(ret){return ret;}
 
@@ -181,7 +181,7 @@ int sram_write_byte(uint8_t* addr, uint8_t data){
 }
 
 void sram_test(){
-    int ret;
+    int ret = 0;
 
     spi_sram = device_get_binding(DT_LABEL(DT_NODELABEL(spi1)));
     LOG_INF("bind %s\n", spi_sram->name);

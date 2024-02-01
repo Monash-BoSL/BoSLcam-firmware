@@ -34,8 +34,8 @@
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
 [X] add jpeg mode
-    [ ] make jpeg compression work on VGA images.
-    [ ] does jpeg work now that the data in capture may not be the image data (investigate)
+    [X] make jpeg compression work on VGA images.
+    [X] does jpeg work now that the data in capture may not be the image data (investigate)
 [X] add option to switch to 640x480
 [ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] issue with network time reset on low power sleep?
@@ -63,7 +63,7 @@ int sleepy(uint32_t ms_sleep){
 }
 
 int get_time(int32_t* ct){
-    int ret;
+    int ret = 0;
 
     uint64_t unix_time_ms;
     ret = date_time_now(&unix_time_ms);
@@ -74,7 +74,7 @@ int get_time(int32_t* ct){
 }
 
 int slm_vbat(int* bat_mv){
-    int ret;
+    int ret = 0;
     char response[1024];
 
     ret = nrf_modem_at_cmd(response, sizeof(response), "AT%%XVBAT");
@@ -153,7 +153,7 @@ int configure_low_power(void){
 }
 
 int setup(void){
-    int ret;
+    int ret = 0;
 
     ret = sdhc_mount();//very importaint for low power
 
@@ -168,7 +168,7 @@ int setup(void){
         ftp_setup();
 
         modem_init();
-        configure_low_power();
+        // configure_low_power();
 
 
         //gets current network time
@@ -221,6 +221,12 @@ int loop(void){
 
     get_time(&capture.time);
     update_status();
+
+    while(1){
+        ftp_write_status(&mcfg.ftp_cfg, &stats);
+        k_msleep(60000);
+    }
+
 
     LOG_INF("ov7675 initialisation");
     ov7675_init(mcfg.im_cfg.auto_range_time, mcfg.im_cfg.resolution, mcfg.im_cfg.format, &capture);
@@ -286,7 +292,7 @@ int loop(void){
 
 
 void main(void){
-    int ret;
+    int ret = 0;
     //some low power stuff
 
     //try out high and low for min power

@@ -245,7 +245,7 @@ int ov7675_capture(struct capture_t* capture){
 
 #define EBUFFERTOOSMALL 1
 int ov7675_capture_sdhc_buffered(struct capture_t* capture){
-    int ret;
+    int ret = 0;
     const uint16_t line_width = ov7675_resolutions[capture->resolution].width;//line width in pixels
 
     const uint16_t line_skip = ov7675_resolutions[capture->resolution].line_skip;
