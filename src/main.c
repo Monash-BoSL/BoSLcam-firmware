@@ -25,6 +25,7 @@
 #define SLEEP_TIME_MS	1
 
 /*************** TODO *******************************
+[ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] add automatic detection of when image is exposed well/remembering of last exposure settings
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
@@ -38,7 +39,6 @@
     [X] make jpeg compression work on VGA images.
     [X] does jpeg work now that the data in capture may not be the image data (investigate)
 [X] add option to switch to 640x480
-[ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] issue with network time reset on low power sleep?
 [ ] find best idle states for pins (eg: 28) for low power
 ****************************************************/
