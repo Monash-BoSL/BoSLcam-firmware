@@ -4,7 +4,7 @@
 
 
 void LOG_UNIXTIME(const int32_t ln){
-    int ret;
+    int ret = 0;
     int32_t ct;
     uint64_t unix_time_ms;
     ret = date_time_now(&unix_time_ms);
@@ -32,7 +32,7 @@ void LOG_UNIXTIME(const int32_t ln){
 const struct device *leddev;
 
 void led(bool on) {
-    int ret;
+    int ret = 0;
 
     leddev = device_get_binding(LED0);
 

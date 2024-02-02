@@ -109,6 +109,19 @@ typedef enum
     TJE_RGB565 = 2,
 } TJEColorFormat;
 
+
+
+typedef int buffer_fill_func(struct buffer_closure* bc, void* data);
+
+struct buffer_closure {
+    int lines;
+    int line_size_bytes;
+    int buffer_size_lines;
+    const unsigned char* src_data;
+    struct fs_file_t* ibfp;
+    buffer_fill_func* fill;
+};
+
 // - tje_encode_to_file -
 //
 // Usage:
@@ -118,7 +131,7 @@ typedef enum
 //      dest_path:          filename to which we will write. e.g. "out.jpg"
 //      width, height:      image size in pixels
 //      color_format:       2 is RGB565, 3 is RGB888. 4 is RGBA. Those are the only supported values
-//      src_data:           pointer to the pixel data.
+//      bc->src_data:           pointer to the pixel data.
 //
 //  RETURN:
 //      0 on error. 1 on success.
@@ -141,7 +154,7 @@ int tje_encode_to_file(const char* dest_path,
 //                          1: Noticeable. About 1/6 the size of 3, or 1/3 the size of 2.
 //      width, height:      image size in pixels
 //      color_format:       2 is RGB565, 3 is RGB888. 4 is RGBA. Those are the only supported values
-//      src_data:           pointer to the pixel data.
+//      bc->src_data:           pointer to the pixel data.
 //
 //  RETURN:
 //      0 on error. 1 on success.
@@ -152,6 +165,9 @@ int tje_encode_to_file_at_quality(const char* dest_path,
                                   const int height,
                                   TJEColorFormat color_format,
                                   const unsigned char* src_data);
+
+
+
 
 // - tje_encode_with_func -
 //
@@ -169,7 +185,8 @@ int tje_encode_with_func(tje_write_func* func,
                          const int width,
                          const int height,
                          TJEColorFormat color_format,
-                         const unsigned char* src_data);
+                         struct buffer_closure* bc
+                         );
 
 #endif // TJE_HEADER_GUARD
 
@@ -958,8 +975,12 @@ static void tjei_huff_expand(TJEState* state)
     }
 }
 
+
+
+
+
 static int tjei_encode_main(TJEState* state,
-                            const unsigned char* src_data,
+                            struct buffer_closure* bc,
                             const int width,
                             const int height,
                             TJEColorFormat color_format)
@@ -1103,20 +1124,30 @@ static int tjei_encode_main(TJEState* state,
     uint32_t bitbuffer = 0;
     uint32_t location = 0;
 
-    for ( int y = 0; y < height; y += 8 ) {
+    uint16_t buffered_lines;
+    int yindex = 0;
+    for ( int y = 0; y < height; y += 8) {
+        if(buffered_lines == 0){
+            //buffer lines (must be a multiple of 8)
+            buffered_lines = (*(bc->fill))(bc,(void*)bc->src_data);
+            yindex = 0;
+        } 
+        buffered_lines -= 8;
         for ( int x = 0; x < width; x += 8 ) {
             // Block loop: ====
             for ( int off_y = 0; off_y < 8; ++off_y ) {
                 for ( int off_x = 0; off_x < 8; ++off_x ) {
                     int block_index = (off_y * 8 + off_x);
 
-                    int src_index = (((y + off_y) * width) + (x + off_x)) * color_format;
+                    int src_index = (((yindex + off_y) * width) + (x + off_x)) * color_format;
 
                     int col = x + off_x;
-                    int row = y + off_y;
+                    int row = yindex + off_y;
 
-                    if(row >= height) {
-                        src_index -= (width * (row - height + 1)) * color_format;
+                    // if(row >= height) {
+                    if(row >= bc->buffer_size_lines) {
+                        src_index -= (width * (row - bc->buffer_size_lines + 1)) * color_format;
+                        // src_index -= (width * (row - height + 1)) * color_format;
                     }
                     if(col >= width) {
                         src_index -= (col - width + 1) * color_format;
@@ -1129,20 +1160,20 @@ static int tjei_encode_main(TJEState* state,
                     switch (color_format)
                     {
                     case TJE_RGBA:
-                        r = src_data[src_index + 0];
-                        g = src_data[src_index + 1];
-                        b = src_data[src_index + 2];
+                        r = bc->src_data[src_index + 0];
+                        g = bc->src_data[src_index + 1];
+                        b = bc->src_data[src_index + 2];
                         break;
                     case TJE_RGB888:
-                        r = src_data[src_index + 0];
-                        g = src_data[src_index + 1];
-                        b = src_data[src_index + 2];
+                        r = bc->src_data[src_index + 0];
+                        g = bc->src_data[src_index + 1];
+                        b = bc->src_data[src_index + 2];
                         break;
                     case TJE_RGB565:
-                        rgb = (src_data[src_index + 1] << __CHAR_BIT__ | src_data[src_index + 0]);
-                        r = (rgb & 0b0000000000011111) << 3;
+                        rgb = (bc->src_data[src_index + 1] << __CHAR_BIT__ | bc->src_data[src_index + 0]);
+                        r = (rgb & 0b1111100000000000) >> 8;
                         g = (rgb & 0b0000011111100000) >> 3;
-                        b = (rgb & 0b1111100000000000) >> 8;
+                        b = (rgb & 0b0000000000011111) << 3;
                         break;
                     }
 
@@ -1186,6 +1217,7 @@ static int tjei_encode_main(TJEState* state,
 
 
         }
+        yindex += 8;
     }
 
     // Finish the image.
@@ -1244,13 +1276,16 @@ int tje_encode_to_file_at_quality(const char* dest_path,
 }
 
 
+
+
 int tje_encode_with_func(tje_write_func* func,
                          void* context,
                          const int quality,
                          const int width,
                          const int height,
                          TJEColorFormat color_format,
-                         const unsigned char* src_data)
+                         struct buffer_closure* bc
+                         )
 {
     if (quality < 1 || quality > 3) {
         tje_log("[ERROR] -- Valid 'quality' values are 1 (lowest), 2, or 3 (highest)\n");
@@ -1298,12 +1333,14 @@ int tje_encode_with_func(tje_write_func* func,
 
     tjei_huff_expand(state_p);
 
-    int result = tjei_encode_main(state_p, src_data, width, height, color_format);
+    int result = tjei_encode_main(state_p, bc, width, height, color_format);
 
     k_free(state_p);
 
     return result;
 }
+
+
 // ============================================================
 #endif // TJE_IMPLEMENTATION
 // ============================================================

@@ -25,15 +25,19 @@
 #define SLEEP_TIME_MS	1
 
 /*************** TODO *******************************
+[ ] add automatic detection of when image is exposed well/remembering of last exposure settings
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
+    [ ] automatically make 'images' folder on sd card. 
 [ ] use yacc flex for parsing SD card config file
 [ ] add versioning in config file
 [ ] use yacc to build config parser
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
 [X] add jpeg mode
-[ ] add option to switch to 640x480
+    [X] make jpeg compression work on VGA images.
+    [X] does jpeg work now that the data in capture may not be the image data (investigate)
+[X] add option to switch to 640x480
 [ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] issue with network time reset on low power sleep?
 [ ] find best idle states for pins (eg: 28) for low power
@@ -49,7 +53,7 @@ const struct device * spi_sram;
 uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
 static struct master_config_t mcfg;
-struct capture_t capture = {.data = image_buffer, .size = sizeof(image_buffer), .resolution = QVGA, .format = BMP, .time = 0};
+struct capture_t capture = {.data = image_buffer, .capacity = sizeof(image_buffer), .size = 0, .resolution = QVGA, .format = BMP, .time = 0};
 struct status_t stats = {.system_time = 0, .battery_voltage = -1, .captures = 0};
 
 int sleepy(uint32_t ms_sleep){
@@ -60,7 +64,7 @@ int sleepy(uint32_t ms_sleep){
 }
 
 int get_time(int32_t* ct){
-    int ret;
+    int ret = 0;
 
     uint64_t unix_time_ms;
     ret = date_time_now(&unix_time_ms);
@@ -71,7 +75,7 @@ int get_time(int32_t* ct){
 }
 
 int slm_vbat(int* bat_mv){
-    int ret;
+    int ret = 0;
     char response[1024];
 
     ret = nrf_modem_at_cmd(response, sizeof(response), "AT%%XVBAT");
@@ -150,7 +154,7 @@ int configure_low_power(void){
 }
 
 int setup(void){
-    int ret;
+    int ret = 0;
 
     ret = sdhc_mount();//very importaint for low power
 
@@ -165,7 +169,7 @@ int setup(void){
         ftp_setup();
 
         modem_init();
-        configure_low_power();
+        // configure_low_power();//this does not seem to work at the moment 
 
 
         //gets current network time
@@ -220,8 +224,6 @@ int loop(void){
     update_status();
 
     LOG_INF("ov7675 initialisation");
-    mcfg.im_cfg.resolution = QVGA;//dbg
-    // mcfg.im_cfg.resolution = VGA;//dbg
     ov7675_init(mcfg.im_cfg.auto_range_time, mcfg.im_cfg.resolution, mcfg.im_cfg.format, &capture);
 
     LOG_INF("ov7675 capture");
@@ -244,15 +246,9 @@ int loop(void){
 
     if ((d > 0) && (0 == (stats.captures % d))){
         LOG_INF("image -> ftp");
-        switch(mcfg.im_cfg.format){
-        case BMP:
-                ftp_write_bmp(&mcfg.ftp_cfg, &capture);
-            break;
-        case JPG:
-                ftp_write_jpg(&mcfg.ftp_cfg, &capture);
-            break;
 
-        }
+        modem_network_deregister();//this is because there is currently a bug where we cannot do DNS queries if the modem remains on but idle for longer than a minute
+        ftp_write_image(&mcfg.ftp_cfg, &capture);
         ftp_write_status(&mcfg.ftp_cfg, &stats);
     }
 
@@ -283,7 +279,7 @@ int loop(void){
 
 
 void main(void){
-    int ret;
+    int ret = 0;
     //some low power stuff
 
     //try out high and low for min power
@@ -295,6 +291,9 @@ void main(void){
 
     LOG_INF("begin!");
 
+    led(1);
+    k_msleep(1000);
+    led(0);
 
     ret = setup();
     if(ret < 0){

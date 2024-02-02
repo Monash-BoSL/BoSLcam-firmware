@@ -17,7 +17,9 @@
 #include <stdio.h>
 #include <time.h>
 
-#include <SEGGER_RTT.h>
+#ifdef CONFIG_CONFIG_USE_SEGGER_RTT
+    #include <SEGGER_RTT.h>
+#endif
 
 #include <sys/timeutil.h>
 
@@ -43,7 +45,7 @@ static struct master_config_t* mcfg;
 
 int lsdir(const char *path)
 {
-    int ret;
+    int ret = 0;
     struct fs_dir_t dirp;
     static struct fs_dirent entry;
 
@@ -81,7 +83,7 @@ int lsdir(const char *path)
 }
 
 int fs_mkdirs(const char* path) {
-    int ret;
+    int ret = 0;
     size_t pathlen = strlen(path)+1;
     if(pathlen > 256){return -ENAMETOOLONG;}//magic number of max path length
 
@@ -196,24 +198,27 @@ int store_value(char* val, uint32_t* index){
             store_int(val, &mcfg->im_cfg.auto_range_time);
             break;
         case 1://format
+            store_format_type(val, &mcfg->im_cfg.resolution);
+            break;
+        case 2://format
             store_format_type(val, &mcfg->im_cfg.format);
             break;
-        case 2://apn
+        case 3://apn
             store_string(val, &mcfg->ftp_cfg.apn);
             break;
-        case 3://network_operator
+        case 4://network_operator
             store_string(val, &mcfg->ftp_cfg.network_operator);
             break;
-        case 4://domain
+        case 5://domain
             store_string(val, &mcfg->ftp_cfg.domain);
             break;
-        case 5://username
+        case 6://username
             store_string(val, &mcfg->ftp_cfg.username);
             break;
-        case 6://cyphertype
+        case 7://cyphertype
             store_cypher_type(val, &mcfg->ftp_cfg.cyph_type);
             break;
-        case 7://password
+        case 8://password
             store_string(val, &mcfg->ftp_cfg.password);
             const char password[128];
             const char* suffix = PW_SUFFIX;
@@ -235,28 +240,28 @@ int store_value(char* val, uint32_t* index){
                     break;
             }
             break;
-        case 8://image_path
+        case 9://image_path
             store_string(val, &mcfg->ftp_cfg.image_path);
             break;
-        case 9: //status_path
+        case 10: //status_path
             store_string(val, &mcfg->ftp_cfg.status_path);
             break;
-        case 10://image_path
+        case 11://image_path
             store_string(val, &mcfg->sd_cfg.image_path);
             break;
-        case 11://status_path
+        case 12://status_path
             store_string(val, &mcfg->sd_cfg.status_path);
             break;
-        case 12://logging_level
+        case 13://logging_level
             store_int(val, &mcfg->sd_cfg.logging_level);
             break;
-        case 13://trig_type
+        case 14://trig_type
             store_trigger_type(val, &mcfg->trig_cfg.trig_type);
             break;
-        case 14://logging_interval
+        case 15://logging_interval
             store_int(val, &mcfg->trig_cfg.logging_interval);
             break;
-        case 15://logging_decimation_ftp
+        case 16://logging_decimation_ftp
             store_int(val, &mcfg->trig_cfg.logging_decimation_ftp);
             break;
     }
@@ -274,7 +279,7 @@ int parse_config_file(struct fs_file_t* zfp){
     bool pre_comment = 0;
     bool string = 0;
     enum parse_state state = NAME;
-    int ret;
+    int ret = 0;
 
     do{
         ret = fs_read(zfp, &next, 1);
@@ -360,7 +365,7 @@ int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
     char path[MAX_PATH];
     struct fs_file_t imf;
     char strtime[80];
-    int ret;
+    int ret = 0;
 
     if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
         LOG_ERR("file name too long");
@@ -417,7 +422,7 @@ cleanup:
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
 int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
-    int ret;
+    int ret = 0;
     char path[MAX_PATH];
 
     if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
@@ -426,8 +431,9 @@ int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
     }
     sprintf(path, "%s%s%08X.bmp", DISK_MOUNT_PT,sdhc_path, capture->time);
 
-    ret = fs_rename(SDHC_PATH(SCRATCH_FILE), path);
+    ret = fs_rename(capture->fp, path);
     if(ret < 0){return ret;}
+    strcpy(capture->fp, path);
 
     return ret;
 }
@@ -462,7 +468,7 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
     char path[MAX_PATH];
     struct fs_file_t imf;
     struct tm cal;
-    int ret;
+    int ret = 0;
 
     if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
         LOG_ERR("file name too long");
@@ -487,6 +493,10 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
 
     return 0;
 }
+
+
+
+#ifdef CONFIG_CONFIG_USE_SEGGER_RTT
 
 #define RTT_BUFFER_UP_SIZE (0x1000)
 #define RTT_BUFFER_DOWN_SIZE (0x08)
@@ -522,7 +532,7 @@ int clear_rtt_image(void){
 
 
 int sdhc_file_to_rtt(char* sdhc_path){
-    int ret;
+    int ret = 0;
     char path[MAX_PATH];
     struct fs_file_t imf;
 
@@ -575,3 +585,4 @@ cleanup:
 
     return ret;
 }
+#endif
