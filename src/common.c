@@ -3,7 +3,7 @@
 #include <drivers/led.h>
 
 
-void LOG_UNIXTIME(const int32_t ln){
+int LOG_UNIXTIME(const int32_t ln){
     int ret = 0;
     int32_t ct;
     uint64_t unix_time_ms;

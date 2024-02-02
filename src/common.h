@@ -203,6 +203,6 @@ static struct image_resolution_properties image_resolutions[] = {
                                 },
                             };
 
-void LOG_UNIXTIME(const int32_t ln);
+int LOG_UNIXTIME(const int32_t ln);
 
 void led(bool on);

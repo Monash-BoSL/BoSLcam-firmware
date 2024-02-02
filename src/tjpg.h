@@ -1124,7 +1124,7 @@ static int tjei_encode_main(TJEState* state,
     uint32_t bitbuffer = 0;
     uint32_t location = 0;
 
-    uint16_t buffered_lines;
+    uint16_t buffered_lines = 0;
     int yindex = 0;
     for ( int y = 0; y < height; y += 8) {
         if(buffered_lines == 0){

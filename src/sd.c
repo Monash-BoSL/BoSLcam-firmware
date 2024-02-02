@@ -168,6 +168,12 @@ int store_string(char* from_string, char** to){
     return 0;
 }
 
+int store_resolution_type(char* from_string, enum image_resolution* to){
+    int enum_int;
+    store_int(from_string, &enum_int);
+    *to = enum_int;
+    return 0;
+}
 
 int store_format_type(char* from_string, enum image_format* to){
     int enum_int;
@@ -197,8 +203,8 @@ int store_value(char* val, uint32_t* index){
         case 0://auto_range_time
             store_int(val, &mcfg->im_cfg.auto_range_time);
             break;
-        case 1://format
-            store_format_type(val, &mcfg->im_cfg.resolution);
+        case 1://resolution
+            store_resolution_type(val, &mcfg->im_cfg.resolution);
             break;
         case 2://format
             store_format_type(val, &mcfg->im_cfg.format);
