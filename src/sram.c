@@ -181,7 +181,6 @@ int sram_write_byte(uint8_t* addr, uint8_t data){
 }
 
 void sram_test(){
-    int ret = 0;
 
     spi_sram = device_get_binding(DT_LABEL(DT_NODELABEL(spi1)));
     LOG_INF("bind %s\n", spi_sram->name);

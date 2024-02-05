@@ -90,7 +90,7 @@ int fs_mkdirs(const char* path) {
     char* current = k_malloc(pathlen);
     memset(current, '\0', pathlen);//null terminate
 
-    char* pos = path;
+    char* pos = (char*) path;
     char* end = strchr(pos+1, '/');
     while(NULL != (end = strchr(pos+1, '/'))){
         strncpy(current+(pos-path), pos, end-pos);
@@ -236,9 +236,9 @@ int store_value(char* val, uint32_t* index){
                     decrypt(mcfg->ftp_cfg.password, CEASER_KEY);
                     break;
                 case SUFFIX:
-                    strcpy(password, mcfg->ftp_cfg.password);
+                    strcpy((char*) password, mcfg->ftp_cfg.password);
                     k_free(mcfg->ftp_cfg.password);
-                    strcat(password, suffix);
+                    strcat((char*) password, suffix);
                     pw_len = strlen(password);
                     mcfg->ftp_cfg.password = k_malloc(pw_len+1);
                     memcpy(mcfg->ftp_cfg.password, password, pw_len);
@@ -471,10 +471,10 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
 int sdhc_write_status(char* sdhc_path, struct status_t* status){
+    int ret = 0;
     char path[MAX_PATH];
     struct fs_file_t imf;
     struct tm cal;
-    int ret = 0;
 
     if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
         LOG_ERR("file name too long");
@@ -497,7 +497,7 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
     fs_write(&imf, path, strlen(path));
     fs_close(&imf);
 
-    return 0;
+    return ret;
 }
 
 

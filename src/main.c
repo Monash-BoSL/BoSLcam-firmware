@@ -20,6 +20,7 @@
 #include "sd.h"
 #include "ftp.h"
 #include "jpg.h"
+#include "watchdog.h"
 
 #define SLEEP_TIME_MS	1
 
@@ -114,18 +115,20 @@ void time_source_stats_async(const struct date_time_evt* evt){
     }
 }
 
-void modem_init(void){
-    int err;
+int modem_init(void){
+    int ret = 0;
 
     if (IS_ENABLED(CONFIG_LTE_AUTO_INIT_AND_CONNECT)) {
         /* Do nothing, modem is already configured and LTE connected. */
     } else {
-        err = lte_lc_init();
-        if (err) {
-            printk("Modem initialization failed, error: %d\n", err);
-            return;
+        ret = lte_lc_init();
+        if (ret) {
+            printk("Modem initialization failed, error: %d\n", ret);
+            return ret;
         }
     }
+    
+    return ret;
 }
 
 
@@ -154,58 +157,10 @@ int configure_low_power(void){
     return err;
 }
 
-
-#include "watchdog_app.h"
-
-int wdt_setup(){
-    int ret;
-
-    LOG_INF("initting watchdog");
-
-    watchdog_init_and_start();
-
-
-
-
-
-
-
-
-
-    // // nrfx_wdt_t wdt_handle;// = NRFX_WDT_INSTANCE(0);
-    // nrfx_wdt_config_t wdt_config = {.behaviour = NRF_WDT_BEHAVIOUR_RUN_SLEEP,
-    //                                 .reload_value = DAY_MS,
-    //                                 NRFX_WDT_IRQ_CONFIG
-    //                                 };
-
-    // ret = nrfx_wdt_init(
-    //     NRF_WDT0,
-    //     &wdt_config,
-    //     NULL
-    // );
-
-    // nrfx_wdt_enable(NRF_WDT0);
-
-    // for(int i = 0; i < 5; i++){
-    //     k_msleep(1000);
-    //     LOG_INF("feeding...");
-    //     nrfx_wdt_feed(NRF_WDT0);
-    // }
-
-
-    while(1){
-        k_msleep(1000);
-        LOG_INF("feeding..");
-    }
-}
-
-
 int setup(void){
     int ret = 0;
 
-
-    ret = wdt_setup();
-
+    ret = watchdog_init_and_start();
 
     ret = sdhc_mount();//very importaint for low power
 
@@ -221,7 +176,6 @@ int setup(void){
 
         modem_init();
         // configure_low_power();//this does not seem to work at the moment 
-
 
         //gets current network time
         ret = modem_network_register(&mcfg.ftp_cfg);
@@ -269,6 +223,8 @@ int setup(void){
 }
 
 int loop(void){
+    watchdog_feed();
+
     int d = mcfg.trig_cfg.logging_decimation_ftp;
 
     get_time(&capture.time);

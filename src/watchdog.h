@@ -9,8 +9,8 @@
  * @brief   Watchdog module for Asset Tracker v2
  */
 
-#ifndef WATCHDOG_APP_H__
-#define WATCHDOG_APP_H__
+#ifndef WATCHDOG_H__
+#define WATCHDOG_H__
 
 #include <zephyr.h>
 
@@ -41,15 +41,11 @@ typedef void (*watchdog_evt_handler_t)(const struct watchdog_evt *evt);
  */
 int watchdog_init_and_start(void);
 
-/** @brief Register handler to receive watchdog callback events.
+/** @brief Feed the watchdog timer
  *
- *  @warning The library only allows for one event handler to be registered
- *           at a time. A passed in event handler in this function will
- *           overwrite the previously set event handler.
- *
- *  @param evt_handler Event handler. Handler is de-registered if parameter is NULL.
  */
-void watchdog_register_handler(watchdog_evt_handler_t evt_handler);
+void watchdog_feed();
+
 
 #ifdef __cplusplus
 }

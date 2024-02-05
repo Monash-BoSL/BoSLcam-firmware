@@ -110,7 +110,6 @@ typedef enum
 } TJEColorFormat;
 
 
-
 typedef int buffer_fill_func(struct buffer_closure* bc, void* data);
 
 struct buffer_closure {
@@ -121,6 +120,7 @@ struct buffer_closure {
     struct fs_file_t* ibfp;
     buffer_fill_func* fill;
 };
+
 
 // - tje_encode_to_file -
 //
