@@ -6,7 +6,6 @@
 #include <zephyr.h>
 #include <device.h>
 
-
 #include <sys/util.h>
 #include <sys/printk.h>
 #include <inttypes.h>
@@ -23,6 +22,8 @@
 #include "jpg.h"
 
 #define SLEEP_TIME_MS	1
+
+
 
 /*************** TODO *******************************
 [ ] add option to automatically find best network and keep list of known good networks to try.
@@ -153,8 +154,58 @@ int configure_low_power(void){
     return err;
 }
 
+
+#include "watchdog_app.h"
+
+int wdt_setup(){
+    int ret;
+
+    LOG_INF("initting watchdog");
+
+    watchdog_init_and_start();
+
+
+
+
+
+
+
+
+
+    // // nrfx_wdt_t wdt_handle;// = NRFX_WDT_INSTANCE(0);
+    // nrfx_wdt_config_t wdt_config = {.behaviour = NRF_WDT_BEHAVIOUR_RUN_SLEEP,
+    //                                 .reload_value = DAY_MS,
+    //                                 NRFX_WDT_IRQ_CONFIG
+    //                                 };
+
+    // ret = nrfx_wdt_init(
+    //     NRF_WDT0,
+    //     &wdt_config,
+    //     NULL
+    // );
+
+    // nrfx_wdt_enable(NRF_WDT0);
+
+    // for(int i = 0; i < 5; i++){
+    //     k_msleep(1000);
+    //     LOG_INF("feeding...");
+    //     nrfx_wdt_feed(NRF_WDT0);
+    // }
+
+
+    while(1){
+        k_msleep(1000);
+        LOG_INF("feeding..");
+    }
+}
+
+
 int setup(void){
     int ret = 0;
+
+
+    ret = wdt_setup();
+
 
     ret = sdhc_mount();//very importaint for low power
 
