@@ -15,7 +15,7 @@
 LOG_MODULE_REGISTER(watchdog);
 
 #define WATCHDOG_TIMEOUT_MSEC						\
-	(WATCHDOG_APPLICATION_TIMEOUT_SEC * 1000)
+	(WATCHDOG_TIMEOUT_SEC * 1000)
 
 struct wdt_data_storage {
 	const struct device *wdt_drv;
@@ -52,7 +52,7 @@ static int watchdog_timeout_install(struct wdt_data_storage *data)
 	}
 
 	LOG_INF("Watchdog timeout installed. Timeout: %d",
-		WATCHDOG_APPLICATION_TIMEOUT_SEC);
+		WATCHDOG_TIMEOUT_SEC);
 	return 0;
 }
 

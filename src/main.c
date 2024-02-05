@@ -22,16 +22,13 @@
 #include "jpg.h"
 #include "watchdog.h"
 
-#define SLEEP_TIME_MS	1
-
-
-
 /*************** TODO *******************************
+[ ] add backup DNS configuration
 [ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] add automatic detection of when image is exposed well/remembering of last exposure settings
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
-    [ ] automatically make 'images' folder on sd card. 
+    [X] automatically make 'images' folder on sd card. 
 [ ] use yacc flex for parsing SD card config file
 [ ] add versioning in config file
 [ ] use yacc to build config parser

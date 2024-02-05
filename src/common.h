@@ -4,7 +4,7 @@
 
 // #define _DBG_SEND_IMAGE_RTT //enable to switch logic out for sending image over RTT after taken
 
-#define WATCHDOG_APPLICATION_TIMEOUT_SEC 86400 //allows silly values
+#define WATCHDOG_TIMEOUT_SEC 86400 //allows silly values
 
 #define PW_SUFFIX "_Z4GQ3tjuzu"
 #define CEASER_KEY  (37)
