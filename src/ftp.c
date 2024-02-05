@@ -96,8 +96,8 @@ int modem_network_deregister(void){
 }
 
 int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
-    char path[MAX_PATH];
     int ret = 0;
+    char path[MAX_PATH];
 
     LOG_INF("modem begin\n");
 
@@ -184,8 +184,8 @@ cleanup:
 }
 
 int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
-    char statstr[MAX_PATH];
     int ret = 0;
+    char statstr[MAX_PATH];
     struct tm cal;
 
     LOG_INF("modem begin\n");
