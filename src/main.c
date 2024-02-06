@@ -14,6 +14,7 @@
 #include <date_time.h>
 
 #include <modem/lte_lc.h>
+#include <nrf_socket.h>
 
 #include "common.h"
 #include "ov7675.h"
@@ -23,7 +24,7 @@
 #include "watchdog.h"
 
 /*************** TODO *******************************
-[ ] add backup DNS configuration
+[X] add backup DNS configuration
 [ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] add automatic detection of when image is exposed well/remembering of last exposure settings
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
@@ -124,7 +125,11 @@ int modem_init(void){
             return ret;
         }
     }
-    
+
+	struct nrf_in_addr dns;
+	dns.s_addr = 0x08080808; // Google DNS, 8.8.8.8
+	ret = nrf_setdnsaddr(NRF_AF_INET, &dns, sizeof(struct nrf_in_addr));
+
     return ret;
 }
 
@@ -172,7 +177,7 @@ int setup(void){
         ftp_setup();
 
         modem_init();
-        // configure_low_power();//this does not seem to work at the moment 
+        configure_low_power();//this does not seem to work at the moment 
 
         //gets current network time
         ret = modem_network_register(&mcfg.ftp_cfg);
@@ -220,6 +225,7 @@ int setup(void){
 }
 
 int loop(void){
+    int ret;
     watchdog_feed();
 
     int d = mcfg.trig_cfg.logging_decimation_ftp;
@@ -251,9 +257,11 @@ int loop(void){
     if ((d > 0) && (0 == (stats.captures % d))){
         LOG_INF("image -> ftp");
 
-        modem_network_deregister();//this is because there is currently a bug where we cannot do DNS queries if the modem remains on but idle for longer than a minute
-        ftp_write_image(&mcfg.ftp_cfg, &capture);
-        ftp_write_status(&mcfg.ftp_cfg, &stats);
+        ret = ftp_write_image(&mcfg.ftp_cfg, &capture);
+        if(ret){modem_network_deregister();}
+
+        ret = ftp_write_status(&mcfg.ftp_cfg, &stats);
+        if(ret){modem_network_deregister();}
     }
 
 
