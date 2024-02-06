@@ -84,9 +84,9 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
 int modem_network_deregister(void){
     int ret = 0;
 
-    ret = nrf_modem_at_printf("AT");
-    if(ret == 0){LOG_INF("AT initialised");}
-    else if (ret < 0){LOG_ERR("AT initialisation error"); return ret;}
+    // ret = nrf_modem_at_printf("AT");
+    // if(ret == 0){LOG_INF("AT initialised");}
+    // else if (ret < 0){LOG_ERR("AT initialisation error"); return ret;}
 
     ret = nrf_modem_at_printf("AT+CFUN=0");
     if(ret == 0){LOG_INF("CFUN off ok");}
@@ -168,6 +168,8 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
                     LOG_INF("FTP STATUS: put err %d", ret); 
                     fs_close(&imf);
                     goto cleanup;
+                } else {
+                    ret = 0;
                 }
                 first = 0;
             }
@@ -179,7 +181,7 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 cleanup:
     LOG_INF("FTP STATUS: closing...");
     ftp_close();
-    LOG_INF("UPLOAD SEQUENCE ENDED");
+    LOG_INF("UPLOAD SEQUENCE ENDED. ret: %d", ret);
     return ret;
 }
 
@@ -219,12 +221,12 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
 
     ret = ftp_put(ftp_cfg_p->status_path, statstr, strlen(statstr), FTP_PUT_APPEND);
     if (ret < 0){LOG_INF("FTP STATUS: put err %d", ret); goto cleanup;}
-    else {LOG_INF("FTP STATUS: put ok");};
+    else {LOG_INF("FTP STATUS: put ok"); ret = 0;};
 
 cleanup:
     LOG_INF("FTP STATUS: closing...");
     ftp_close();
-    LOG_INF("UPLOAD SEQUENCE ENDED");
+    LOG_INF("UPLOAD SEQUENCE ENDED. ret: %d", ret);
     return ret;
 }
 
