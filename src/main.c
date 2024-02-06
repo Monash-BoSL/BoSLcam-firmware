@@ -6,7 +6,6 @@
 #include <zephyr.h>
 #include <device.h>
 
-
 #include <sys/util.h>
 #include <sys/printk.h>
 #include <inttypes.h>
@@ -22,15 +21,15 @@
 #include "sd.h"
 #include "ftp.h"
 #include "jpg.h"
-
-#define SLEEP_TIME_MS	1
+#include "watchdog.h"
 
 /*************** TODO *******************************
+[X] add backup DNS configuration
 [ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] add automatic detection of when image is exposed well/remembering of last exposure settings
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
-    [ ] automatically make 'images' folder on sd card. 
+    [X] automatically make 'images' folder on sd card. 
 [ ] use yacc flex for parsing SD card config file
 [ ] add versioning in config file
 [ ] use yacc to build config parser
@@ -115,7 +114,7 @@ void time_source_stats_async(const struct date_time_evt* evt){
 }
 
 int modem_init(void){
-    int ret;
+    int ret = 0;
 
     if (IS_ENABLED(CONFIG_LTE_AUTO_INIT_AND_CONNECT)) {
         /* Do nothing, modem is already configured and LTE connected. */
@@ -163,6 +162,8 @@ int configure_low_power(void){
 int setup(void){
     int ret = 0;
 
+    ret = watchdog_init_and_start();
+
     ret = sdhc_mount();//very importaint for low power
 
     ret = sdhc_load_config("/config.txt", &mcfg);
@@ -177,7 +178,6 @@ int setup(void){
 
         modem_init();
         configure_low_power();//this does not seem to work at the moment 
-
 
         //gets current network time
         ret = modem_network_register(&mcfg.ftp_cfg);
@@ -226,6 +226,8 @@ int setup(void){
 
 int loop(void){
     int ret;
+    watchdog_feed();
+
     int d = mcfg.trig_cfg.logging_decimation_ftp;
 
     get_time(&capture.time);
