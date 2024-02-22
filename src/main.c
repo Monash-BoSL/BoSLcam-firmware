@@ -318,8 +318,8 @@ void main(void){
         loop();
     }
 
-    nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
-    nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
+    nrf_gpio_cfg_input(SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
+    nrf_gpio_cfg_input(SCCB_PDN, NRF_GPIO_PIN_PULLUP);
 
 
     while(1){
