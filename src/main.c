@@ -27,6 +27,7 @@
 
 /*************** TODO *******************************
 [X] add backup DNS configuration
+[ ] log the signal quality
 [ ] add option to automatically find best network and keep list of known good networks to try.
 [ ] add automatic detection of when image is exposed well/remembering of last exposure settings
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.

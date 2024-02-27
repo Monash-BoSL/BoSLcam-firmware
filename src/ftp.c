@@ -137,7 +137,7 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     ret = modem_network_select(mccmnc);
     if(ret == 0){return ret;}
 
-    return 0;
+    return -1;
 }
 
 int modem_network_deregister(void){
