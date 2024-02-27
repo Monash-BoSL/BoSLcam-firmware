@@ -75,7 +75,6 @@ int modem_network_select(const char* mccmnc){
             int stat = 0;
             ret = nrf_modem_at_scanf("AT+CEREG?", "+CEREG: %*d,%d", &stat);
             if(ret == 1){
-                // LOG_INF("CREG ok");
                 switch (stat){
                     case 1:
                     case 5:
@@ -127,7 +126,10 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     if(ret == 0){
         int stat = 0;
         ret = nrf_modem_at_scanf("AT%XMONITOR", "%%XMONITOR: %*[^,],%*[^,],%*[^,],\"%6[^\"]\",", mccmnc);
-        //HANDLE ERROR@@@!!!!!
+        if(ret != 1){//For some reason we didn't match and so for additional safety we will revert to config
+            strncpy(mccmnc, ftp_cfg_p->mccmnc, sizeof(mccmnc) -1 ); 
+            mccmnc[sizeof(mccmnc) - 1] = '\0';
+        }
         return ret;
     }
 
