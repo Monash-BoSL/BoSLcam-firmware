@@ -165,7 +165,7 @@ int setup(void){
     int ret = 0;
 
     //for the test suit to work it should always remain here as the first line of code!
-    if(true){test_runtime();};
+    // if(true){test_runtime();};
 
     ret = watchdog_init_and_start();
 

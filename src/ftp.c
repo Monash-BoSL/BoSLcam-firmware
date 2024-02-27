@@ -59,6 +59,9 @@ int ftp_mkdirs(const char* path) {
 
 int modem_network_select(const char* mccmnc){
     int ret = 0;
+    int timeout_ms     = 150000;
+    int retry_delay_ms = 250;//
+    int attempts = (mccmnc == NULL) ? timeout_ms/retry_delay_ms : 1;
 
     if(mccmnc == NULL){
         ret = nrf_modem_at_printf("AT+COPS=0");
@@ -67,23 +70,28 @@ int modem_network_select(const char* mccmnc){
     }
 
     if(ret == 0){
-        LOG_INF("COPS register ok");
-        int stat;
-
-        ret = nrf_modem_at_scanf("AT+CEREG?", "+CEREG: %*d,%d", &stat);
-        if(ret == 1){
-            LOG_INF("CREG ok");
-            switch (stat){
-                case 1,5:
-                    return 0;
-                break;
-                default:
-                    return -1;
-                break;
-            }
-        }else{LOG_ERR("CEREG error"); return ret;}
+        LOG_INF("COPS ok");
+        for(int i = 0; i < attempts; i++){
+            int stat = 0;
+            ret = nrf_modem_at_scanf("AT+CEREG?", "+CEREG: %*d,%d", &stat);
+            if(ret == 1){
+                // LOG_INF("CREG ok");
+                switch (stat){
+                    case 1:
+                    case 5:
+                        LOG_INF("CREG: registered, %d", stat);
+                        return 0;
+                    break;
+                    default:
+                        k_msleep(retry_delay_ms);
+                    break;
+                }
+            }else{LOG_ERR("CEREG error"); return ret;}
+        }
+        LOG_INF("CREG: not registed");
+        return -1;
     }
-    else if (ret < 0){LOG_ERR("COPS register error"); return ret;}
+    else if (ret < 0){LOG_ERR("COPS error"); return ret;}
 
     return ret;
 }
@@ -92,8 +100,9 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     int ret = 0;
     static char mccmnc[7] = "\0\0\0\0\0\0\0";
 
-    if(mccmnc[0] != '\0'){//if uninitialised
-        strcpy_s(mccmnc, sizeof(mccmnc), ftp_cfg_p->mccmnc); 
+    if(mccmnc[0] == '\0'){//if uninitialised
+        strncpy(mccmnc, ftp_cfg_p->mccmnc, sizeof(mccmnc) -1 ); 
+        mccmnc[sizeof(mccmnc) - 1] = '\0';
     }
 
     ret = nrf_modem_at_printf("AT");
@@ -108,30 +117,20 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     if(ret == 0){LOG_INF("CFUN on ok");}
     else if (ret < 0){LOG_ERR("CFUN on error"); return ret;}
 
+    //first connect to last used network
+    // LOG_INF("Registration attempt to: %s", log_strdup(mccmnc));
+    // ret = modem_network_select(mccmnc);
+    // if(ret == 0){return ret;}
 
-    ret = nrf_modem_at_printf("AT+COPS=1,2,\"%s\"", mccmnc);
-    if(ret == 0){
-        LOG_INF("COPS register ok");
-        int stat;
+    //then attempt automatic connection
+    ret = modem_network_select(NULL);
+    if(ret == 0){return ret;}
 
-        ret = nrf_modem_at_scanf("AT+CEREG?", "+CEREG: %*d,%d", &stat);
-        if(ret == 1){
-            switch (stat){
-                case 1,5:
-
-                break;
-                default:
-                   //AT+COPS=0 
-                break;
-            }
-        }else{return -1;}
-
-    
-    
-    
-    }
-    else if (ret < 0){LOG_ERR("COPS register error"); return ret;}
-
+    //then try connect to the config network
+    // strncpy(mccmnc, ftp_cfg_p->mccmnc, sizeof(mccmnc) -1 ); 
+    // mccmnc[sizeof(mccmnc) - 1] = '\0';
+    // ret = modem_network_select(mccmnc);
+    // if(ret == 0){return ret;}
 
     return 0;
 }
@@ -236,7 +235,7 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 cleanup:
     LOG_INF("FTP STATUS: closing...");
     ftp_close();
-    LOG_INF("UPLOAD SEQUENCE ENDED. ret: %d", ret);
+    // LOG_INF("UPLOAD SEQUENCE ENDED. ret: %d", ret);
     return ret;
 }
 
@@ -281,7 +280,7 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
 cleanup:
     LOG_INF("FTP STATUS: closing...");
     ftp_close();
-    LOG_INF("UPLOAD SEQUENCE ENDED. ret: %d", ret);
+    // LOG_INF("UPLOAD SEQUENCE ENDED. ret: %d", ret);
     return ret;
 }
 
