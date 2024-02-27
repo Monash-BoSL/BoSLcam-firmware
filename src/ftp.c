@@ -118,19 +118,24 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     else if (ret < 0){LOG_ERR("CFUN on error"); return ret;}
 
     //first connect to last used network
-    // LOG_INF("Registration attempt to: %s", log_strdup(mccmnc));
-    // ret = modem_network_select(mccmnc);
-    // if(ret == 0){return ret;}
+    LOG_INF("Registration attempt to: %s", log_strdup(mccmnc));
+    ret = modem_network_select(mccmnc);
+    if(ret == 0){return ret;}
 
     //then attempt automatic connection
     ret = modem_network_select(NULL);
-    if(ret == 0){return ret;}
+    if(ret == 0){
+        int stat = 0;
+        ret = nrf_modem_at_scanf("AT%XMONITOR", "%%XMONITOR: %*[^,],%*[^,],%*[^,],\"%6[^\"]\",", mccmnc);
+        //HANDLE ERROR@@@!!!!!
+        return ret;
+    }
 
     //then try connect to the config network
-    // strncpy(mccmnc, ftp_cfg_p->mccmnc, sizeof(mccmnc) -1 ); 
-    // mccmnc[sizeof(mccmnc) - 1] = '\0';
-    // ret = modem_network_select(mccmnc);
-    // if(ret == 0){return ret;}
+    strncpy(mccmnc, ftp_cfg_p->mccmnc, sizeof(mccmnc) -1 ); 
+    mccmnc[sizeof(mccmnc) - 1] = '\0';
+    ret = modem_network_select(mccmnc);
+    if(ret == 0){return ret;}
 
     return 0;
 }
