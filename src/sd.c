@@ -212,8 +212,8 @@ int store_value(char* val, uint32_t* index){
         case 3://apn
             store_string(val, &mcfg->ftp_cfg.apn);
             break;
-        case 4://network_operator
-            store_string(val, &mcfg->ftp_cfg.network_operator);
+        case 4://mccmnc
+            store_string(val, &mcfg->ftp_cfg.mccmnc);
             break;
         case 5://domain
             store_string(val, &mcfg->ftp_cfg.domain);

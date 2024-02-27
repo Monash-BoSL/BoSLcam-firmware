@@ -57,9 +57,44 @@ int ftp_mkdirs(const char* path) {
     return res;//make sure that we return a nice error code here.
 }
 
+int modem_network_select(const char* mccmnc){
+    int ret = 0;
+
+    if(mccmnc == NULL){
+        ret = nrf_modem_at_printf("AT+COPS=0");
+    }else{
+        ret = nrf_modem_at_printf("AT+COPS=1,2,\"%s\"", mccmnc);
+    }
+
+    if(ret == 0){
+        LOG_INF("COPS register ok");
+        int stat;
+
+        ret = nrf_modem_at_scanf("AT+CEREG?", "+CEREG: %*d,%d", &stat);
+        if(ret == 1){
+            LOG_INF("CREG ok");
+            switch (stat){
+                case 1,5:
+                    return 0;
+                break;
+                default:
+                    return -1;
+                break;
+            }
+        }else{LOG_ERR("CEREG error"); return ret;}
+    }
+    else if (ret < 0){LOG_ERR("COPS register error"); return ret;}
+
+    return ret;
+}
+
 int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     int ret = 0;
-    // char response[256];
+    static char mccmnc[7] = "\0\0\0\0\0\0\0";
+
+    if(mccmnc[0] != '\0'){//if uninitialised
+        strcpy_s(mccmnc, sizeof(mccmnc), ftp_cfg_p->mccmnc); 
+    }
 
     ret = nrf_modem_at_printf("AT");
     if(ret == 0){LOG_INF("AT initialised");}
@@ -73,10 +108,30 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     if(ret == 0){LOG_INF("CFUN on ok");}
     else if (ret < 0){LOG_ERR("CFUN on error"); return ret;}
 
-    //may get stuck here if there is no network...
-    ret = nrf_modem_at_printf("AT+COPS=1,2,\"%s\"", ftp_cfg_p->network_operator);
-    if(ret == 0){LOG_INF("COPS register ok");}
+
+    ret = nrf_modem_at_printf("AT+COPS=1,2,\"%s\"", mccmnc);
+    if(ret == 0){
+        LOG_INF("COPS register ok");
+        int stat;
+
+        ret = nrf_modem_at_scanf("AT+CEREG?", "+CEREG: %*d,%d", &stat);
+        if(ret == 1){
+            switch (stat){
+                case 1,5:
+
+                break;
+                default:
+                   //AT+COPS=0 
+                break;
+            }
+        }else{return -1;}
+
+    
+    
+    
+    }
     else if (ret < 0){LOG_ERR("COPS register error"); return ret;}
+
 
     return 0;
 }

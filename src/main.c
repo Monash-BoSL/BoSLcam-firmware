@@ -23,6 +23,8 @@
 #include "jpg.h"
 #include "watchdog.h"
 
+#include "../tests/test.h"
+
 /*************** TODO *******************************
 [X] add backup DNS configuration
 [ ] add option to automatically find best network and keep list of known good networks to try.
@@ -161,6 +163,9 @@ int configure_low_power(void){
 
 int setup(void){
     int ret = 0;
+
+    //for the test suit to work it should always remain here as the first line of code!
+    if(true){test_runtime();};
 
     ret = watchdog_init_and_start();
 
