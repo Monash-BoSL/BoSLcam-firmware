@@ -72,7 +72,7 @@ int sleepy(uint64_t target_duration_ms){
     uint64_t unix_time_ms_now;
     ret = date_time_now(&unix_time_ms_now);
     if(ret < 0){
-        LOG_ERR("Cannot get current time, defaulting to %" PRIu64 " ms sleep", target_duration_ms);
+        LOG_ERR("Cannot get current time, defaulting to %lu ms sleep", target_duration_ms);
         k_msleep(target_duration_ms);
         return -2;
     } 
@@ -82,11 +82,11 @@ int sleepy(uint64_t target_duration_ms){
     if (unix_time_ms_elapsed < target_duration_ms) {
         uint64_t sleep_ms = target_duration_ms - unix_time_ms_elapsed;
         if(sleep_ms > target_duration_ms){
-            LOG_ERR("bad last sleep time, defaulting to %" PRIu64 " ms sleep", target_duration_ms);
+            LOG_ERR("bad last sleep time, defaulting to %lu ms sleep", target_duration_ms);
             k_msleep(target_duration_ms);
             return -4;
         }
-        LOG_INF("Sleeping for: %" PRIu64 " ms", sleep_ms);
+        LOG_INF("Sleeping for: %lu ms", sleep_ms);
         return k_msleep(sleep_ms);
     } else {
         LOG_WRN("Loop duration too long, continuing without sleep");
@@ -194,9 +194,6 @@ int configure_low_power(void){
 
 int setup(void){
     int ret = 0;
-
-    //for the test suit to work it should always remain here as the first line of code!
-    // if(true){test_runtime();};
 
     ret = watchdog_init_and_start();
 
@@ -328,6 +325,10 @@ int loop(void){
 
 void main(void){
     int ret = 0;
+
+    // for the test suit to work it should always remain here as the first line of code!
+    // if(true){test_runtime();};
+
     //some low power stuff
 
     //try out high and low for min power

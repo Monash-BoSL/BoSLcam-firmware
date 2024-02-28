@@ -18,3 +18,4 @@ target_sources(app PRIVATE src/watchdog.c)
 # unit tests 
 target_sources(app PRIVATE tests/test.c)
 target_sources(app PRIVATE tests/test.modem.c)
+target_sources(app PRIVATE tests/test.main.c)

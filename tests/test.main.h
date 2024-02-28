@@ -1,0 +1,6 @@
+#ifndef TEST_MAIN_H
+#define TEST_MAIN_H
+
+int test_printf_uint64_t(void);
+
+#endif
