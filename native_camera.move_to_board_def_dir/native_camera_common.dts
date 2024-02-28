@@ -17,15 +17,15 @@
 	leds {
 		compatible = "gpio-leds";
 		led0: led_0 {
-			gpios = <&gpio0 17 0>;
-			label = "Green LED 1";
+			gpios = <&gpio0 20 0>;
+			label = "D1";
 		};
 	};
 
 	pwmleds {
 		compatible = "pwm-leds";
 		pwm_led0: pwm_led_0 {
-			pwms = <&pwm0 17>;
+			pwms = <&pwm0 20>;
 		};
 	};
 
@@ -72,8 +72,8 @@
 	cts-pull-up;
 };
 
-
-arduino_serial: &uart1 {
+// arduino_serial: &uart1 {
+arduino_serial: &uart0 {
 	status = "okay";
 	current-speed = <9600>;
 	tx-pin = <31>;
@@ -96,17 +96,23 @@ arduino_i2c: &i2c2 {
 
 &pwm0 {
 	status = "okay";
-	ch0-pin = <17>;
+	ch0-pin = <20>;
 };
 
-// &spi0 {
-	// compatible = "nordic,nrf-spim";
-	// status = "okay";
-	// sck-pin = <26>;
-	// mosi-pin = <27>;
-	// miso-pin = <29>;
-	// cs-gpios = <&gpio0 28 GPIO_ACTIVE_LOW>;
-// };
+&spi1 {
+	compatible = "nordic,nrf-spim";
+	status = "okay";
+	sck-pin = <26>;
+	mosi-pin = <27>;
+	miso-pin = <29>;
+	cs-gpios = <&gpio0 28 GPIO_ACTIVE_LOW>;
+
+	spi_sram0: spi-device@0 {
+		reg = <0>;
+		status = "okay";
+		spi-max-frequency = <8000000>;
+	};
+};
 
 &spi3 {
         compatible = "nordic,nrf-spim";
@@ -125,8 +131,6 @@ arduino_i2c: &i2c2 {
                 spi-max-frequency = <8000000>;
         };
 };
-
-
 
 &timer0 {
 	status = "okay";

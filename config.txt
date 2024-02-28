@@ -23,23 +23,24 @@
 //**********************************************
 
 //image_config_t
-uint32_t auto_range_time = 1000
+uint32_t auto_range_time = 10000
+enum resolution = 0 //0 VGA, 1 QVGA.
 enum format = 1 //0 BMP, 1 JPG
 //ftp_config_t
-char* apn = "hologram"
+char* apn = "simbase"
 char* network_operator = "50501"
 char* domain = "ftp.bosl.com.au"
-char* username = "images@bosl.com.au"
-enum cypher_type = 2; //0 none, 1 ceaser, 2 shift.
-char* password = "solderflux" 
-char* image_path = "/dev/images/img"
-char* status_path = "/dev/status"
+char* username = "images2023@bosl.com.au"
+enum cypher_type = 2 //0 NONE, 1 CEASAR, 2 SUFFIX
+char* password = "bosl" 
+char* image_path = "/jpg/images/img"
+char* status_path = "/jpg/status"
 //sd_config_t 
-char* image_path = "/devlog/images/img"
-char* status_path = "/devlog/status"
+char* image_path = "/dne/images/img"
+char* status_path = "/dne/status"
 int	logging_level = 0;//DBG, INF, WRN, ERR, OFF
 //trigger_config_t 
 enum trigger_type trig_type = 0//0 time trig, 1 uart trig
-uint32_t logging_interval = 6000//ms
+uint32_t logging_interval = 360000//ms
 uint32_t logging_decimation_ftp = 1//1 in every x photos captured to sd will be uploaded
 
