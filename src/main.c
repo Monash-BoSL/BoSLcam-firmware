@@ -62,38 +62,34 @@ static struct master_config_t mcfg;
 struct capture_t capture = {.data = image_buffer, .capacity = sizeof(image_buffer), .size = 0, .resolution = QVGA, .format = BMP, .time = 0};
 struct status_t stats_global = {.system_time = 0, .battery_voltage = -1, .captures = 0, .mccmnc = "\0\0\0\0\0\0\0", .rsrq = 0xFF, .rsrp = 0xFF};
 
-int sleepy(uint64_t target_duration_ms){
+int sleepy(uint32_t target_duration_ms){
     int ret = 0;
 
     nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
     nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
 
-    static uint64_t unix_time_ms_last_call = 0;
-    uint64_t unix_time_ms_now;
-    ret = date_time_now(&unix_time_ms_now);
-    if(ret < 0){
-        LOG_ERR("Cannot get current time, defaulting to %lu ms sleep", target_duration_ms);
-        k_msleep(target_duration_ms);
-        return -2;
-    } 
-    uint64_t unix_time_ms_elapsed = unix_time_ms_now - unix_time_ms_last_call;
-    unix_time_ms_last_call = unix_time_ms_now;
+    static int64_t unix_time_ms_last_call = 0;
+    int64_t unix_time_ms_now = k_uptime_get();
+    int64_t unix_time_ms_elapsed = unix_time_ms_now - unix_time_ms_last_call;
 
     if (unix_time_ms_elapsed < target_duration_ms) {
-        uint64_t sleep_ms = target_duration_ms - unix_time_ms_elapsed;
+        int64_t sleep_ms = target_duration_ms - unix_time_ms_elapsed;
         if(sleep_ms > target_duration_ms){
-            LOG_ERR("bad last sleep time, defaulting to %lu ms sleep", target_duration_ms);
+            LOG_ERR("bad last sleep time, defaulting to %ld ms sleep", target_duration_ms);
             k_msleep(target_duration_ms);
-            return -4;
+            ret = -4; goto cleanup;
         }
-        LOG_INF("Sleeping for: %lu ms", sleep_ms);
-        return k_msleep(sleep_ms);
+        LOG_INF("Sleeping for: %ld ms", sleep_ms);
+        ret = k_msleep(sleep_ms); goto cleanup;
     } else {
         LOG_WRN("Loop duration too long, continuing without sleep");
-        return -1;
+        ret = -1; goto cleanup;
     }
 
-    return -3;
+    ret = -3; goto cleanup;
+cleanup:
+    unix_time_ms_last_call = k_uptime_get();
+    return ret;
 }
 
 int get_time(int32_t* ct){

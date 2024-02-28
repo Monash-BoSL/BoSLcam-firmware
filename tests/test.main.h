@@ -2,5 +2,6 @@
 #define TEST_MAIN_H
 
 int test_printf_uint64_t(void);
+int test_sleepy(void);
 
 #endif

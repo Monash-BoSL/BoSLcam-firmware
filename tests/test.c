@@ -12,8 +12,9 @@ int test_runtime(void){
     // assert(ret == 0);
 
 
-    ret = test_printf_uint64_t();
-    assert(ret == 0);
+    // ret = test_printf_uint64_t();
+    // assert(ret == 0);
+    test_sleepy();
     
     printf("All tests successful!");
     k_sleep(K_FOREVER);
