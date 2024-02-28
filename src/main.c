@@ -27,8 +27,10 @@
 
 /*************** TODO *******************************
 [X] add backup DNS configuration
-[ ] log the signal quality
-[ ] add option to automatically find best network and keep list of known good networks to try.
+[X] log the signal quality
+[X] perform an automatic search for networks when the default network is not found
+    [ ] attempt an automatic connection if lots of uploads have failed
+    [ ] store a list of known networks with their signal quality
 [ ] add automatic detection of when image is exposed well/remembering of last exposure settings
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
@@ -38,6 +40,7 @@
 [ ] use yacc to build config parser
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
+    [X] logging based on length of last loop, not quite RTC yet though
 [X] add jpeg mode
     [X] make jpeg compression work on VGA images.
     [X] does jpeg work now that the data in capture may not be the image data (investigate)
@@ -57,13 +60,40 @@ uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
 static struct master_config_t mcfg;
 struct capture_t capture = {.data = image_buffer, .capacity = sizeof(image_buffer), .size = 0, .resolution = QVGA, .format = BMP, .time = 0};
-struct status_t stats = {.system_time = 0, .battery_voltage = -1, .captures = 0};
+struct status_t stats_global = {.system_time = 0, .battery_voltage = -1, .captures = 0, .mccmnc = "\0\0\0\0\0\0\0", .rsrq = 0xFF, .rsrp = 0xFF};
 
-int sleepy(uint32_t ms_sleep){
+int sleepy(uint64_t target_duration_ms){
+    int ret = 0;
+
     nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
     nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
 
-    return k_msleep(ms_sleep);
+    static uint64_t unix_time_ms_last_call = 0;
+    uint64_t unix_time_ms_now;
+    ret = date_time_now(&unix_time_ms_now);
+    if(ret < 0){
+        LOG_ERR("Cannot get current time, defaulting to %" PRIu64 " ms sleep", target_duration_ms);
+        k_msleep(target_duration_ms);
+        return -2;
+    } 
+    uint64_t unix_time_ms_elapsed = unix_time_ms_now - unix_time_ms_last_call;
+    unix_time_ms_last_call = unix_time_ms_now;
+
+    if (unix_time_ms_elapsed < target_duration_ms) {
+        uint64_t sleep_ms = target_duration_ms - unix_time_ms_elapsed;
+        if(sleep_ms > target_duration_ms){
+            LOG_ERR("bad last sleep time, defaulting to %" PRIu64 " ms sleep", target_duration_ms);
+            k_msleep(target_duration_ms);
+            return -4;
+        }
+        LOG_INF("Sleeping for: %" PRIu64 " ms", sleep_ms);
+        return k_msleep(sleep_ms);
+    } else {
+        LOG_WRN("Loop duration too long, continuing without sleep");
+        return -1;
+    }
+
+    return -3;
 }
 
 int get_time(int32_t* ct){
@@ -92,8 +122,8 @@ int slm_vbat(int* bat_mv){
 
 
 int update_status(){
-    stats.system_time = capture.time;
-    slm_vbat(&stats.battery_voltage);
+    stats_global.system_time = capture.time;
+    slm_vbat(&stats_global.battery_voltage);
 
     return 0;
 }
@@ -102,16 +132,16 @@ int update_status(){
 void time_source_stats_async(const struct date_time_evt* evt){
     switch (evt->type){
     case DATE_TIME_OBTAINED_MODEM:
-        stats.time_src = NETWORK_TIME;
+        stats_global.time_src = NETWORK_TIME;
         break;
     case DATE_TIME_OBTAINED_NTP:
-        stats.time_src = NTP_TIME;
+        stats_global.time_src = NTP_TIME;
         break;
     case DATE_TIME_OBTAINED_EXT:
-        stats.time_src = EXT_TIME;
+        stats_global.time_src = EXT_TIME;
         break;
     case DATE_TIME_NOT_OBTAINED:
-        stats.time_src = NO_TIME;
+        stats_global.time_src = NO_TIME;
         break;
     }
 }
@@ -195,7 +225,7 @@ int setup(void){
             if(date_time_is_valid()){break;}
             k_msleep(10);
         }
-        stats.time_src = NETWORK_TIME;
+        stats_global.time_src = NETWORK_TIME;
     }
 
     date_time_register_handler(time_source_stats_async);
@@ -206,7 +236,7 @@ int setup(void){
         ret = sdhc_load_last_status_time(mcfg.sd_cfg.status_path, &cal);
         if(ret == 0){
             ret = date_time_set(&cal);
-            stats.time_src = FS_TIME;
+            stats_global.time_src = FS_TIME;
         }
     }
     if(!date_time_is_valid()){//then from default time epoch
@@ -222,7 +252,7 @@ int setup(void){
                             .tm_isdst = 0,
                         };//2020/01/01-00:00:00 UTC
         ret = date_time_set(&cal);
-        stats.time_src = NO_TIME;
+        stats_global.time_src = NO_TIME;
     }
     if(!date_time_is_valid()){return -ENODATA;}
 
@@ -253,20 +283,20 @@ int loop(void){
     sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
 
     // sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
-    sdhc_write_status(mcfg.sd_cfg.status_path, &stats);
+    sdhc_write_status(mcfg.sd_cfg.status_path, &stats_global);
 
     if(mcfg.im_cfg.format == JPG){
         LOG_INF("jpg   -> sdhc");
         sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
     }
 
-    if ((d > 0) && (0 == (stats.captures % d))){
+    if ((d > 0) && (0 == (stats_global.captures % d))){
         LOG_INF("image -> ftp");
 
         ret = ftp_write_image(&mcfg.ftp_cfg, &capture);
         if(ret){modem_network_deregister();}
 
-        ret = ftp_write_status(&mcfg.ftp_cfg, &stats);
+        ret = ftp_write_status(&mcfg.ftp_cfg, &stats_global);
         if(ret){modem_network_deregister();}
     }
 
@@ -290,7 +320,7 @@ int loop(void){
         break;
     }
 
-    stats.captures++;
+    stats_global.captures++;
 
     return 0;
 }

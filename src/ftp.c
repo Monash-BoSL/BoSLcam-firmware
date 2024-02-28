@@ -24,6 +24,8 @@
 
 LOG_MODULE_REGISTER(ftp);
 
+extern struct status_t stats_global;
+
 void ftp_data_callback(const uint8_t *msg, uint16_t len)
 {
     printk(msg);
@@ -55,6 +57,17 @@ int ftp_mkdirs(const char* path) {
 
     k_free(current);
     return res;//make sure that we return a nice error code here.
+}
+
+int modem_signal_strength(void){
+    int ret = 0;
+    ret = nrf_modem_at_scanf("AT+CESQ", "+CESQ: %*d,%*d,%*d,%*d,%d,%d", &stats_global.rsrq, &stats_global.rsrp);
+    if(ret != 2){
+        stats_global.rsrq = 0xFF;
+        stats_global.rsrp = 0xFF;
+        return 0;
+    }
+    return -1;
 }
 
 int modem_network_select(const char* mccmnc){
@@ -97,11 +110,10 @@ int modem_network_select(const char* mccmnc){
 
 int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     int ret = 0;
-    static char mccmnc[7] = "\0\0\0\0\0\0\0";
 
-    if(mccmnc[0] == '\0'){//if uninitialised
-        strncpy(mccmnc, ftp_cfg_p->mccmnc, sizeof(mccmnc) -1 ); 
-        mccmnc[sizeof(mccmnc) - 1] = '\0';
+    if(stats_global.mccmnc[0] == '\0'){//if uninitialised
+        strncpy(stats_global.mccmnc, ftp_cfg_p->mccmnc, sizeof(stats_global.mccmnc) -1 ); 
+        stats_global.mccmnc[sizeof(stats_global.mccmnc) - 1] = '\0';
     }
 
     ret = nrf_modem_at_printf("AT");
@@ -117,29 +129,31 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     else if (ret < 0){LOG_ERR("CFUN on error"); return ret;}
 
     //first connect to last used network
-    LOG_INF("Registration attempt to: %s", log_strdup(mccmnc));
-    ret = modem_network_select(mccmnc);
-    if(ret == 0){return ret;}
+    LOG_INF("Registration attempt to: %s", log_strdup(stats_global.mccmnc));
+    ret = modem_network_select(stats_global.mccmnc);
+    if(ret == 0){goto cleanup;}
 
     //then attempt automatic connection
     ret = modem_network_select(NULL);
     if(ret == 0){
-        int stat = 0;
-        ret = nrf_modem_at_scanf("AT%XMONITOR", "%%XMONITOR: %*[^,],%*[^,],%*[^,],\"%6[^\"]\",", mccmnc);
+        ret = nrf_modem_at_scanf("AT%XMONITOR", "%%XMONITOR: %*[^,],%*[^,],%*[^,],\"%6[^\"]\",", stats_global.mccmnc);
         if(ret != 1){//For some reason we didn't match and so for additional safety we will revert to config
-            strncpy(mccmnc, ftp_cfg_p->mccmnc, sizeof(mccmnc) -1 ); 
-            mccmnc[sizeof(mccmnc) - 1] = '\0';
+            strncpy(stats_global.mccmnc, ftp_cfg_p->mccmnc, sizeof(stats_global.mccmnc) -1 ); 
+            stats_global.mccmnc[sizeof(stats_global.mccmnc) - 1] = '\0';
         }
-        return ret;
+        goto cleanup;
     }
 
     //then try connect to the config network
-    strncpy(mccmnc, ftp_cfg_p->mccmnc, sizeof(mccmnc) -1 ); 
-    mccmnc[sizeof(mccmnc) - 1] = '\0';
-    ret = modem_network_select(mccmnc);
-    if(ret == 0){return ret;}
+    strncpy(stats_global.mccmnc, ftp_cfg_p->mccmnc, sizeof(stats_global.mccmnc) -1 ); 
+    stats_global.mccmnc[sizeof(stats_global.mccmnc) - 1] = '\0';
+    ret = modem_network_select(stats_global.mccmnc);
+    if(ret == 0){goto cleanup;}
 
     return -1;
+cleanup:
+    modem_signal_strength();//we ignore the error here as its not too important if the signal strength is bad; 
+    return ret;
 }
 
 int modem_network_deregister(void){
@@ -255,10 +269,14 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
 
     unix_date(&cal, status->system_time);
     strftime(statstr, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
-    sprintf(statstr+strlen(statstr), ",%s,%d,%d\n",
+    sprintf(statstr+strlen(statstr), ",%s,%d,%d,%s,%d,%d\n",
                                 time_source_str[status->time_src],
                                 status->captures,
-                                status->battery_voltage);
+                                status->battery_voltage,
+                                status->mccmnc,
+                                status->rsrq,
+                                status->rsrp
+                                );
 
     ret = modem_network_register(ftp_cfg_p);
     if (ret < 0){LOG_INF("FTP STATUS: register err %d", ret); return ret;}

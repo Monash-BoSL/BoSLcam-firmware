@@ -490,10 +490,14 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
     //here is where we write what we want to log to file
     unix_date(&cal, status->system_time);
     strftime(path, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
-    sprintf(path+strlen(path), ",%s,%d,%d\n",
+    sprintf(path+strlen(path), ",%s,%d,%d,%s,%d,%d\n",
                                 time_source_str[status->time_src],
                                 status->captures,
-                                status->battery_voltage);
+                                status->battery_voltage,
+                                status->mccmnc,
+                                status->rsrq,
+                                status->rsrp
+                                );
 
     fs_write(&imf, path, strlen(path));
     fs_close(&imf);
