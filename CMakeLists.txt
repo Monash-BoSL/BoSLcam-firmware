@@ -6,9 +6,9 @@ project(native_camera)
 
 set(APP_SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 
-set(LEX_YY_C ${APP_SOURCE_DIR}/lex.yy.c)
-set(Y_TAB_H ${APP_SOURCE_DIR}/y.tab.h)
-set(Y_TAB_C ${APP_SOURCE_DIR}/y.tab.c)
+set(LEX_YY_C ${CMAKE_BINARY_DIR}/lex.yy.c)
+set(Y_TAB_H ${CMAKE_BINARY_DIR}/y.tab.h)
+set(Y_TAB_C ${CMAKE_BINARY_DIR}/y.tab.c)
 set(CONFIG_L ${APP_SOURCE_DIR}/config.l)
 set(CONFIG_Y ${APP_SOURCE_DIR}/config.y)
 
@@ -25,6 +25,11 @@ target_sources(app PRIVATE src/watchdog.c)
 
 target_sources(app PRIVATE ${LEX_YY_C})
 target_sources(app PRIVATE ${Y_TAB_C})
+
+include_directories(app PUBLIC 
+     "${APP_SOURCE_DIR}"
+     "${CMAKE_BINARY_DIR}" #for y.tab.h
+     )
 
 # if (UNIX)
 # 	##for flex on linux
