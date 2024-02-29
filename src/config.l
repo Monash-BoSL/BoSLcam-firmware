@@ -20,7 +20,7 @@ version atover(const char*);
 
 "uint32_t"                              {return unit32_t_tk;}
 "enum"                                  {return enum_tk;}
-"char*"                                 {return char*_tk;}
+"char*"                                 {return char_p_tk;}
 
 "auto_range_time"                       {return auto_range_time_tk;}
 

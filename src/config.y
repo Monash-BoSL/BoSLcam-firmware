@@ -35,7 +35,7 @@ int yydebug = 1;
 
 %token uint32_t_tk
 %token enum_tk
-%token char*_tk
+%token char_p_tk
 
 %token auto_range_time_tk
 
