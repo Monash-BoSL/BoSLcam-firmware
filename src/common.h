@@ -85,7 +85,7 @@ enum cypher_type {
 
 struct ftp_config_t {
     char* apn;
-    char* network_operator;//numertic network operator code
+    char* mccmnc;//numertic network operator code
     char* domain;
     //port
     char* username;
@@ -156,6 +156,9 @@ struct status_t {
     int32_t battery_voltage;
     uint32_t captures;
     enum time_source time_src;
+    char mccmnc[7];
+    uint8_t rsrq;
+    uint8_t rsrp;
 };
 
 

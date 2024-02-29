@@ -13,3 +13,9 @@ target_sources(app PRIVATE src/util.c)
 target_sources(app PRIVATE src/jpg.c)
 target_sources(app PRIVATE src/common.c)
 target_sources(app PRIVATE src/watchdog.c)
+
+
+# unit tests 
+target_sources(app PRIVATE tests/test.c)
+target_sources(app PRIVATE tests/test.modem.c)
+target_sources(app PRIVATE tests/test.main.c)
