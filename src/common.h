@@ -98,7 +98,7 @@ struct ftp_config_t {
 struct sd_config_t {
     char* image_path;
     char* status_path;
-    int	logging_level;//DBG, INF, WRN, ERR, OFF
+    uint32_t logging_level;//DBG, INF, WRN, ERR, OFF
 };
 
 enum trigger_type {
