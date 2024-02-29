@@ -21,11 +21,10 @@ int yydebug = 1;
 %define parse.error verbose
 
 %union {
-		int integer; 
-		double floating_point; 
-		char* string;
-		version version;
-		enum image_resolution enum_image_resolution;
+		int integer_value; 
+		double floating_point_value; 
+		char* string_value;
+		enum image_resolution enum_image_resolution_value;
 		}         /* Yacc definitions */
 
 
@@ -44,10 +43,10 @@ int yydebug = 1;
 
 %token name
 
-%token <integer> integer
-%token <floating_point> floating_point
-%token <string> string
-%token <enum_image_resolution> enum_image_resolution
+%token <integer_value> integer
+%token <floating_point_value> floating_point
+%token <string_value> string
+%token <enum_image_resolution_value> enum_image_resolution
 
 %%
 
@@ -64,8 +63,8 @@ entry   : image_config_t_entry      {;}
         | trigger_config_t_entry    {;}
         ;
 
-image_config_t_entry : uint32_t_tk auto_range_time_tk '=' integer                   {mcfg.trig_cfg.auto_range_time = $4}
-                     | enum_tk image_resolution_tk resolution_tk '=' enum_image_resolution    {mcfg.trig_cfg.auto_range_time = $5}
+image_config_t_entry : uint32_t_tk auto_range_time_tk '=' integer                   {mcfg.im_cfg.auto_range_time = $4;}
+                     | enum_tk image_resolution_tk resolution_tk '=' enum_image_resolution    {mcfg.im_cfg.auto_range_time = $5;}
 
 ftp_config_t_entry  :                   {;}
                     ;
