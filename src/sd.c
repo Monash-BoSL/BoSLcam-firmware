@@ -346,6 +346,58 @@ int sdhc_mount(void){
     }
 }
 
+typedef struct yy_buffer_state * YY_BUFFER_STATE;
+extern int yyparse(void);
+extern YY_BUFFER_STATE yy_scan_bytes(char* str, size_t len);
+extern void yy_delete_buffer(YY_BUFFER_STATE buffer);
+extern struct master_config_t* parser_config_handle;
+int sdhc_load_config_yacc(char* sdhc_path, struct master_config_t* master_cfg){
+    int ret = -1;
+    char path[MAX_PATH];
+    struct fs_file_t imf;
+
+    if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
+        LOG_ERR("file name too long");
+        return -ENAMETOOLONG; 
+    }
+    strcpy(path, DISK_MOUNT_PT);
+    strcpy(path+STRLEN(DISK_MOUNT_PT), sdhc_path);
+
+    fs_file_t_init(&imf);
+    ret = fs_open(&imf, path, FS_O_READ);
+    if(ret < 0){return ret;}
+
+    char* config_str = k_malloc(YY_PARSE_BUFFER_SIZE);
+    if(config_str == NULL){
+        LOG_ERR("out of memory. cannot allocate config buffer");
+        return -ENOMEM;
+    }
+    size_t config_str_len = fs_read(&imf, config_str, YY_PARSE_BUFFER_SIZE);
+    if(config_str_len < 0){
+        LOG_ERR("Cannot read config file");
+        return config_str_len;
+    }else if (config_str_len == YY_PARSE_BUFFER_SIZE) {
+        LOG_ERR("Config file too large (> %dB)", YY_PARSE_BUFFER_SIZE);
+        return -EFBIG;
+    }
+
+    fs_close(&imf);
+
+    parser_config_handle = master_cfg;
+
+    YY_BUFFER_STATE buffer = yy_scan_bytes(config_str, config_str_len);
+    ret = yyparse();
+    yy_delete_buffer(buffer);
+
+    parser_config_handle = NULL;
+
+    k_free(config_str);
+    
+    LOG_INF("config parsed with result %d", ret);
+
+    return ret;
+}
+
 int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
     char path[MAX_PATH];
     struct fs_file_t imf;

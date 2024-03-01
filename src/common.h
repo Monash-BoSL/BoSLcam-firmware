@@ -45,6 +45,8 @@
 
 #define DISK_MOUNT_PT "/SD:"
 #define SCRATCH_FILE  "/scratch.bmp"
+#define CONFIG_FILE   "/config.txt"
+#define YY_PARSE_BUFFER_SIZE       (4096)
 
 #define SDHC_PATH(strconst) DISK_MOUNT_PT strconst
 #define STRLEN(strconst) (sizeof(strconst)-1)
@@ -102,7 +104,7 @@ struct sd_config_t {
 };
 
 enum trigger_type {
-    TIME_TIRGGER = 0,
+    TIME_TRIGGER = 0,
     UART_TRIGGER,
 };
 

@@ -166,7 +166,8 @@ int setup(void){
 
     ret = sdhc_mount();//very importaint for low power
 
-    ret = sdhc_load_config("/config.txt", &mcfg);
+    // ret = sdhc_load_config("/config.txt", &mcfg);
+    ret = sdhc_load_config_yacc(CONFIG_FILE, &mcfg);
     if(ret < 0){
         LOG_ERR("failed to load config. halting");
         return ret;
@@ -268,7 +269,7 @@ int loop(void){
     LOG_INF("done");
 
     switch (mcfg.trig_cfg.trig_type){
-    case TIME_TIRGGER:
+    case TIME_TRIGGER:
         LOG_INF("time sleep");
         sleepy(mcfg.trig_cfg.logging_interval);
         break;
