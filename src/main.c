@@ -30,14 +30,13 @@
 [X] log the signal quality
 [X] perform an automatic search for networks when the default network is not found
     [ ] attempt an automatic connection if lots of uploads have failed
-    [ ] store a list of known networks with their signal quality
+    [X] store a list of known networks with their signal quality
 [ ] add automatic detection of when image is exposed well/remembering of last exposure settings
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
     [X] automatically make 'images' folder on sd card. 
 [ ] use yacc flex for parsing SD card config file
 [ ] add versioning in config file
-[ ] use yacc to build config parser
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
     [X] logging based on length of last loop, not quite RTC yet though

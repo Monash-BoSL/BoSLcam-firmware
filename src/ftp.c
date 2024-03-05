@@ -26,6 +26,24 @@ LOG_MODULE_REGISTER(ftp);
 
 extern struct status_t stats_global;
 
+#define AT_CMD_BUFFER_SIZE (512)
+
+#define MAX_OPERATORS (8)
+struct operator_t {
+    uint8_t status;
+    char mccmnc[7];
+    uint8_t netact;
+    uint8_t rsrq;
+    uint8_t rsrp;
+};
+
+uint8_t operators_len = 0;
+struct operator_t operators[MAX_OPERATORS];
+
+
+
+
+
 void ftp_data_callback(const uint8_t *msg, uint16_t len)
 {
     printk(msg);
@@ -59,34 +77,24 @@ int ftp_mkdirs(const char* path) {
     return res;//make sure that we return a nice error code here.
 }
 
-#define MAX_OPERATORS (8)
-struct operator_t {
-    uint8_t status;
-    char mccmnc[7];
-    uint8_t netact;
-    uint8_t rsrq;
-    uint8_t rsrp;
-};
 
-uint8_t operators_len = 0;
-operator_t operators[MAX_OPERATORS];
-
-int _dbg_print_operators(void) {
-    LOG_DBG("operators length: %d\n", operators_len);
+int print_operators(void) {
+    LOG_INF("operators length: %d", operators_len);
 
     for (int i = 0; i < operators_len; ++i) {
-        LOG_DBG("operator: %d, status: %d, MCCMNC: %s, netact: %d, rsrq: %d, rsrp: %d\n", 
+        LOG_INF("operator: %d, status: %d, MCCMNC: %s, netact: %d, rsrq: %d, rsrp: %d", 
                 i, 
                 operators[i].status,
-                operators[i].mccmnc, 
+                log_strdup(operators[i].mccmnc), 
                 operators[i].netact,
                 operators[i].rsrq,
                 operators[i].rsrp
                 );
+    }
     return 0;
 }
 
-int store_operators(const char* response){
+int store_operators(const char* response, const size_t response_size){
     char* start = NULL;
     char* end = NULL;
     size_t len = 0;
@@ -103,9 +111,9 @@ int store_operators(const char* response){
         if(end == NULL){return -2;}
 
         len = end - start;//check that the matches are of reasonable length
-        if(len > CHARBUFF){return -3;} 
+        if(len > response_size){return -3;} 
 
-        operator_t* o = &operators[operators_len];
+        struct operator_t* o = &operators[operators_len];
         uint8_t matches = sscanf(start, "(%d,%*[^,],%*[^,],\"%6[^\"]\",%d)", &o->status, &o->mccmnc, &o->netact);
         if(matches == 3){
             o->rsrq = 0xFF;//not known or not detectable
@@ -120,8 +128,8 @@ int store_operators(const char* response){
 }
 
 int cmp_operator_rsrq(const void *a, const void *b){
-    int16_t rsrq_a = ((operator_t*)a)->rsrq;
-    int16_t rsrq_b = ((operator_t*)b)->rsrq;
+    int16_t rsrq_a = ((struct operator_t*)a)->rsrq;
+    int16_t rsrq_b = ((struct operator_t*)b)->rsrq;
 
     if(rsrq_a == 99 && rsrq_b == 99){return 0;}
     if(rsrq_a == 99){return 1;}
@@ -132,7 +140,6 @@ int cmp_operator_rsrq(const void *a, const void *b){
 
 }
 
-#define AT_CMD_BUFFER_SIZE (512)
 
 int modem_network_search(void){
     int ret = false;
@@ -142,13 +149,13 @@ int modem_network_search(void){
     ret = nrf_modem_at_cmd(response, sizeof(response), "AT%%COPS=?");
     if(ret){return ret;}
 
-    store_operators(response);
-    _dbg_print_operators();
+    store_operators(response, sizeof(response));
+    print_operators();
 
     for(uint8_t i = 0; i < operators_len; i++){
-        operator_t* o = &operators[i];
+        struct operator_t* o = &operators[i];
         ret = modem_network_select(o->mccmnc);
-        if(!ret){continue;}
+        if(ret){continue;}
         
         char mccmnc_current[7] = "\0\0\0\0\0\0\0";
         modem_current_mccmnc(mccmnc_current, sizeof(mccmnc_current));
@@ -161,13 +168,13 @@ int modem_network_search(void){
 
     }
 
-    qsort(operators, operators_len, sizeof(operators_t), cmp_operator_rsrq);  
+    qsort(operators, operators_len, sizeof(struct operator_t), cmp_operator_rsrq);  
 
     return 0;
 }
 
 
-int modem_wait_registration(const uint32_t timeout_ms = 250){
+int modem_wait_registration(const uint32_t timeout_ms){
     int ret = 0;
     const uint32_t retry_delay_ms = 250;//empirically measured
     const uint32_t attempts = timeout_ms/retry_delay_ms;
@@ -284,22 +291,23 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     if(!stats_global.network_searched){
         LOG_INF("Performing forced network search");
         modem_network_search();
-        network_searched = 1;//not we never do this again regardless of if the search was successfull
+        stats_global.network_searched = 1;//not we never do this again regardless of if the search was successfull
     }
 
 
     //attempt to connect to networks in order of signal strength
     for(uint8_t i = 0; i < operators_len; i++){
-        operator_t* o = &operators[i];
-        if(o->rssi == 0xFF){continue;}
+        struct operator_t* o = &operators[i];
+        if(o->rsrq == 0xFF || o->rsrp == 0xFF){continue;}
         ret = modem_network_select(o->mccmnc);
-        if(ret){
-            ret = modem_current_mccmnc(stats_global.mccmnc, sizeof(stats_global.mccmnc));
-            if(ret){
-                LOG_INF("Updating network preference to: %s", log_strdup(mccmnc));
-            }
-            return 0; 
+        if(ret){continue;}
+
+        ret = modem_current_mccmnc(stats_global.mccmnc);
+        if(ret == 0){
+            LOG_INF("Updating network preference to: %s", log_strdup(stats_global.mccmnc));
         }
+
+        return 0; 
     }
  
     LOG_ERR("Unable to register to network");
@@ -327,7 +335,7 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
     int ret = 0;
     char path[MAX_PATH];
 
-    LOG_INF("modem begin\n");
+    LOG_INF("modem begin");
 
     if(strlen(ftp_cfg_p->image_path) > MAX_PATH + 12-1){//12 for unix time + extension
         LOG_ERR("file name too long");
@@ -418,7 +426,7 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
     char statstr[MAX_PATH];
     struct tm cal;
 
-    LOG_INF("modem begin\n");
+    LOG_INF("modem begin");
 
     unix_date(&cal, status->system_time);
     strftime(statstr, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
