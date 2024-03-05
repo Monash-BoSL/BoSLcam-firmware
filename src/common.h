@@ -159,6 +159,7 @@ struct status_t {
     char mccmnc[7];
     uint8_t rsrq;
     uint8_t rsrp;
+    uint8_t network_searched; 
 };
 
 

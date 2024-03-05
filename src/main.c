@@ -59,8 +59,23 @@ const struct device * spi_sram;
 uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
 static struct master_config_t mcfg;
-struct capture_t capture = {.data = image_buffer, .capacity = sizeof(image_buffer), .size = 0, .resolution = QVGA, .format = BMP, .time = 0};
-struct status_t stats_global = {.system_time = 0, .battery_voltage = -1, .captures = 0, .mccmnc = "\0\0\0\0\0\0\0", .rsrq = 0xFF, .rsrp = 0xFF};
+struct capture_t capture = {
+                            .data = image_buffer, 
+                            .capacity = sizeof(image_buffer), 
+                            .size = 0, 
+                            .resolution = QVGA, 
+                            .format = BMP, 
+                            .time = 0
+                            };
+struct status_t stats_global = {
+                                .system_time = 0, 
+                                .battery_voltage = -1, 
+                                .captures = 0, 
+                                .mccmnc = "\0\0\0\0\0\0\0", 
+                                .rsrq = 0xFF, 
+                                .rsrp = 0xFF,
+                                .network_searched = 0
+                                };
 
 int sleepy(uint32_t target_duration_ms){
     int ret = 0;
