@@ -1,0 +1,3 @@
+[submodule "BoSLcam"]
+	path = BoSLcam
+	url = https://github.com/Monash-BoSL/BoSLcam.git
