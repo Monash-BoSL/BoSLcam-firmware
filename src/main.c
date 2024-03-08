@@ -224,15 +224,15 @@ int setup(void){
 
         //gets current network time
         ret = modem_network_register(&mcfg.ftp_cfg);
-        if (ret < 0){return ret;}
-
-        date_time_update_async(NULL);
-        LOG_INF("busy wait for valid time");
-        for(uint32_t i = 0; i < 1000; i++){
-            if(date_time_is_valid()){break;}
-            k_msleep(10);
+        if(ret == 0){
+            date_time_update_async(NULL);
+            LOG_INF("busy wait for valid time");
+            for(uint32_t i = 0; i < 1000; i++){
+                if(date_time_is_valid()){break;}
+                k_msleep(10);
+            }
+            stats_global.time_src = NETWORK_TIME;
         }
-        stats_global.time_src = NETWORK_TIME;
     }
 
     date_time_register_handler(time_source_stats_async);
@@ -356,6 +356,7 @@ void main(void){
 
     ret = setup();
     if(ret < 0){
+        LOG_ERR("setup failed with result %d!", ret);
         k_oops();
         //lockup program and halt
         //try call for help
