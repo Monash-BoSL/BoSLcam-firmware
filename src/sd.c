@@ -400,7 +400,7 @@ int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
                 continue;
             }
 
-        }while(ret > 0);
+        } while(ret > 0);
     }
 
 

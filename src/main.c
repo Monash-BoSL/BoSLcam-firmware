@@ -30,14 +30,13 @@
 [X] log the signal quality
 [X] perform an automatic search for networks when the default network is not found
     [ ] attempt an automatic connection if lots of uploads have failed
-    [ ] store a list of known networks with their signal quality
+    [X] store a list of known networks with their signal quality
 [ ] add automatic detection of when image is exposed well/remembering of last exposure settings
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
     [X] automatically make 'images' folder on sd card. 
 [ ] use yacc flex for parsing SD card config file
 [ ] add versioning in config file
-[ ] use yacc to build config parser
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
     [X] logging based on length of last loop, not quite RTC yet though
@@ -59,8 +58,23 @@ const struct device * spi_sram;
 uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
 static struct master_config_t mcfg;
-struct capture_t capture = {.data = image_buffer, .capacity = sizeof(image_buffer), .size = 0, .resolution = QVGA, .format = BMP, .time = 0};
-struct status_t stats_global = {.system_time = 0, .battery_voltage = -1, .captures = 0, .mccmnc = "\0\0\0\0\0\0\0", .rsrq = 0xFF, .rsrp = 0xFF};
+struct capture_t capture = {
+                            .data = image_buffer, 
+                            .capacity = sizeof(image_buffer), 
+                            .size = 0, 
+                            .resolution = QVGA, 
+                            .format = BMP, 
+                            .time = 0
+                            };
+struct status_t stats_global = {
+                                .system_time = 0, 
+                                .battery_voltage = -1, 
+                                .captures = 0, 
+                                .mccmnc = "\0\0\0\0\0\0\0", 
+                                .rsrq = 0xFF, 
+                                .rsrp = 0xFF,
+                                .network_searched = 0
+                                };
 
 int sleepy(uint32_t target_duration_ms){
     int ret = 0;
