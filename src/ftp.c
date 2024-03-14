@@ -66,7 +66,7 @@ int ftp_mkdirs(const char* path) {
     char* end = strchr(pos+1, '/');
     while(NULL != (end = strchr(pos+1, '/'))){
         strncpy(current+(pos-path), pos, end-pos);
-        printk("mkdir %s\n", current);
+        // printk("mkdir %s\n", current);
 
         ftp_mkd(current);
 

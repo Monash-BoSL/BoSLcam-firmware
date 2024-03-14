@@ -25,9 +25,14 @@
 
 #include "../tests/test.h"
 
+/*************** VERSION NUMBER ********************/
+#define _VERSION "v1.4.0rc"
+// #define _VERSION "v1.4.0"
 /*************** TODO *******************************
 [X] add backup DNS configuration
 [ ] we should store the status string when we write to the SDHC so that it the same on the SDHC and FTP
+[ ] add 'damage' counter which will reset via WDT if too many errors accumulate
+[ ] add logging of errors on SDHC and via upload
 [X] log the signal quality
 [X] perform an automatic search for networks when the default network is not found
     [ ] attempt an automatic connection if lots of uploads have failed
@@ -48,7 +53,6 @@
 [ ] issue with network time reset on low power sleep?
 [ ] find best idle states for pins (eg: 28) for low power
 ****************************************************/
-
 
 LOG_MODULE_REGISTER(main);
 
@@ -179,28 +183,22 @@ int modem_init(void){
 
 
 int configure_low_power(void){
-    int err;
+    int ret;
 
     /** Power Saving Mode */
-    err = lte_lc_psm_req(true);
-    if (err) {
-        printk("lte_lc_psm_req, error: %d\n", err);
-    }
+    ret = lte_lc_psm_req(true);
+    if (ret) {LOG_ERR("lte_lc_psm_req, error: %d\n", ret);}
 
     /** enhanced Discontinuous Reception */
-    err = lte_lc_edrx_req(true);
-    if (err) {
-        printk("lte_lc_edrx_req, error: %d\n", err);
-    }
+    ret = lte_lc_edrx_req(true);
+    if (ret) {LOG_ERR("lte_lc_edrx_req, error: %d\n", ret);}
 
     // /** Release Assistance Indication  */
-    // err = lte_lc_rai_req(true);
-    // if (err) {
-        // printk("lte_lc_rai_req, error: %d\n", err);
-    // }
+    // ret = lte_lc_rai_req(true);
+    // if (ret) {LOG_ERR("lte_lc_rai_req, error: %d\n", ret);}
 
 
-    return err;
+    return ret;
 }
 
 int setup(void){
@@ -296,7 +294,7 @@ int loop(void){
     if(ret < 0){LOG_ERR("sdhc_write_status fail! ret=%d",ret);}
 
     if(mcfg.im_cfg.format == JPG){
-        LOG_INF("jpg   -> sdhc");
+        LOG_INF("jpg -> sdhc");
         ret = sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
         if(ret < 0){LOG_ERR("sdhc_write_jpg fail! ret=%d", ret);}
     }
@@ -344,6 +342,8 @@ void main(void){
     // for the test suit to work it should always remain here as the first line of code!
     // if(true){test_runtime();};
 
+    printk("*** BoSLcam firmware " _VERSION " complied on " __DATE__ " at " __TIME__ " ***\n");
+
     //some low power stuff
 
     //try out high and low for min power
@@ -353,7 +353,6 @@ void main(void){
     NRF_SPIM1->ENABLE = 0;
     NRF_TWIM2->ENABLE = 0;
 
-    LOG_INF("begin!");
 
     led(1);
     k_msleep(1000);
