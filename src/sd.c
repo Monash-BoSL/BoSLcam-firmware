@@ -485,8 +485,12 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
     strcat(path, sdhc_path);
 
     fs_file_t_init(&imf);
+
     fs_mkdirs(path);
-    fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE | FS_O_APPEND);
+
+    ret = fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE | FS_O_APPEND);
+    if(ret < 0){return ret;}
+
     //here is where we write what we want to log to file
     unix_date(&cal, status->system_time);
     strftime(path, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
@@ -499,7 +503,10 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
                                 status->rsrp
                                 );
 
-    fs_write(&imf, path, strlen(path));
+    ret = fs_write(&imf, path, strlen(path));
+    if(ret < 0){goto cleanup;}
+
+cleanup:
     fs_close(&imf);
 
     return ret;
