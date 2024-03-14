@@ -27,6 +27,7 @@
 
 /*************** TODO *******************************
 [X] add backup DNS configuration
+[ ] we should store the status string when we write to the SDHC so that it the same on the SDHC and FTP
 [X] log the signal quality
 [X] perform an automatic search for networks when the default network is not found
     [ ] attempt an automatic connection if lots of uploads have failed
@@ -287,14 +288,17 @@ int loop(void){
 #endif
 
     LOG_INF("image -> sdhc");
-    sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
+    ret = sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
+    if(ret < 0){LOG_ERR("sdhc_move_image fail! ret=%d",ret);}
 
-    // sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
-    sdhc_write_status(mcfg.sd_cfg.status_path, &stats_global);
+    LOG_INF("status -> sdhc");
+    ret = sdhc_write_status(mcfg.sd_cfg.status_path, &stats_global);
+    if(ret < 0){LOG_ERR("sdhc_write_status fail! ret=%d",ret);}
 
     if(mcfg.im_cfg.format == JPG){
         LOG_INF("jpg   -> sdhc");
-        sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
+        ret = sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
+        if(ret < 0){LOG_ERR("sdhc_write_jpg fail! ret=%d", ret);}
     }
 
     if ((d > 0) && (0 == (stats_global.captures % d))){
@@ -303,6 +307,7 @@ int loop(void){
         ret = ftp_write_image(&mcfg.ftp_cfg, &capture);
         if(ret){modem_network_deregister();}
 
+        LOG_INF("status -> ftp");
         ret = ftp_write_status(&mcfg.ftp_cfg, &stats_global);
         if(ret){modem_network_deregister();}
     }
