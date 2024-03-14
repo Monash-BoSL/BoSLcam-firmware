@@ -142,208 +142,13 @@ void sdhc_info(void){
     } while (0);
 }
 
-enum parse_state{
-    NAME = 0,
-    COMMENT,
-    VALUE,
-};
-
-int store_int(char* from_string, uint32_t* to){
-    *to = atoi(from_string);
-    return 0;
-}
-int store_string(char* from_string, char** to){
-    char* start = strchr(from_string, '"')+1;
-    char* end = strchr(start, '"');
-    if(start == NULL || end == NULL){
-        LOG_ERR("config string reading error");
-        return -EINVAL;
-    }
-    uint32_t len = end-start;
-
-    *to = k_malloc(len+1);
-    memcpy(*to, start, len);
-    (*to)[len] = 0;//null terminate string
-
-    return 0;
-}
-
-int store_resolution_type(char* from_string, enum image_resolution* to){
-    int enum_int;
-    store_int(from_string, &enum_int);
-    *to = enum_int;
-    return 0;
-}
-
-int store_format_type(char* from_string, enum image_format* to){
-    int enum_int;
-    store_int(from_string, &enum_int);
-    *to = enum_int;
-    return 0;
-}
-
-int store_cypher_type(char* from_string, enum cypher_type* to){
-    int enum_int;
-    store_int(from_string, &enum_int);
-    *to = enum_int;
-    return 0;
-}
-
-int store_trigger_type(char* from_string, enum trigger_type* to){
-    int enum_int;
-    store_int(from_string, &enum_int);
-    *to = enum_int;
-    return 0;
-}
-
-
-
-
-int store_value(char* val, uint32_t* index){
-
-    switch (*index){
-        case 0://auto_range_time
-            store_int(val, &mcfg->im_cfg.auto_range_time);
-            break;
-        case 1://resolution
-            store_resolution_type(val, &mcfg->im_cfg.resolution);
-            break;
-        case 2://format
-            store_format_type(val, &mcfg->im_cfg.format);
-            break;
-        case 3://apn
-            store_string(val, &mcfg->ftp_cfg.apn);
-            break;
-        case 4://network_operator
-            store_string(val, &mcfg->ftp_cfg.network_operator);
-            break;
-        case 5://domain
-            store_string(val, &mcfg->ftp_cfg.domain);
-            break;
-        case 6://username
-            store_string(val, &mcfg->ftp_cfg.username);
-            break;
-        case 7://cyphertype
-            store_cypher_type(val, &mcfg->ftp_cfg.cyph_type);
-            break;
-        case 8://password
-            store_string(val, &mcfg->ftp_cfg.password);
-            const char password[128];
-            const char* suffix = PW_SUFFIX;
-            size_t pw_len;
-            switch(mcfg->ftp_cfg.cyph_type){
-                case NONE:
-                    break;
-                case CAESAR:
-                    decrypt(mcfg->ftp_cfg.password, CEASER_KEY);
-                    break;
-                case SUFFIX:
-                    strcpy((char*) password, mcfg->ftp_cfg.password);
-                    k_free(mcfg->ftp_cfg.password);
-                    strcat((char*) password, suffix);
-                    pw_len = strlen(password);
-                    mcfg->ftp_cfg.password = k_malloc(pw_len+1);
-                    memcpy(mcfg->ftp_cfg.password, password, pw_len);
-                    (mcfg->ftp_cfg.password)[pw_len] = 0;//null terminate string
-                    break;
-            }
-            break;
-        case 9://image_path
-            store_string(val, &mcfg->ftp_cfg.image_path);
-            break;
-        case 10: //status_path
-            store_string(val, &mcfg->ftp_cfg.status_path);
-            break;
-        case 11://image_path
-            store_string(val, &mcfg->sd_cfg.image_path);
-            break;
-        case 12://status_path
-            store_string(val, &mcfg->sd_cfg.status_path);
-            break;
-        case 13://logging_level
-            store_int(val, &mcfg->sd_cfg.logging_level);
-            break;
-        case 14://trig_type
-            store_trigger_type(val, &mcfg->trig_cfg.trig_type);
-            break;
-        case 15://logging_interval
-            store_int(val, &mcfg->trig_cfg.logging_interval);
-            break;
-        case 16://logging_decimation_ftp
-            store_int(val, &mcfg->trig_cfg.logging_decimation_ftp);
-            break;
-    }
-
-
-    (*index)++;
-    return 0;
-}
-
-int parse_config_file(struct fs_file_t* zfp){
-    char next;
-    char value[256];
-    uint32_t value_indx = 0;
-    uint32_t config_index = 0;
-    bool pre_comment = 0;
-    bool string = 0;
-    enum parse_state state = NAME;
-    int ret = 0;
-
-    do{
-        ret = fs_read(zfp, &next, 1);
-        if(ret < 0){return ret;}
-
-        if(next != '/'){pre_comment = 0;}
-
-        switch (state){
-        case NAME:
-            if (next == '='){state = VALUE; value_indx = 0; string = 0;}
-            if (next == '/'){
-                if (pre_comment){
-                    state = COMMENT;
-                } else {
-                    pre_comment = 1;
-                }
-            }
-            break;
-        case COMMENT:
-            if (next == '\n'){state = NAME;}
-            break;
-        case VALUE:
-            value[value_indx] = next;
-            value_indx++;
-            if(next == '"'){
-                string = !string;
-            }
-            if (next == '\n'){store_value(value, &config_index); state = NAME;}
-            if (next == '/' && !string){
-                if (pre_comment){
-                    store_value(value, &config_index);
-                    state = COMMENT;
-                } else {
-                    pre_comment = 1;
-                }
-            }
-            break;
-        }
-    }while(ret > 0);
-
-    return 0;
-}
-
 int sdhc_mount(void){
-    int res;
+    int ret;
     mp.mnt_point = DISK_MOUNT_PT;
 
-    res = fs_mount(&mp);
+    ret = fs_mount(&mp);
+    if(ret < 0){LOG_ERR("Error mounting disk.\n"); return ret;}
 
-    if (res == FR_OK) {
-        LOG_INF("Disk mounted.\n");
-        return 0;
-    } else {
-        LOG_ERR("Error mounting disk.\n");
-        return -1;
-    }
 }
 
 typedef struct yy_buffer_state * YY_BUFFER_STATE;
@@ -351,7 +156,7 @@ extern int yyparse(void);
 extern YY_BUFFER_STATE yy_scan_bytes(char* str, size_t len);
 extern void yy_delete_buffer(YY_BUFFER_STATE buffer);
 extern struct master_config_t* parser_config_handle;
-int sdhc_load_config_yacc(char* sdhc_path, struct master_config_t* master_cfg){
+int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
     int ret = -1;
     char path[MAX_PATH];
     struct fs_file_t imf;
@@ -397,29 +202,6 @@ int sdhc_load_config_yacc(char* sdhc_path, struct master_config_t* master_cfg){
 
     return ret;
 }
-
-int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
-    char path[MAX_PATH];
-    struct fs_file_t imf;
-    mcfg = master_cfg;
-
-    if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
-        LOG_ERR("file name too long");
-        return -ENAMETOOLONG;
-    }
-    strcpy(path, DISK_MOUNT_PT);
-    strcpy(path+STRLEN(DISK_MOUNT_PT), sdhc_path);
-
-    fs_file_t_init(&imf);
-    fs_open(&imf, path, FS_O_READ);
-
-    parse_config_file(&imf);
-
-    fs_close(&imf);
-
-    return 0;
-}
-
 
 int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
     char path[MAX_PATH];
