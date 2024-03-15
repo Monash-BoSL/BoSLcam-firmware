@@ -23,18 +23,29 @@
 #include "jpg.h"
 #include "watchdog.h"
 
+#include "../tests/test.h"
+
+/*************** VERSION NUMBER ********************/
+#define _VERSION "v1.4.0rc"
+// #define _VERSION "v1.4.0"
 /*************** TODO *******************************
 [X] add backup DNS configuration
-[ ] add option to automatically find best network and keep list of known good networks to try.
+[ ] we should store the status string when we write to the SDHC so that it the same on the SDHC and FTP
+[ ] add 'damage' counter which will reset via WDT if too many errors accumulate
+[ ] add logging of errors on SDHC and via upload
+[X] log the signal quality
+[X] perform an automatic search for networks when the default network is not found
+    [ ] attempt an automatic connection if lots of uploads have failed
+    [X] store a list of known networks with their signal quality
 [ ] add automatic detection of when image is exposed well/remembering of last exposure settings
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
     [X] automatically make 'images' folder on sd card. 
 [ ] use yacc flex for parsing SD card config file
 [ ] add versioning in config file
-[ ] use yacc to build config parser
 [ ] figure out how to name files when no network info
 [ ] add alarm based logging rather than delay based
+    [X] logging based on length of last loop, not quite RTC yet though
 [X] add jpeg mode
     [X] make jpeg compression work on VGA images.
     [X] does jpeg work now that the data in capture may not be the image data (investigate)
@@ -42,7 +53,6 @@
 [ ] issue with network time reset on low power sleep?
 [ ] find best idle states for pins (eg: 28) for low power
 ****************************************************/
-
 
 LOG_MODULE_REGISTER(main);
 
@@ -53,20 +63,58 @@ const struct device * spi_sram;
 uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
 static struct master_config_t mcfg;
-struct capture_t capture = {.data = image_buffer, .capacity = sizeof(image_buffer), .size = 0, .resolution = QVGA, .format = BMP, .time = 0};
-struct status_t stats = {.system_time = 0, .battery_voltage = -1, .captures = 0};
+struct capture_t capture = {
+                            .data = image_buffer, 
+                            .capacity = sizeof(image_buffer), 
+                            .size = 0, 
+                            .resolution = QVGA, 
+                            .format = BMP, 
+                            .time = 0
+                            };
+struct status_t stats_global = {
+                                .system_time = 0, 
+                                .battery_voltage = -1, 
+                                .captures = 0, 
+                                .mccmnc = "\0\0\0\0\0\0\0", 
+                                .rsrq = 0xFF, 
+                                .rsrp = 0xFF,
+                                .network_searched = 0
+                                };
 
-int sleepy(uint32_t ms_sleep){
+int sleepy(uint32_t target_duration_ms){
+    int ret = 0;
+
     nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
     nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
 
-    return k_msleep(ms_sleep);
+    static int64_t unix_time_ms_last_call = 0;
+    int64_t unix_time_ms_now = k_uptime_get();
+    int64_t unix_time_ms_elapsed = unix_time_ms_now - unix_time_ms_last_call;
+
+    if (unix_time_ms_elapsed < target_duration_ms) {
+        int64_t sleep_ms = target_duration_ms - unix_time_ms_elapsed;
+        if(sleep_ms > target_duration_ms){
+            LOG_ERR("bad last sleep time, defaulting to %ld ms sleep", target_duration_ms);
+            k_msleep(target_duration_ms);
+            ret = -4; goto cleanup;
+        }
+        LOG_INF("Sleeping for: %ld ms", sleep_ms);
+        ret = k_msleep(sleep_ms); goto cleanup;
+    } else {
+        LOG_WRN("Loop duration too long, continuing without sleep");
+        ret = -1; goto cleanup;
+    }
+
+    ret = -3; goto cleanup;
+cleanup:
+    unix_time_ms_last_call = k_uptime_get();
+    return ret;
 }
 
 int get_time(int32_t* ct){
     int ret = 0;
 
-    uint64_t unix_time_ms;
+    int64_t unix_time_ms;
     ret = date_time_now(&unix_time_ms);
     if(ret < 0){return ret;}
     *ct = (uint32_t) (unix_time_ms/1000);
@@ -89,8 +137,8 @@ int slm_vbat(int* bat_mv){
 
 
 int update_status(){
-    stats.system_time = capture.time;
-    slm_vbat(&stats.battery_voltage);
+    stats_global.system_time = capture.time;
+    slm_vbat(&stats_global.battery_voltage);
 
     return 0;
 }
@@ -99,16 +147,16 @@ int update_status(){
 void time_source_stats_async(const struct date_time_evt* evt){
     switch (evt->type){
     case DATE_TIME_OBTAINED_MODEM:
-        stats.time_src = NETWORK_TIME;
+        stats_global.time_src = NETWORK_TIME;
         break;
     case DATE_TIME_OBTAINED_NTP:
-        stats.time_src = NTP_TIME;
+        stats_global.time_src = NTP_TIME;
         break;
     case DATE_TIME_OBTAINED_EXT:
-        stats.time_src = EXT_TIME;
+        stats_global.time_src = EXT_TIME;
         break;
     case DATE_TIME_NOT_OBTAINED:
-        stats.time_src = NO_TIME;
+        stats_global.time_src = NO_TIME;
         break;
     }
 }
@@ -135,28 +183,22 @@ int modem_init(void){
 
 
 int configure_low_power(void){
-    int err;
+    int ret;
 
     /** Power Saving Mode */
-    err = lte_lc_psm_req(true);
-    if (err) {
-        printk("lte_lc_psm_req, error: %d\n", err);
-    }
+    ret = lte_lc_psm_req(true);
+    if (ret) {LOG_ERR("lte_lc_psm_req, error: %d\n", ret);}
 
     /** enhanced Discontinuous Reception */
-    err = lte_lc_edrx_req(true);
-    if (err) {
-        printk("lte_lc_edrx_req, error: %d\n", err);
-    }
+    ret = lte_lc_edrx_req(true);
+    if (ret) {LOG_ERR("lte_lc_edrx_req, error: %d\n", ret);}
 
     // /** Release Assistance Indication  */
-    // err = lte_lc_rai_req(true);
-    // if (err) {
-        // printk("lte_lc_rai_req, error: %d\n", err);
-    // }
+    // ret = lte_lc_rai_req(true);
+    // if (ret) {LOG_ERR("lte_lc_rai_req, error: %d\n", ret);}
 
 
-    return err;
+    return ret;
 }
 
 int setup(void){
@@ -181,15 +223,15 @@ int setup(void){
 
         //gets current network time
         ret = modem_network_register(&mcfg.ftp_cfg);
-        if (ret < 0){return ret;}
-
-        date_time_update_async(NULL);
-        LOG_INF("busy wait for valid time");
-        for(uint32_t i = 0; i < 1000; i++){
-            if(date_time_is_valid()){break;}
-            k_msleep(10);
+        if(ret == 0){
+            date_time_update_async(NULL);
+            LOG_INF("busy wait for valid time");
+            for(uint32_t i = 0; i < 1000; i++){
+                if(date_time_is_valid()){break;}
+                k_msleep(10);
+            }
+            stats_global.time_src = NETWORK_TIME;
         }
-        stats.time_src = NETWORK_TIME;
     }
 
     date_time_register_handler(time_source_stats_async);
@@ -200,7 +242,7 @@ int setup(void){
         ret = sdhc_load_last_status_time(mcfg.sd_cfg.status_path, &cal);
         if(ret == 0){
             ret = date_time_set(&cal);
-            stats.time_src = FS_TIME;
+            stats_global.time_src = FS_TIME;
         }
     }
     if(!date_time_is_valid()){//then from default time epoch
@@ -216,7 +258,7 @@ int setup(void){
                             .tm_isdst = 0,
                         };//2020/01/01-00:00:00 UTC
         ret = date_time_set(&cal);
-        stats.time_src = NO_TIME;
+        stats_global.time_src = NO_TIME;
     }
     if(!date_time_is_valid()){return -ENODATA;}
 
@@ -244,23 +286,27 @@ int loop(void){
 #endif
 
     LOG_INF("image -> sdhc");
-    sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
+    ret = sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
+    if(ret < 0){LOG_ERR("sdhc_move_image fail! ret=%d",ret);}
 
-    // sdhc_write_image(mcfg.sd_cfg.image_path, &capture);
-    sdhc_write_status(mcfg.sd_cfg.status_path, &stats);
+    LOG_INF("status -> sdhc");
+    ret = sdhc_write_status(mcfg.sd_cfg.status_path, &stats_global);
+    if(ret < 0){LOG_ERR("sdhc_write_status fail! ret=%d",ret);}
 
     if(mcfg.im_cfg.format == JPG){
-        LOG_INF("jpg   -> sdhc");
-        sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
+        LOG_INF("jpg -> sdhc");
+        ret = sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
+        if(ret < 0){LOG_ERR("sdhc_write_jpg fail! ret=%d", ret);}
     }
 
-    if ((d > 0) && (0 == (stats.captures % d))){
+    if ((d > 0) && (0 == (stats_global.captures % d))){
         LOG_INF("image -> ftp");
 
         ret = ftp_write_image(&mcfg.ftp_cfg, &capture);
         if(ret){modem_network_deregister();}
 
-        ret = ftp_write_status(&mcfg.ftp_cfg, &stats);
+        LOG_INF("status -> ftp");
+        ret = ftp_write_status(&mcfg.ftp_cfg, &stats_global);
         if(ret){modem_network_deregister();}
     }
 
@@ -284,7 +330,7 @@ int loop(void){
         break;
     }
 
-    stats.captures++;
+    stats_global.captures++;
 
     return 0;
 }
@@ -292,6 +338,12 @@ int loop(void){
 
 void main(void){
     int ret = 0;
+
+    // for the test suit to work it should always remain here as the first line of code!
+    // if(true){test_runtime();};
+
+    printk("*** BoSLcam firmware " _VERSION " complied on " __DATE__ " at " __TIME__ " ***\n");
+
     //some low power stuff
 
     //try out high and low for min power
@@ -301,7 +353,6 @@ void main(void){
     NRF_SPIM1->ENABLE = 0;
     NRF_TWIM2->ENABLE = 0;
 
-    LOG_INF("begin!");
 
     led(1);
     k_msleep(1000);
@@ -309,6 +360,7 @@ void main(void){
 
     ret = setup();
     if(ret < 0){
+        LOG_ERR("setup failed with result %d!", ret);
         k_oops();
         //lockup program and halt
         //try call for help

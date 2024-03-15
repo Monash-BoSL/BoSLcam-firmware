@@ -26,6 +26,12 @@ target_sources(app PRIVATE src/watchdog.c)
 target_sources(app PRIVATE ${LEX_YY_C})
 target_sources(app PRIVATE ${Y_TAB_C})
 
+# unit tests 
+target_sources(app PRIVATE tests/test.c)
+target_sources(app PRIVATE tests/test.modem.c)
+target_sources(app PRIVATE tests/test.main.c)
+
+
 include_directories(app PUBLIC 
      "${APP_SOURCE_DIR}"
      "${CMAKE_BINARY_DIR}" #for y.tab.h
@@ -65,3 +71,4 @@ include_directories(app PUBLIC
 	    COMMENT "Yacc: generating parser"
 	)
 # endif()
+
