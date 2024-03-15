@@ -4,6 +4,7 @@
 #include <assert.h>
 #include "test.modem.h"
 #include "test.main.h"
+#include "test.ov7675.h"
 
 int test_runtime(void){
     int ret = 0;
