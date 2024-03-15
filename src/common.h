@@ -6,8 +6,8 @@
 
 #define WATCHDOG_TIMEOUT_SEC 86400 //allows silly values
 
-#define PW_SUFFIX "_Z4GQ3tjuzu"
-#define CEASER_KEY  (37)
+#define SUFFIX_KEY "_Z4GQ3tjuzu"
+#define CAESAR_KEY  (37)
 
 #define CAMADDR_WR  (0x42)
 #define CAMADDR_RD  (0x43)

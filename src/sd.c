@@ -151,6 +151,55 @@ int sdhc_mount(void){
 
 }
 
+int caesar_encrypt(char* msg, int key){
+  char* chr_p = msg;
+  while(*chr_p != '\0'){
+    int chr = *chr_p;
+    if(32 < chr && chr < 127){
+      chr = (chr - 33 + key + (127-33))%(127-33) + 33;//the extra plus ensures that we do not get c weird modulo of negative nubmers
+      *chr_p = (char)chr;
+    }
+    chr_p++;
+  }
+  return 1;
+}
+int caesar_decrypt(char* msg, int key){
+  return caesar_encrypt(msg, -key);
+}
+
+int suffix_decrypt(char** password_p, const char* suffix){
+    const size_t password_len = strlen(*password_p);
+    const size_t suffix_len = strlen(suffix);
+    const size_t decrypted_password_size = password_len + suffix_len + 1;
+
+    char* decrypted_password = k_malloc(decrypted_password_size);
+    if(decrypted_password == NULL){return -ENOMEM;}
+    
+    strcpy((char*) decrypted_password, *password_p);
+    strcat((char*) decrypted_password, suffix);
+
+    k_free(*password_p);
+    *password_p = decrypted_password;
+
+    return 0;
+};
+
+int decrypt_password(char** password_p, const enum cypher_type cypher){
+    switch(cypher){
+        case NONE:
+            return 0;
+            break;
+        case CAESAR:
+            return caesar_decrypt(*password_p, CAESAR_KEY);
+            break;
+        case SUFFIX:
+            return suffix_decrypt(password_p, SUFFIX_KEY);
+            break;
+    }
+
+    return -1;
+} 
+
 typedef struct yy_buffer_state * YY_BUFFER_STATE;
 extern int yyparse(void);
 extern YY_BUFFER_STATE yy_scan_bytes(char* str, size_t len);
@@ -200,8 +249,11 @@ int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
     
     LOG_INF("config parsed with result %d", ret);
 
+    decrypt_password(&master_cfg->ftp_cfg.password, master_cfg->ftp_cfg.cyph_type);
+
     return ret;
 }
+
 
 int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
     char path[MAX_PATH];
