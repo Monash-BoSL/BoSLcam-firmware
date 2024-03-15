@@ -46,7 +46,7 @@ struct operator_t operators[MAX_OPERATORS];
 
 void ftp_data_callback(const uint8_t *msg, uint16_t len)
 {
-    // printk(msg);
+    printk(msg);//this can be disabled once a wrong password returns a fail from ftp_login
 }
 
 void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
@@ -368,7 +368,7 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
     if (ret < 0){LOG_ERR("open err %d", ret); goto cleanup;}
     else {LOG_INF("open ok");};
 
-    //sometimes this authentication fails with FTP error 530 however ret = SUCCESS
+    //check if ret=530 (AUTHENTICATION ERROR)
     ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
     if (ret < 0){LOG_ERR("login err %d", ret); goto cleanup;}
     else {LOG_INF("login ok");};
@@ -448,6 +448,7 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
     if (ret < 0){LOG_ERR("open err %d", ret); goto cleanup;}
     else {LOG_INF("open ok");};
 
+    //check if ret=530 (AUTHENTICATION ERROR)
     ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
     if (ret < 0){LOG_ERR("login err %d", ret); goto cleanup;}
     else {LOG_INF("login ok");};

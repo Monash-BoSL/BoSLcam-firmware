@@ -6,8 +6,8 @@
 
 #define WATCHDOG_TIMEOUT_SEC 86400 //allows silly values
 
-#define PW_SUFFIX "_Z4GQ3tjuzu"
-#define CEASER_KEY  (37)
+#define SUFFIX_KEY "_Z4GQ3tjuzu"
+#define CAESAR_KEY  (37)
 
 #define CAMADDR_WR  (0x42)
 #define CAMADDR_RD  (0x43)
@@ -45,6 +45,8 @@
 
 #define DISK_MOUNT_PT "/SD:"
 #define SCRATCH_FILE  "/scratch.bmp"
+#define CONFIG_FILE   "/config.txt"
+#define YY_PARSE_BUFFER_SIZE       (4096)
 
 #define SDHC_PATH(strconst) DISK_MOUNT_PT strconst
 #define STRLEN(strconst) (sizeof(strconst)-1)
@@ -98,11 +100,11 @@ struct ftp_config_t {
 struct sd_config_t {
     char* image_path;
     char* status_path;
-    int	logging_level;//DBG, INF, WRN, ERR, OFF
+    uint32_t logging_level;//DBG, INF, WRN, ERR, OFF
 };
 
 enum trigger_type {
-    TIME_TIRGGER = 0,
+    TIME_TRIGGER = 0,
     UART_TRIGGER,
 };
 
