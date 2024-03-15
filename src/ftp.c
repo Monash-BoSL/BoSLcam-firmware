@@ -51,7 +51,7 @@ void ftp_data_callback(const uint8_t *msg, uint16_t len)
 
 void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
 {
-    // printk(msg);
+    printk(msg);
 }
 
 int ftp_mkdirs(const char* path) {
@@ -368,6 +368,7 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
     if (ret < 0){LOG_ERR("open err %d", ret); goto cleanup;}
     else {LOG_INF("open ok");};
 
+    //sometimes this authentication fails with FTP error 530 however ret = SUCCESS
     ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
     if (ret < 0){LOG_ERR("login err %d", ret); goto cleanup;}
     else {LOG_INF("login ok");};
