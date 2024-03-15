@@ -46,7 +46,7 @@ int yydebug = 1;
 
 %token ftp_config_t_tk
 %token apn_tk
-%token network_operator_tk
+%token mccmnc_tk
 %token domain_tk
 %token username_tk
 %token cypher_type_tk
@@ -108,7 +108,7 @@ ftp_config_t_members    : ftp_config_t_entry                          {;}
                         ;
 
 ftp_config_t_entry      : char_p_tk apn_tk                                  '=' string                     {string_malloc(&parser_config_handle->ftp_cfg.apn,$4);}
-                        | char_p_tk network_operator_tk                    '=' string                      {string_malloc(&parser_config_handle->ftp_cfg.network_operator,$4);}
+                        | char_p_tk mccmnc_tk                    '=' string                      {string_malloc(&parser_config_handle->ftp_cfg.mccmnc,$4);}
                         | char_p_tk domain_tk                              '=' string                      {string_malloc(&parser_config_handle->ftp_cfg.domain,$4);}
                         | char_p_tk username_tk                            '=' string                      {string_malloc(&parser_config_handle->ftp_cfg.username,$4);}
                         | enum_tk cypher_type_tk cyph_type_tk              '=' enum_cypher_type            {parser_config_handle->ftp_cfg.cyph_type = $5;}

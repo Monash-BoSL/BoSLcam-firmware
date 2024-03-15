@@ -42,7 +42,7 @@ int yylex();
 
 "ftp_config_t"                          {return ftp_config_t_tk;}
 "apn"                                   {return apn_tk;}
-"network_operator"                      {return network_operator_tk;}
+"mccmnc"                                {return mccmnc_tk;}
 "domain"                                {return domain_tk;}
 "username"                              {return username_tk;}
 "cypher_type"                           {return cypher_type_tk;}

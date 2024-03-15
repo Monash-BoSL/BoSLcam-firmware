@@ -46,12 +46,12 @@ struct operator_t operators[MAX_OPERATORS];
 
 void ftp_data_callback(const uint8_t *msg, uint16_t len)
 {
-    // printk(msg);
+    printk(msg);
 }
 
 void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
 {
-    // printk(msg);
+    printk(msg);
 }
 
 int ftp_mkdirs(const char* path) {

@@ -28,7 +28,7 @@ image_config_t
     enum image_format format = JPG //0 BMP, 1 JPG
 ftp_config_t
     char* apn = "simbase"
-    char* network_operator = "50501"
+    char* mccmnc = "50501"
     char* domain = "ftp.bosl.com.au"
     char* username = "images2023@bosl.com.au"
     enum cypher_type cyph_type = SUFFIX //0 NONE, 1 CAESAR, 2 SUFFIX
