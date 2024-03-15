@@ -368,7 +368,7 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
     if (ret < 0){LOG_ERR("open err %d", ret); goto cleanup;}
     else {LOG_INF("open ok");};
 
-    //check if 530 (AUTHENTICATION ERROR)
+    //check if ret=530 (AUTHENTICATION ERROR)
     ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
     if (ret < 0){LOG_ERR("login err %d", ret); goto cleanup;}
     else {LOG_INF("login ok");};
@@ -448,7 +448,7 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
     if (ret < 0){LOG_ERR("open err %d", ret); goto cleanup;}
     else {LOG_INF("open ok");};
 
-    //check if 530 (AUTHENTICATION ERROR)
+    //check if ret=530 (AUTHENTICATION ERROR)
     ret = ftp_login(ftp_cfg_p->username, ftp_cfg_p->password);
     if (ret < 0){LOG_ERR("login err %d", ret); goto cleanup;}
     else {LOG_INF("login ok");};
