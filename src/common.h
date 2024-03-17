@@ -22,6 +22,8 @@
 
 #define DBGPIN		(18)
 
+#define TX_LED_PIN      (19)
+
 #define SCCB_CLK_DPPI_CH 	(0)
 #define GPIOTE_CLK_TSK 		(0)
 

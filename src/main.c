@@ -349,6 +349,7 @@ void main(void){
     //try out high and low for min power
     // nrf_gpio_cfg_input( 28, NRF_GPIO_PIN_PULLUP);
     //
+    nrf_gpio_cfg_input(TX_LED_PIN, NRF_GPIO_PIN_PULLDOWN);
     NRF_UARTE0->ENABLE = 0;
     NRF_SPIM1->ENABLE = 0;
     NRF_TWIM2->ENABLE = 0;
@@ -370,11 +371,12 @@ void main(void){
         loop();
     }
 
+    nrf_gpio_cfg_input(TX_LED_PIN, NRF_GPIO_PIN_PULLDOWN);
     nrf_gpio_cfg_input(SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
     nrf_gpio_cfg_input(SCCB_PDN, NRF_GPIO_PIN_PULLUP);
 
 
     while(1){
-        k_msleep(1000);
+        k_sleep(K_FOREVER);
     }
 }

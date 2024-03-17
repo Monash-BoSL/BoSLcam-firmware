@@ -127,7 +127,7 @@ void ov7675_init(uint32_t auto_time, enum image_resolution resolution, enum imag
     //setup gpio for all pins
     gpio_pin_configure(gpio, SCCB_PEN, GPIO_OUTPUT);
     gpio_pin_configure(gpio, SCCB_PDN, GPIO_OUTPUT);
-    gpio_pin_configure(gpio, DBGPIN, GPIO_OUTPUT);
+    gpio_pin_configure(gpio, TX_LED_PIN, GPIO_OUTPUT);
     for(int i = 0; i < 8; i++){
         gpio_pin_configure(gpio, i, GPIO_INPUT);
     }
@@ -136,6 +136,7 @@ void ov7675_init(uint32_t auto_time, enum image_resolution resolution, enum imag
     gpio_pin_configure(gpio, SCCB_PCLK, GPIO_INPUT);
     gpio_pin_set_raw(gpio, SCCB_PEN, 1);
     gpio_pin_set_raw(gpio, SCCB_PDN, 0);
+    gpio_pin_set_raw(gpio, TX_LED_PIN, 1);
 
     NRF_P0->PIN_CNF[SCCB_XCLK] = 0b00000000000000000000000000000001;
 
@@ -304,6 +305,7 @@ int ov7675_capture_sdhc_buffered(struct capture_t* capture){
         ret = fs_write(&imf, capture->data, buffer_index);
         capture->size = buffer_index;
     }
+    gpio_pin_set_raw(gpio, TX_LED_PIN, 0);
     fs_close(&imf);
     
     strcpy(capture->fp, SDHC_PATH(SCRATCH_FILE));
