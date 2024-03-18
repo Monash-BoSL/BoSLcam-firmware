@@ -40,7 +40,7 @@ ftp_config_t
 sd_config_t 
     char* image_path = "/dne/images/img"
     char* status_path = "/dne/status"
-    uint32_t logging_level = 0;//DBG, INF, WRN, ERR, OFF
+    uint32_t logging_level = 0//DBG, INF, WRN, ERR, OFF
 trigger_config_t 
     enum trigger_t trigger = TIME_TRIGGER//TIME_TRIGGER, UART_TRIGGER
     uint32_t logging_interval = 360000//ms
