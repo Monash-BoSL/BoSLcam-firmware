@@ -70,17 +70,23 @@ struct image_resolution_properties {
     char* bmp_header;
 };
 
+enum flash_t {
+    NO_FLASH = 0,
+    LED_INBUILT_FLASH,
+    LED_EXTERNAL_FLASH,
+};
 
 struct image_config_t {
-    uint32_t auto_range_time;
-      enum image_format format;
-      enum image_resolution  resolution;
+    uint32_t                auto_range_time;
+    enum image_format       format;
+    enum image_resolution   resolution;
+    enum flash_t            flash;
     //awb enable
     //ae enable
     //...
 };
 
-enum cypher_type {
+enum cypher_t {
     NONE = 0,
     CAESAR,
     SUFFIX,
@@ -93,7 +99,7 @@ struct ftp_config_t {
     char* domain;
     //port
     char* username;
-    enum cypher_type cyph_type;
+    enum cypher_t cypher;
     char* password;
     char* image_path;
     char* status_path;
@@ -105,13 +111,13 @@ struct sd_config_t {
     uint32_t logging_level;//DBG, INF, WRN, ERR, OFF
 };
 
-enum trigger_type {
+enum trigger_t {
     TIME_TRIGGER = 0,
     UART_TRIGGER,
 };
 
 struct trigger_config_t {
-    enum trigger_type trig_type;
+    enum trigger_t trigger;
     uint32_t logging_interval; //ms
     uint32_t logging_decimation_ftp;//1 in every x photos captured to sd will be uploaded
 };

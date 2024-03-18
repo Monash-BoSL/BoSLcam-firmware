@@ -313,7 +313,7 @@ int loop(void){
 
     LOG_INF("done");
 
-    switch (mcfg.trig_cfg.trig_type){
+    switch (mcfg.trig_cfg.trigger){
     case TIME_TRIGGER:
         LOG_INF("time sleep");
         sleepy(mcfg.trig_cfg.logging_interval);
