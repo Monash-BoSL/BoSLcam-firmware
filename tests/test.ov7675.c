@@ -18,16 +18,16 @@ int test_led(void){
 
     gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
     LOG_INF("bind %s\n", gpio->name);
-    gpio_pin_configure(gpio, TX_LED_PIN, GPIO_OUTPUT);
+    gpio_pin_configure(gpio, LED_FLASH_EXTERNAL_PIN, GPIO_OUTPUT);
 
 
 
     while(1){
 
-        gpio_pin_set_raw(gpio, TX_LED_PIN, 1);
+        gpio_pin_set_raw(gpio, LED_FLASH_EXTERNAL_PIN, 1);
         k_msleep(500);
 
-        gpio_pin_set_raw(gpio, TX_LED_PIN, 0);
+        gpio_pin_set_raw(gpio, LED_FLASH_EXTERNAL_PIN, 0);
         k_msleep(500);
 
     }

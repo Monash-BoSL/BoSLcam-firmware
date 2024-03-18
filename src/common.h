@@ -22,7 +22,10 @@
 
 #define DBGPIN		(18)
 
-#define TX_LED_PIN      (19)
+#define TX_PIN                  (19)
+
+#define LED_FLASH_EXTERNAL_PIN      (TX_PIN)
+#define LED_FLASH_INBUILT_PIN       (17)
 
 #define SCCB_CLK_DPPI_CH 	(0)
 #define GPIOTE_CLK_TSK 		(0)
@@ -71,9 +74,9 @@ struct image_resolution_properties {
 };
 
 enum flash_t {
-    NO_FLASH = 0,
-    LED_INBUILT_FLASH,
-    LED_EXTERNAL_FLASH,
+    NO_FLASH = 0xFF,
+    LED_INBUILT_FLASH = LED_FLASH_INBUILT_PIN,
+    LED_EXTERNAL_FLASH = LED_FLASH_EXTERNAL_PIN,
 };
 
 struct image_config_t {
@@ -81,6 +84,7 @@ struct image_config_t {
     enum image_format       format;
     enum image_resolution   resolution;
     enum flash_t            flash;
+    uint32_t                use_flash;
     //awb enable
     //ae enable
     //...

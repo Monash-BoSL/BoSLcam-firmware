@@ -27,6 +27,7 @@ image_config_t
     enum image_resolution resolution = VGA //VGA, QVGA
     enum image_format format = JPG //BMP, JPG
     enum flash_t flash = LED_EXTERNAL_FLASH //NO_FLASH, LED_INBUILT_FLASH, LED_EXTERNAL_FLASH 
+    uint32_t use_flash = 0                  // 0: flash off, 1: flash on
 ftp_config_t
     char* apn = "simbase"
     char* mccmnc = "50501"

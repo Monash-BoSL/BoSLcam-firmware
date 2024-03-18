@@ -46,6 +46,7 @@ int yydebug = 1;
 %token format_tk
 %token flash_t_tk
 %token flash_tk
+%token use_flash_tk
 
 %token ftp_config_t_tk
 %token apn_tk
@@ -103,6 +104,7 @@ image_config_t_entry    : uint32_t_tk auto_range_time_tk                   '=' i
                         | enum_tk image_resolution_tk resolution_tk        '=' enum_image_resolution       {parser_config_handle->im_cfg.resolution = $5;}
                         | enum_tk image_format_tk format_tk                '=' enum_image_format           {parser_config_handle->im_cfg.format = $5;}
                         | enum_tk flash_t_tk flash_tk                      '=' enum_flash_t                {parser_config_handle->im_cfg.flash = $5;}
+                        | uint32_t_tk use_flash_tk                         '=' integer                     {parser_config_handle->im_cfg.use_flash = $4;}
                         ;
 
 
@@ -149,7 +151,7 @@ trigger_config_t_entry  : enum_tk trigger_t_tk trigger_tk                  '=' e
 %%                     /* C code */
 
 void yyerror (const char *s) {
-        printk(CONFIG_FILE ":%d: %s\n", yylineno, s); 
+        printk("\033[1;31m YYERROR: " CONFIG_FILE ":%d: %s\033[0m\n", yylineno, s); 
         k_msleep(100);
 }
 

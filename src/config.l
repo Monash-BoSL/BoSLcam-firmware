@@ -43,6 +43,7 @@ int yylex();
 "NO_FLASH"                              {yylval.enum_flash_t_value = NO_FLASH; return enum_flash_t;}
 "LED_INBUILT_FLASH"                     {yylval.enum_flash_t_value = LED_INBUILT_FLASH; return enum_flash_t;}
 "LED_EXTERNAL_FLASH"                    {yylval.enum_flash_t_value = LED_EXTERNAL_FLASH; return enum_flash_t;}
+"use_flash"                             {return use_flash_tk;}
 
 
 "ftp_config_t"                          {return ftp_config_t_tk;}
@@ -50,7 +51,7 @@ int yylex();
 "mccmnc"                                {return mccmnc_tk;}
 "domain"                                {return domain_tk;}
 "username"                              {return username_tk;}
-"cyphter_t"                             {return cypher_t_tk;}
+"cypher_t"                              {return cypher_t_tk;}
 "cypher"                                {return cypher_tk;}
 "NONE"                                  {yylval.enum_cypher_t_value = NONE; return enum_cypher_t;}
 "CAESAR"                                {yylval.enum_cypher_t_value = CAESAR; return enum_cypher_t;}

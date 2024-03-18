@@ -213,6 +213,7 @@ int setup(void){
         LOG_ERR("failed to load config. halting");
         return ret;
     }
+    nrf_gpio_cfg_input(mcfg.im_cfg.flash, NRF_GPIO_PIN_PULLDOWN);
 
     int d = mcfg.trig_cfg.logging_decimation_ftp;
     if(d > 0){//first try get time from network
@@ -237,7 +238,7 @@ int setup(void){
     date_time_register_handler(time_source_stats_async);
 
     if(!date_time_is_valid()){//then from SD
-        LOG_ERR("no network time, resorting to SD");
+        LOG_WRN("no network time, resorting to SD");
         struct tm cal;
         ret = sdhc_load_last_status_time(mcfg.sd_cfg.status_path, &cal);
         if(ret == 0){
@@ -246,7 +247,7 @@ int setup(void){
         }
     }
     if(!date_time_is_valid()){//then from default time epoch
-        LOG_ERR("no valid time, resorting to default");
+        LOG_WRN("no valid time, resorting to default");
         struct tm cal = {	.tm_sec = 0,
                             .tm_min = 0,
                             .tm_hour = 0,
@@ -276,10 +277,10 @@ int loop(void){
     update_status();
 
     LOG_INF("ov7675 initialisation");
-    ov7675_init(mcfg.im_cfg.auto_range_time, mcfg.im_cfg.resolution, mcfg.im_cfg.format, &capture);
+    ov7675_init(&mcfg.im_cfg, &capture);
 
     LOG_INF("ov7675 capture");
-    ov7675_capture_sdhc_buffered(&capture);
+    ov7675_capture_sdhc_buffered(mcfg.im_cfg.flash, &capture);
 
 #ifdef _DBG_SEND_IMAGE_RTT
     sdhc_file_to_rtt(SCRATCH_FILE);
@@ -349,7 +350,7 @@ void main(void){
     //try out high and low for min power
     // nrf_gpio_cfg_input( 28, NRF_GPIO_PIN_PULLUP);
     //
-    nrf_gpio_cfg_input(TX_LED_PIN, NRF_GPIO_PIN_PULLDOWN);
+    nrf_gpio_cfg_input(LED_FLASH_INBUILT_PIN, NRF_GPIO_PIN_PULLDOWN);//we haven't read the SD config file yet so we don't know which pin to pull down. We will guess the INBUILT one as it won't affect external UART if connected. This does mean that if the flash is external it will remain on until we read the config.
     NRF_UARTE0->ENABLE = 0;
     NRF_SPIM1->ENABLE = 0;
     NRF_TWIM2->ENABLE = 0;
@@ -371,7 +372,7 @@ void main(void){
         loop();
     }
 
-    nrf_gpio_cfg_input(TX_LED_PIN, NRF_GPIO_PIN_PULLDOWN);
+    nrf_gpio_cfg_input(LED_FLASH_INBUILT_PIN, NRF_GPIO_PIN_PULLDOWN);//we haven't read the SD config file yet so we don't know which pin to pull down. We will guess the INBUILT one as it won't affect external UART if connected. This does mean that if the flash is external it will remain on until we read the config.
     nrf_gpio_cfg_input(SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
     nrf_gpio_cfg_input(SCCB_PDN, NRF_GPIO_PIN_PULLUP);
 
