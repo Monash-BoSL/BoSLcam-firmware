@@ -22,6 +22,11 @@
 
 #define DBGPIN		(18)
 
+#define TX_PIN                  (19)
+
+#define LED_FLASH_EXTERNAL_PIN      (TX_PIN)
+#define LED_FLASH_INBUILT_PIN       (17)
+
 #define SCCB_CLK_DPPI_CH 	(0)
 #define GPIOTE_CLK_TSK 		(0)
 
@@ -68,17 +73,24 @@ struct image_resolution_properties {
     char* bmp_header;
 };
 
+enum flash_t {
+    NO_FLASH = 0xFF,
+    LED_INBUILT_FLASH = LED_FLASH_INBUILT_PIN,
+    LED_EXTERNAL_FLASH = LED_FLASH_EXTERNAL_PIN,
+};
 
 struct image_config_t {
-    uint32_t auto_range_time;
-      enum image_format format;
-      enum image_resolution  resolution;
+    uint32_t                auto_range_time;
+    enum image_format       format;
+    enum image_resolution   resolution;
+    enum flash_t            flash;
+    uint32_t                use_flash;
     //awb enable
     //ae enable
     //...
 };
 
-enum cypher_type {
+enum cypher_t {
     NONE = 0,
     CAESAR,
     SUFFIX,
@@ -91,7 +103,7 @@ struct ftp_config_t {
     char* domain;
     //port
     char* username;
-    enum cypher_type cyph_type;
+    enum cypher_t cypher;
     char* password;
     char* image_path;
     char* status_path;
@@ -103,13 +115,13 @@ struct sd_config_t {
     uint32_t logging_level;//DBG, INF, WRN, ERR, OFF
 };
 
-enum trigger_type {
+enum trigger_t {
     TIME_TRIGGER = 0,
     UART_TRIGGER,
 };
 
 struct trigger_config_t {
-    enum trigger_type trig_type;
+    enum trigger_t trigger;
     uint32_t logging_interval; //ms
     uint32_t logging_decimation_ftp;//1 in every x photos captured to sd will be uploaded
 };

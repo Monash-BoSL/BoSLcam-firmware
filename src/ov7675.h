@@ -8,9 +8,12 @@ uint8_t rd_reg(uint8_t reg);
 enum COLORSPACE{YUV422,RGB565,BAYER_RGB};
 // void set_color_space(enum COLORSPACE color);
 // void set_res(enum image_resolution res);
-void ov7675_init(uint32_t auto_time, enum image_resolution resolution, enum image_format format, struct capture_t* capture);
-int ov7675_capture(struct capture_t* capture);
-int ov7675_capture_sdhc_buffered(struct capture_t* capture);
+void ov7675_init(
+                 const struct image_config_t* im_cfg_p,
+                 struct capture_t* capture
+                );
+int ov7675_capture(const enum flash_t flash, struct capture_t* capture);
+int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* capture);
 
 struct regval_list{
     uint8_t reg_num;

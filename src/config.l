@@ -38,6 +38,12 @@ int yylex();
 "format"                                {return format_tk;}
 "BMP"                                   {yylval.enum_image_format_value = BMP; return enum_image_format;}
 "JPG"                                   {yylval.enum_image_format_value = JPG; return enum_image_format;}
+"flash_t"                               {return flash_t_tk;}
+"flash"                                 {return flash_tk;}
+"NO_FLASH"                              {yylval.enum_flash_t_value = NO_FLASH; return enum_flash_t;}
+"LED_INBUILT_FLASH"                     {yylval.enum_flash_t_value = LED_INBUILT_FLASH; return enum_flash_t;}
+"LED_EXTERNAL_FLASH"                    {yylval.enum_flash_t_value = LED_EXTERNAL_FLASH; return enum_flash_t;}
+"use_flash"                             {return use_flash_tk;}
 
 
 "ftp_config_t"                          {return ftp_config_t_tk;}
@@ -45,11 +51,11 @@ int yylex();
 "mccmnc"                                {return mccmnc_tk;}
 "domain"                                {return domain_tk;}
 "username"                              {return username_tk;}
-"cypher_type"                           {return cypher_type_tk;}
-"cyph_type"                             {return cyph_type_tk;}
-"NONE"                                  {yylval.enum_cypher_type_value = NONE; return enum_cypher_type;}
-"CAESAR"                                {yylval.enum_cypher_type_value = CAESAR; return enum_cypher_type;}
-"SUFFIX"                                {yylval.enum_cypher_type_value = SUFFIX; return enum_cypher_type;}
+"cypher_t"                              {return cypher_t_tk;}
+"cypher"                                {return cypher_tk;}
+"NONE"                                  {yylval.enum_cypher_t_value = NONE; return enum_cypher_t;}
+"CAESAR"                                {yylval.enum_cypher_t_value = CAESAR; return enum_cypher_t;}
+"SUFFIX"                                {yylval.enum_cypher_t_value = SUFFIX; return enum_cypher_t;}
 "password"                              {return password_tk;}
 "image_path"                            {return image_path_tk;}
 "status_path"                           {return status_path_tk;}
@@ -60,10 +66,10 @@ int yylex();
 
 
 "trigger_config_t"                      {return trigger_config_t_tk;}
-"trigger_type"                          {return trigger_type_tk;}
-"trig_type"                             {return trig_type_tk;}
-"TIME_TRIGGER"                          {yylval.enum_trigger_type_value = TIME_TRIGGER; return enum_trigger_type;}
-"UART_TRIGGER"                          {yylval.enum_trigger_type_value = UART_TRIGGER; return enum_trigger_type;}
+"trigger_t"                             {return trigger_t_tk;}
+"trigger"                               {return trigger_tk;}
+"TIME_TRIGGER"                          {yylval.enum_trigger_t_value = TIME_TRIGGER; return enum_trigger_t;}
+"UART_TRIGGER"                          {yylval.enum_trigger_t_value = UART_TRIGGER; return enum_trigger_t;}
 "logging_interval"                      {return logging_interval_tk;}
 "logging_decimation_ftp"                {return logging_decimation_ftp_tk;}
 

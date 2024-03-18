@@ -28,9 +28,9 @@ target_sources(app PRIVATE ${Y_TAB_C})
 
 # unit tests 
 target_sources(app PRIVATE tests/test.c)
-target_sources(app PRIVATE tests/test.modem.c)
 target_sources(app PRIVATE tests/test.main.c)
-
+target_sources(app PRIVATE tests/test.modem.c)
+target_sources(app PRIVATE tests/test.ov7675.c)
 
 include_directories(app PUBLIC 
      "${APP_SOURCE_DIR}"

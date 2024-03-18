@@ -115,9 +115,9 @@ void ov7675_awb(int on){
     _ov7675_write_flag(REG_COM8, COM8_AWB, on);
 }
 
-void ov7675_init(uint32_t auto_time, enum image_resolution resolution, enum image_format format, struct capture_t* capture){
-    capture->resolution = resolution;
-    capture->format = format;
+void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* capture){
+    capture->resolution = im_cfg_p->resolution;
+    capture->format = im_cfg_p->format;
 
     gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
     LOG_INF("bind %s\n", gpio->name);
@@ -127,7 +127,7 @@ void ov7675_init(uint32_t auto_time, enum image_resolution resolution, enum imag
     //setup gpio for all pins
     gpio_pin_configure(gpio, SCCB_PEN, GPIO_OUTPUT);
     gpio_pin_configure(gpio, SCCB_PDN, GPIO_OUTPUT);
-    gpio_pin_configure(gpio, DBGPIN, GPIO_OUTPUT);
+    gpio_pin_configure(gpio, im_cfg_p->flash, GPIO_OUTPUT);
     for(int i = 0; i < 8; i++){
         gpio_pin_configure(gpio, i, GPIO_INPUT);
     }
@@ -136,6 +136,7 @@ void ov7675_init(uint32_t auto_time, enum image_resolution resolution, enum imag
     gpio_pin_configure(gpio, SCCB_PCLK, GPIO_INPUT);
     gpio_pin_set_raw(gpio, SCCB_PEN, 1);
     gpio_pin_set_raw(gpio, SCCB_PDN, 0);
+    gpio_pin_set_raw(gpio, im_cfg_p->flash, im_cfg_p->use_flash);
 
     NRF_P0->PIN_CNF[SCCB_XCLK] = 0b00000000000000000000000000000001;
 
@@ -163,7 +164,7 @@ void ov7675_init(uint32_t auto_time, enum image_resolution resolution, enum imag
     // wr_reg(0x11,0);//set clock divider to 1, no need to slow it down!
     k_msleep(100);
     ////////////////////////////////////////////////////////////////////////////////
-    struct ov7675_image_size *wsize = &ov7675_resolutions[resolution];
+    struct ov7675_image_size *wsize = &ov7675_resolutions[im_cfg_p->resolution];
 
     wr_reg(REG_COM7, COM7_RESET);//Reset the camera.
     k_msleep(100);
@@ -188,14 +189,13 @@ void ov7675_init(uint32_t auto_time, enum image_resolution resolution, enum imag
     wr_reg(REG_DBLV, DBLV_BYPASS);//maybe?
     wr_reg(REG_CLKRC, CLK_SCALE & 0x02);//set clock divider to 2, needed for vga, qvga works fine with just 0x01
     ////////////////////////////////////////////////////////////////////////////////
-
-    if(auto_time){
-        k_msleep(auto_time);//delay for autoexposure awb, etc ...
+    if(im_cfg_p->auto_range_time){
+        k_msleep(im_cfg_p->auto_range_time);//delay for autoexposure awb, etc ...
     }
 }
 
 #define EBADIMAGESIZE 2
-int ov7675_capture(struct capture_t* capture){
+int ov7675_capture(const enum flash_t flash, struct capture_t* capture){
     uint16_t wg = QVGA_WIDTH;//line width in pixels
     uint16_t hg = VGA_HEIGHT;//number of lines per frame
     uint16_t lg2;
@@ -244,7 +244,7 @@ int ov7675_capture(struct capture_t* capture){
 }
 
 #define EBUFFERTOOSMALL 1
-int ov7675_capture_sdhc_buffered(struct capture_t* capture){
+int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* capture){
     int ret = 0;
     const uint16_t line_width = ov7675_resolutions[capture->resolution].width;//line width in pixels
 
@@ -304,6 +304,7 @@ int ov7675_capture_sdhc_buffered(struct capture_t* capture){
         ret = fs_write(&imf, capture->data, buffer_index);
         capture->size = buffer_index;
     }
+    gpio_pin_set_raw(gpio, flash, 0);
     fs_close(&imf);
     
     strcpy(capture->fp, SDHC_PATH(SCRATCH_FILE));

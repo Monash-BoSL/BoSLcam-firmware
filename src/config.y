@@ -24,8 +24,9 @@ int yydebug = 1;
 		char* string_value;
 		enum image_resolution enum_image_resolution_value;
 		enum image_format enum_image_format_value;
-		enum cypher_type enum_cypher_type_value;
-                enum trigger_type enum_trigger_type_value;
+		enum flash_t enum_flash_t_value;
+		enum cypher_t enum_cypher_t_value;
+                enum trigger_t enum_trigger_t_value;
 		}         /* Yacc definitions */
 
 
@@ -43,14 +44,17 @@ int yydebug = 1;
 %token resolution_tk
 %token image_format_tk
 %token format_tk
+%token flash_t_tk
+%token flash_tk
+%token use_flash_tk
 
 %token ftp_config_t_tk
 %token apn_tk
 %token mccmnc_tk
 %token domain_tk
 %token username_tk
-%token cypher_type_tk
-%token cyph_type_tk
+%token cypher_t_tk
+%token cypher_tk
 %token password_tk
 %token image_path_tk
 %token status_path_tk
@@ -59,8 +63,8 @@ int yydebug = 1;
 %token logging_level_tk
 
 %token trigger_config_t_tk
-%token trigger_type_tk
-%token trig_type_tk
+%token trigger_t_tk
+%token trigger_tk
 %token logging_interval_tk
 %token logging_decimation_ftp_tk
 
@@ -71,8 +75,9 @@ int yydebug = 1;
 %token <string_value> string
 %token <enum_image_resolution_value> enum_image_resolution
 %token <enum_image_format_value> enum_image_format
-%token <enum_cypher_type_value> enum_cypher_type
-%token <enum_trigger_type_value> enum_trigger_type
+%token <enum_flash_t_value> enum_flash_t
+%token <enum_cypher_t_value> enum_cypher_t
+%token <enum_trigger_t_value> enum_trigger_t
 
 %%
 
@@ -98,6 +103,8 @@ image_config_t_members  : image_config_t_entry                          {;}
 image_config_t_entry    : uint32_t_tk auto_range_time_tk                   '=' integer                     {parser_config_handle->im_cfg.auto_range_time = $4;}
                         | enum_tk image_resolution_tk resolution_tk        '=' enum_image_resolution       {parser_config_handle->im_cfg.resolution = $5;}
                         | enum_tk image_format_tk format_tk                '=' enum_image_format           {parser_config_handle->im_cfg.format = $5;}
+                        | enum_tk flash_t_tk flash_tk                      '=' enum_flash_t                {parser_config_handle->im_cfg.flash = $5;}
+                        | uint32_t_tk use_flash_tk                         '=' integer                     {parser_config_handle->im_cfg.use_flash = $4;}
                         ;
 
 
@@ -107,11 +114,11 @@ ftp_config_t_members    : ftp_config_t_entry                          {;}
                         | ftp_config_t_members ftp_config_t_entry   {;}
                         ;
 
-ftp_config_t_entry      : char_p_tk apn_tk                                  '=' string                     {string_malloc(&parser_config_handle->ftp_cfg.apn,$4);}
-                        | char_p_tk mccmnc_tk                    '=' string                      {string_malloc(&parser_config_handle->ftp_cfg.mccmnc,$4);}
+ftp_config_t_entry      : char_p_tk apn_tk                                 '=' string                      {string_malloc(&parser_config_handle->ftp_cfg.apn,$4);}
+                        | char_p_tk mccmnc_tk                              '=' string                      {string_malloc(&parser_config_handle->ftp_cfg.mccmnc,$4);}
                         | char_p_tk domain_tk                              '=' string                      {string_malloc(&parser_config_handle->ftp_cfg.domain,$4);}
                         | char_p_tk username_tk                            '=' string                      {string_malloc(&parser_config_handle->ftp_cfg.username,$4);}
-                        | enum_tk cypher_type_tk cyph_type_tk              '=' enum_cypher_type            {parser_config_handle->ftp_cfg.cyph_type = $5;}
+                        | enum_tk cypher_t_tk cypher_tk                    '=' enum_cypher_t               {parser_config_handle->ftp_cfg.cypher = $5;}
                         | char_p_tk password_tk                            '=' string                      {string_malloc(&parser_config_handle->ftp_cfg.password,$4);}
                         | char_p_tk image_path_tk                          '=' string                      {string_malloc(&parser_config_handle->ftp_cfg.image_path,$4);}
                         | char_p_tk status_path_tk                         '=' string                      {string_malloc(&parser_config_handle->ftp_cfg.status_path,$4);}
@@ -136,7 +143,7 @@ trigger_config_t_members  : trigger_config_t_entry                            {;
                           | trigger_config_t_members trigger_config_t_entry   {;}
                           ;
 
-trigger_config_t_entry  : enum_tk trigger_type_tk trig_type_tk             '=' enum_trigger_type           {parser_config_handle->trig_cfg.trig_type = $5;}
+trigger_config_t_entry  : enum_tk trigger_t_tk trigger_tk                  '=' enum_trigger_t              {parser_config_handle->trig_cfg.trigger = $5;}
                         | uint32_t_tk logging_interval_tk                  '=' integer                     {parser_config_handle->trig_cfg.logging_interval = $4;}
                         | uint32_t_tk logging_decimation_ftp_tk            '=' integer                     {parser_config_handle->trig_cfg.logging_decimation_ftp = $4;}
                         ;
@@ -144,7 +151,7 @@ trigger_config_t_entry  : enum_tk trigger_type_tk trig_type_tk             '=' e
 %%                     /* C code */
 
 void yyerror (const char *s) {
-        printk(CONFIG_FILE ":%d: %s\n", yylineno, s); 
+        printk("\033[1;31m YYERROR: " CONFIG_FILE ":%d: %s\033[0m\n", yylineno, s); 
         k_msleep(100);
 }
 

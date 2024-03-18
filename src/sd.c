@@ -184,7 +184,7 @@ int suffix_decrypt(char** password_p, const char* suffix){
     return 0;
 };
 
-int decrypt_password(char** password_p, const enum cypher_type cypher){
+int decrypt_password(char** password_p, const enum cypher_t cypher){
     switch(cypher){
         case NONE:
             return 0;
@@ -249,7 +249,7 @@ int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
     
     LOG_INF("config parsed with result %d", ret);
 
-    decrypt_password(&master_cfg->ftp_cfg.password, master_cfg->ftp_cfg.cyph_type);
+    decrypt_password(&master_cfg->ftp_cfg.password, master_cfg->ftp_cfg.cypher);
 
     return ret;
 }
