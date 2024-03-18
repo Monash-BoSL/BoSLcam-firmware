@@ -41,10 +41,10 @@
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
     [X] automatically make 'images' folder on sd card. 
-[ ] use yacc flex for parsing SD card config file
+[X] use yacc flex for parsing SD card config file
 [ ] add versioning in config file
 [ ] figure out how to name files when no network info
-[ ] add alarm based logging rather than delay based
+[X] add alarm based logging rather than delay based
     [X] logging based on length of last loop, not quite RTC yet though
 [X] add jpeg mode
     [X] make jpeg compression work on VGA images.
