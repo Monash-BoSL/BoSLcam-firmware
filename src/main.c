@@ -26,8 +26,8 @@
 #include "../tests/test.h"
 
 /*************** VERSION NUMBER ********************/
-#define _VERSION "v1.4.0rc"
-// #define _VERSION "v1.4.0"
+// #define _VERSION "v1.4.0rc"
+#define _VERSION "v1.4.0"
 /*************** TODO *******************************
 [X] add backup DNS configuration
 [ ] we should store the status string when we write to the SDHC so that it the same on the SDHC and FTP
