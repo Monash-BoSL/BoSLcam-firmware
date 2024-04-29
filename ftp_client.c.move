@@ -19,7 +19,7 @@ LOG_MODULE_REGISTER(ftp_client, CONFIG_FTP_CLIENT_LOG_LEVEL);
 #define INVALID_SEC_TAG		-1
 
 #define FTP_MAX_BUFFER_SIZE	708 /* align with MSS on modem side */
-#define FTP_DATA_TIMEOUT_SEC	60  /* time in seconds to wait for "Transfer complete" */
+#define FTP_DATA_TIMEOUT_SEC	120  /* time in seconds to wait for "Transfer complete" */
 
 #define FTP_CODE_ANY		0
 
