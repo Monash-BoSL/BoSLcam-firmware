@@ -4,6 +4,7 @@
 #include <sys/util.h>
 #include <sys/printk.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <logging/log.h>
 
 #include <drivers/i2c.h>
@@ -108,8 +109,21 @@ void _ov7675_write_flag(uint8_t reg, uint8_t flag, int on){
     else{	cl_reg(reg, flag);}
 }
 
+//for reading AEC[15:0]
+uint16_t ov7675_rd_exposure(void){
+    const uint8_t com1_mask  = 0b00000011;// REG_AECHH //[5:0]
+    const uint8_t aech_mask  = 0b11111111;// REG_AECH  //[7:0]
+    const uint8_t aechh_mask = 0b00111111;// REG_COM1  //[1:0]
+
+    const uint16_t com1_bits  = rd_reg(REG_COM1)  & com1_mask;
+    const uint16_t aech_bits  = rd_reg(REG_AECH)  & aech_mask;
+    const uint16_t aechh_bits = rd_reg(REG_AECHH) & aechh_mask;
+
+    return com1_bits | aech_bits << 2 | aechh_bits << 10;
+}
+
 //for setting AEC[15:0]
-void ov7675_wr_exposure(const uint16_t time){
+int ov7675_wr_exposure(const uint16_t time){
     LOG_INF("settings exposure to %u", time);
     const uint8_t com1_mask  = 0b00000011;// REG_AECHH //[5:0]
     const uint8_t aech_mask  = 0b11111111;// REG_AECH  //[7:0]
@@ -126,6 +140,30 @@ void ov7675_wr_exposure(const uint16_t time){
     LOG_INF("COM1:  %u", rd_reg(REG_COM1));
     LOG_INF("AECH:  %u", rd_reg(REG_AECH));
     LOG_INF("AECHH: %u", rd_reg(REG_AECHH));
+}
+
+uint8_t popcnt(const uint8_t i){
+    uint8_t cnt;
+    for(uint8_t x = 0; x < CHAR_BIT; x++){
+        cnt += 0b1 & (i >> x);
+    }
+    return cnt;
+}
+
+//for reading AGC
+//reads gain as 1.<mantissa> x 2^<exponent>
+//manitssa is 4 bits.
+//exponent is between 0 - 6.
+void ov7675_rd_gain(uint8_t* mantissa, uint8_t* exponent){
+    const uint8_t gain_mask = 0b11111111;
+    const uint8_t vref_mask = 0b11000000;
+
+    const uint8_t gain_bits = rd_reg(REG_GAIN);
+    const uint8_t vref_bits = rd_reg(REG_VREF);
+
+    *mantissa = gain_bits & 0xF;
+    *exponent = popcnt(gain_bits & 0xF0) + popcnt(vref_bits & vref_mask);
+
 }
 
 //for setting AGC
@@ -242,8 +280,15 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
     //testing manual exposure
     ov7675_aec(0);
     ov7675_agc(0);
-    ov7675_wr_exposure(10);
-    ov7675_wr_gain(0, 2);
+    ov7675_wr_exposure(36724);
+    ov7675_wr_gain(11, 5);
+    uint16_t exposure;
+    uint8_t gain_man;
+    uint8_t gain_exp;
+    exposure = ov7675_rd_exposure();
+    ov7675_rd_gain(&gain_man, &gain_exp);
+    LOG_INF("exposure read: %u", exposure);
+    LOG_INF("gain read: 1.%u x2^%u", gain_man, gain_exp);
     ////////////////////////////////////////////////////////////////////////////////
     if(im_cfg_p->auto_range_time){
         k_msleep(im_cfg_p->auto_range_time);//delay for autoexposure awb, etc ...
