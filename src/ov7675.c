@@ -201,12 +201,6 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
     capture->format         = im_cfg_p->format;
     capture->aec            = im_cfg_p->aec;
     capture->agc            = im_cfg_p->agc;
-    if(capture->aec == AEC_OFF){
-        capture->exposure = im_cfg_p->exposure;
-    }
-    if(capture->agc == AGC_OFF){
-        capture->gain = im_cfg_p->gain;
-    }
 
     gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
     LOG_INF("bind %s\n", gpio->name);
@@ -277,28 +271,24 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
 
     wr_reg(REG_DBLV, DBLV_BYPASS);//maybe?
     wr_reg(REG_CLKRC, CLK_SCALE & 0x02);//set clock divider to 2, needed for vga, qvga works fine with just 0x01
-    /////////// here we disable aec and agc to restore the previous settings //////
-    //they stay off if we do not want aec or agc
-    ov7675_aec(AEC_OFF);
-    ov7675_agc(AGC_OFF);
-    
-    ov7675_wr_exposure(capture->exposure);
-    ov7675_wr_gain(capture->gain);
+    /////////// manual exposure and gain control                               //////
+    ov7675_aec(im_cfg_p->aec);
+    if(im_cfg_p->aec == AEC_OFF){
+        ov7675_wr_exposure(im_cfg_p->exposure);
+    }
 
-    ov7675_aec(capture->aec);
-    ov7675_agc(capture->agc);
+    ov7675_agc(im_cfg_p->agc);
+    if(im_cfg_p->agc == AGC_OFF){
+        ov7675_wr_gain(im_cfg_p->gain);
+    }
     ////////////////////////////////////////////////////////////////////////////////
     if(im_cfg_p->auto_range_time){
         k_msleep(im_cfg_p->auto_range_time);//delay for autoexposure awb, etc ...
     }
 
-    //store found aec and agc for use next time
-    if(capture->aec == AEC_ON){
-        capture->exposure = ov7675_rd_exposure();
-    }
-    if(capture->agc == AGC_ON){
-        capture->gain = ov7675_rd_gain();
-    }
+    capture->exposure = ov7675_rd_exposure();
+    capture->gain = ov7675_rd_gain();
+
 }
 
 #define EBADIMAGESIZE 2
