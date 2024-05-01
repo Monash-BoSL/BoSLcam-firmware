@@ -124,7 +124,6 @@ uint16_t ov7675_rd_exposure(void){
 
 //for setting AEC[15:0]
 int ov7675_wr_exposure(const uint16_t time){
-    LOG_INF("settings exposure to %u", time);
     const uint8_t com1_mask  = 0b00000011;// REG_AECHH //[5:0]
     const uint8_t aech_mask  = 0b11111111;// REG_AECH  //[7:0]
     const uint8_t aechh_mask = 0b00111111;// REG_COM1  //[1:0]
@@ -136,10 +135,6 @@ int ov7675_wr_exposure(const uint16_t time){
     wr_msk_reg(REG_COM1,  com1_bits,  com1_mask);
     wr_msk_reg(REG_AECH,  aech_bits,  aech_mask);
     wr_msk_reg(REG_AECHH, aechh_bits, aechh_mask);
-
-    LOG_INF("COM1:  %u", rd_reg(REG_COM1));
-    LOG_INF("AECH:  %u", rd_reg(REG_AECH));
-    LOG_INF("AECHH: %u", rd_reg(REG_AECHH));
 }
 
 uint8_t popcnt(const uint8_t i){
@@ -154,39 +149,37 @@ uint8_t popcnt(const uint8_t i){
 //reads gain as 1.<mantissa> x 2^<exponent>
 //manitssa is 4 bits.
 //exponent is between 0 - 6.
-void ov7675_rd_gain(uint8_t* mantissa, uint8_t* exponent){
+struct gain_t ov7675_rd_gain(void){
+    struct gain_t gain;
+
     const uint8_t gain_mask = 0b11111111;
     const uint8_t vref_mask = 0b11000000;
 
     const uint8_t gain_bits = rd_reg(REG_GAIN);
     const uint8_t vref_bits = rd_reg(REG_VREF);
 
-    *mantissa = gain_bits & 0xF;
-    *exponent = popcnt(gain_bits & 0xF0) + popcnt(vref_bits & vref_mask);
+    gain.mantissa = gain_bits & 0xF;
+    gain.exponent = popcnt(gain_bits & 0xF0) + popcnt(vref_bits & vref_mask);
 
+    return gain;
 }
 
 //for setting AGC
 //sets gain to 1.<mantissa> x 2^<exponent>
 //manitssa is 4 bits.
 //exponent is between 0 - 6.
-void ov7675_wr_gain(const uint8_t mantissa, const uint8_t exponent){
+void ov7675_wr_gain(const struct gain_t gain){
     const uint8_t gain_mask = 0b11111111;
     const uint8_t vref_mask = 0b11000000;
 
-    LOG_INF("MAN:  %u", mantissa);
-    LOG_INF("MANF:  %u", (0xF & mantissa));
-    const uint8_t gain_bits = (~(0xFF << exponent) << 4) | (0xF & mantissa);//REG_GAIN //[7:0]
-    const uint8_t vref_bits = (~(0xFF << exponent) << 2);                   //REG_VREF //[7:6]
+    const uint8_t gain_bits = (~(0xFF << gain.exponent) << 4) | (0xF & gain.mantissa);//REG_GAIN //[7:0]
+    const uint8_t vref_bits = (~(0xFF << gain.exponent) << 2);                   //REG_VREF //[7:6]
 
     wr_msk_reg(REG_GAIN,  gain_bits,  gain_mask);
     wr_msk_reg(REG_VREF,  vref_bits,  vref_mask);
-
-    LOG_INF("GAIN: %u", rd_reg(REG_GAIN));
-    LOG_INF("VREF: %u", rd_reg(REG_VREF));
 }
 
-//COM9 for freezing aec and aeg
+//COM9 for freezing aec and aec
 
 
 void ov7675_aec(const int on){
@@ -204,8 +197,16 @@ void ov7675_awb(const int on){
 }
 
 void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* capture){
-    capture->resolution = im_cfg_p->resolution;
-    capture->format = im_cfg_p->format;
+    capture->resolution     = im_cfg_p->resolution;
+    capture->format         = im_cfg_p->format;
+    capture->aec            = im_cfg_p->aec;
+    capture->agc            = im_cfg_p->agc;
+    if(capture->aec == AEC_OFF){
+        capture->exposure = im_cfg_p->exposure;
+    }
+    if(capture->agc == AGC_OFF){
+        capture->gain = im_cfg_p->gain;
+    }
 
     gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
     LOG_INF("bind %s\n", gpio->name);
@@ -276,22 +277,27 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
 
     wr_reg(REG_DBLV, DBLV_BYPASS);//maybe?
     wr_reg(REG_CLKRC, CLK_SCALE & 0x02);//set clock divider to 2, needed for vga, qvga works fine with just 0x01
-    ////////////////////////////////////////////////////////////////////////////////
-    //testing manual exposure
-    ov7675_aec(0);
-    ov7675_agc(0);
-    ov7675_wr_exposure(36724);
-    ov7675_wr_gain(11, 5);
-    uint16_t exposure;
-    uint8_t gain_man;
-    uint8_t gain_exp;
-    exposure = ov7675_rd_exposure();
-    ov7675_rd_gain(&gain_man, &gain_exp);
-    LOG_INF("exposure read: %u", exposure);
-    LOG_INF("gain read: 1.%u x2^%u", gain_man, gain_exp);
+    /////////// here we disable aec and agc to restore the previous settings //////
+    //they stay off if we do not want aec or agc
+    ov7675_aec(AEC_OFF);
+    ov7675_agc(AGC_OFF);
+    
+    ov7675_wr_exposure(capture->exposure);
+    ov7675_wr_gain(capture->gain);
+
+    ov7675_aec(capture->aec);
+    ov7675_agc(capture->agc);
     ////////////////////////////////////////////////////////////////////////////////
     if(im_cfg_p->auto_range_time){
         k_msleep(im_cfg_p->auto_range_time);//delay for autoexposure awb, etc ...
+    }
+
+    //store found aec and agc for use next time
+    if(capture->aec == AEC_ON){
+        capture->exposure = ov7675_rd_exposure();
+    }
+    if(capture->agc == AGC_ON){
+        capture->gain = ov7675_rd_gain();
     }
 }
 
@@ -367,8 +373,8 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
     // fs_truncate(&imf, BMPIMAGEOFFSET+(RBG565_PIXEL_SIZE_BYTES*logical_lines*line_width));
     fs_write(&imf, image_resolutions[capture->resolution].bmp_header, BMPIMAGEOFFSET);
 
-    // ov7675_aec(0);
-    // ov7675_agc(0);
+    ov7675_aec(AEC_OFF);
+    ov7675_agc(AGC_OFF);
     ov7675_awb(0);
     
     //this is to make sure the auto exposure settings have stuck.
@@ -412,8 +418,8 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
     capture->where = DISK;
     capture->format = BMP;
 
-    // ov7675_aec(1);
-    // ov7675_agc(1);
+    ov7675_aec(capture->aec);
+    ov7675_agc(capture->agc);
     ov7675_awb(1);
 
     return 0;

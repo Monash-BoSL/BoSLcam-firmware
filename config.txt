@@ -28,6 +28,12 @@ image_config_t
     enum image_format format            = JPG                       // BMP, JPG
     enum flash_t flash                  = LED_EXTERNAL_FLASH        // NO_FLASH, LED_INBUILT_FLASH, LED_EXTERNAL_FLASH 
     uint32_t use_flash                  = 0                         // 0: flash off, 1: flash on
+    aec_t aec                           = AEC_OFF                   // AEC_OFF, AEC_ON
+    uint16_t exposure                   = 100                       // 0 to 65537
+    agc_t agc                           = AGC_OFF                   // AGC_OFF, AGC_ON
+    gain_t gain                                                     // gain struct represented in floating pointesq form
+        uint8_t mantissa                = 11                        // 0 to 15
+        uint8_t exponent                = 5                         // 0 to 6
 ftp_config_t
     char* apn                           = "simbase"
     char* mccmnc                        = "50501"

@@ -67,6 +67,9 @@ struct capture_t capture = {
                             .data = image_buffer, 
                             .capacity = sizeof(image_buffer), 
                             .size = 0, 
+
+                            .aec = AEC_ON,
+                            .agc = AGC_ON,
                             .resolution = QVGA, 
                             .format = BMP, 
                             .time = 0
