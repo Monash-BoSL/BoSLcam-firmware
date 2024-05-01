@@ -26,7 +26,7 @@
 #include "../tests/test.h"
 
 /*************** VERSION NUMBER ********************/
-#define _VERSION "v1.4.1rc"
+#define _VERSION "v1.5.0rc"
 // #define _VERSION "v1.4.0"
 /*************** TODO *******************************
 [X] add backup DNS configuration

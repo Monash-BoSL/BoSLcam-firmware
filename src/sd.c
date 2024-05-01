@@ -17,15 +17,16 @@
 #include <stdio.h>
 #include <time.h>
 
-#ifdef CONFIG_CONFIG_USE_SEGGER_RTT
-    #include <SEGGER_RTT.h>
-#endif
 
 #include <sys/timeutil.h>
 
 #include "common.h"
 #include "sd.h"
 #include "util.h"
+
+#ifdef _DBG_SEND_IMAGE_RTT
+    #include <SEGGER_RTT.h>
+#endif
 
 LOG_MODULE_REGISTER(sd);
 
@@ -402,7 +403,7 @@ cleanup:
 
 
 
-#ifdef CONFIG_CONFIG_USE_SEGGER_RTT
+#ifdef _DBG_SEND_IMAGE_RTT
 
 #define RTT_BUFFER_UP_SIZE (0x1000)
 #define RTT_BUFFER_DOWN_SIZE (0x08)

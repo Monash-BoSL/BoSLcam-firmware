@@ -2,7 +2,7 @@
 
 #include <date_time.h>
 
-// #define _DBG_SEND_IMAGE_RTT //enable to switch logic out for sending image over RTT after taken
+#define _DBG_SEND_IMAGE_RTT //enable to switch logic out for sending image over RTT after taken
 
 #define WATCHDOG_TIMEOUT_SEC 86400 //allows silly values
 
