@@ -22,6 +22,8 @@ int yylex();
 \/\/.*                                  {;}
 \"([^\\\"]|\\.)*\"                      {yylval.string_value = yytext; return string;}
 
+"uint8_t"                               {return uint8_t_tk;}
+"uint16_t"                              {return uint16_t_tk;}
 "uint32_t"                              {return uint32_t_tk;}
 "enum"                                  {return enum_tk;}
 "char*"                                 {return char_p_tk;}
@@ -44,7 +46,19 @@ int yylex();
 "LED_INBUILT_FLASH"                     {yylval.enum_flash_t_value = LED_INBUILT_FLASH; return enum_flash_t;}
 "LED_EXTERNAL_FLASH"                    {yylval.enum_flash_t_value = LED_EXTERNAL_FLASH; return enum_flash_t;}
 "use_flash"                             {return use_flash_tk;}
-
+"aec_t"                                 {return aec_t_tk;}
+"aec"                                   {return aec_tk;}
+"AEC_OFF"                               {yylval.enum_aec_t_value = AEC_OFF; return enum_aec_t;}
+"AEC_ON"                                {yylval.enum_aec_t_value = AEC_ON; return enum_aec_t;}
+"exposure"                              {return exposure_tk;}
+"agc_t"                                 {return agc_t_tk;}
+"agc"                                   {return agc_tk;}
+"AGC_OFF"                               {yylval.enum_agc_t_value = AGC_OFF; return enum_agc_t;}
+"AGC_ON"                                {yylval.enum_agc_t_value = AGC_ON; return enum_agc_t;}
+"gain_t"                                {return gain_t_tk;}
+"mantissa"                              {return mantissa_tk;}
+"exponent"                              {return exponent_tk;}
+"gain"                                  {return gain_tk;}
 
 "ftp_config_t"                          {return ftp_config_t_tk;}
 "apn"                                   {return apn_tk;}

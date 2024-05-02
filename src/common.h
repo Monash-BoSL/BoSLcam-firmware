@@ -67,6 +67,24 @@ enum image_resolution {
     QQVGA,
 };
 
+enum aec_t {
+    AEC_OFF = 0,
+    AEC_ON,
+};
+
+enum agc_t {
+    AGC_OFF = 0,
+    AGC_ON,
+};
+
+//read gain as 1.<mantissa> x 2^<exponent>
+//mantissa is 4 bits.
+//exponent is between 0 - 6.
+struct gain_t {
+    uint8_t mantissa;
+    uint8_t exponent;
+};
+
 struct image_resolution_properties {
     uint16_t width;
     uint16_t height;
@@ -85,9 +103,10 @@ struct image_config_t {
     enum image_resolution   resolution;
     enum flash_t            flash;
     uint32_t                use_flash;
-    //awb enable
-    //ae enable
-    //...
+    enum aec_t              aec;
+    uint16_t                exposure;
+    enum agc_t              agc;
+    struct gain_t    gain;
 };
 
 enum cypher_t {
@@ -141,8 +160,14 @@ struct capture_t {
     uint8_t* const data;
     const size_t capacity;
     size_t size;
+
+    enum aec_t aec;
+    uint16_t exposure;
+    enum agc_t agc;
+    struct gain_t gain;
     enum image_resolution resolution;
     enum image_format format;
+
     int32_t time;
 };
 

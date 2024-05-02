@@ -4,6 +4,7 @@
 #include <sys/util.h>
 #include <sys/printk.h>
 #include <inttypes.h>
+#include <limits.h>
 #include <logging/log.h>
 
 #include <drivers/i2c.h>
@@ -32,24 +33,31 @@ extern const struct device * gpio;
 extern const struct device * i2c_sccb;
 
 
-void wr_reg(uint8_t reg,uint8_t dat){
+void wr_reg(const uint8_t reg,const uint8_t dat){
     i2c_reg_write_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, dat);
 }
 
-uint8_t rd_reg(uint8_t reg){
+uint8_t rd_reg(const uint8_t reg){
     uint8_t val;
     i2c_reg_read_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, &val);
     return val;
 }
 
-void se_reg(uint8_t reg,uint8_t flags){
+void wr_msk_reg(const uint8_t reg,const uint8_t dat, const uint8_t msk){
+    uint8_t val;
+    i2c_reg_read_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, &val);
+    val = (val & ~msk) | (dat & msk);
+    i2c_reg_write_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, val);
+}
+
+void se_reg(const uint8_t reg, const uint8_t flags){
     uint8_t val;
     i2c_reg_read_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, &val);
     val |= flags;
     i2c_reg_write_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, val);
 }
 
-void cl_reg(uint8_t reg,uint8_t flags){
+void cl_reg(const uint8_t reg, const uint8_t flags){
     uint8_t val;
     i2c_reg_read_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, &val);
     val &= ~flags;
@@ -101,23 +109,98 @@ void _ov7675_write_flag(uint8_t reg, uint8_t flag, int on){
     else{	cl_reg(reg, flag);}
 }
 
-void ov7675_aec(int on){
+//for reading AEC[15:0]
+uint16_t ov7675_rd_exposure(void){
+    const uint8_t com1_mask  = 0b00000011;// REG_AECHH //[5:0]
+    const uint8_t aech_mask  = 0b11111111;// REG_AECH  //[7:0]
+    const uint8_t aechh_mask = 0b00111111;// REG_COM1  //[1:0]
+
+    const uint16_t com1_bits  = rd_reg(REG_COM1)  & com1_mask;
+    const uint16_t aech_bits  = rd_reg(REG_AECH)  & aech_mask;
+    const uint16_t aechh_bits = rd_reg(REG_AECHH) & aechh_mask;
+
+    return com1_bits | aech_bits << 2 | aechh_bits << 10;
+}
+
+//for setting AEC[15:0]
+int ov7675_wr_exposure(const uint16_t time){
+    const uint8_t com1_mask  = 0b00000011;// REG_AECHH //[5:0]
+    const uint8_t aech_mask  = 0b11111111;// REG_AECH  //[7:0]
+    const uint8_t aechh_mask = 0b00111111;// REG_COM1  //[1:0]
+
+    const uint8_t com1_bits  = time >> (0);
+    const uint8_t aech_bits = time >> (2);
+    const uint8_t aechh_bits  = time >> (10);
+
+    wr_msk_reg(REG_COM1,  com1_bits,  com1_mask);
+    wr_msk_reg(REG_AECH,  aech_bits,  aech_mask);
+    wr_msk_reg(REG_AECHH, aechh_bits, aechh_mask);
+}
+
+uint8_t popcnt(const uint8_t i){
+    uint8_t cnt;
+    for(uint8_t x = 0; x < CHAR_BIT; x++){
+        cnt += 0b1 & (i >> x);
+    }
+    return cnt;
+}
+
+//for reading AGC
+//reads gain as 1.<mantissa> x 2^<exponent>
+//manitssa is 4 bits.
+//exponent is between 0 - 6.
+struct gain_t ov7675_rd_gain(void){
+    struct gain_t gain;
+
+    const uint8_t gain_mask = 0b11111111;
+    const uint8_t vref_mask = 0b11000000;
+
+    const uint8_t gain_bits = rd_reg(REG_GAIN);
+    const uint8_t vref_bits = rd_reg(REG_VREF);
+
+    gain.mantissa = gain_bits & 0xF;
+    gain.exponent = popcnt(gain_bits & 0xF0) + popcnt(vref_bits & vref_mask);
+
+    return gain;
+}
+
+//for setting AGC
+//sets gain to 1.<mantissa> x 2^<exponent>
+//manitssa is 4 bits.
+//exponent is between 0 - 6.
+void ov7675_wr_gain(const struct gain_t gain){
+    const uint8_t gain_mask = 0b11111111;
+    const uint8_t vref_mask = 0b11000000;
+
+    const uint8_t gain_bits = (~(0xFF << gain.exponent) << 4) | (0xF & gain.mantissa);//REG_GAIN //[7:0]
+    const uint8_t vref_bits = (~(0xFF << gain.exponent) << 2);                   //REG_VREF //[7:6]
+
+    wr_msk_reg(REG_GAIN,  gain_bits,  gain_mask);
+    wr_msk_reg(REG_VREF,  vref_bits,  vref_mask);
+}
+
+//COM9 for freezing aec and aec
+
+
+void ov7675_aec(const int on){
     _ov7675_write_flag(REG_COM8, COM8_AEC, on);
 }
 
 
-void ov7675_agc(int on){
+void ov7675_agc(const int on){
     // _ov7675_write_flag(REG_COM13, COM13_AGC, on);
     _ov7675_write_flag(REG_COM8, COM8_AGC, on);
 }
 
-void ov7675_awb(int on){
+void ov7675_awb(const int on){
     _ov7675_write_flag(REG_COM8, COM8_AWB, on);
 }
 
 void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* capture){
-    capture->resolution = im_cfg_p->resolution;
-    capture->format = im_cfg_p->format;
+    capture->resolution     = im_cfg_p->resolution;
+    capture->format         = im_cfg_p->format;
+    capture->aec            = im_cfg_p->aec;
+    capture->agc            = im_cfg_p->agc;
 
     gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
     LOG_INF("bind %s\n", gpio->name);
@@ -188,10 +271,24 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
 
     wr_reg(REG_DBLV, DBLV_BYPASS);//maybe?
     wr_reg(REG_CLKRC, CLK_SCALE & 0x02);//set clock divider to 2, needed for vga, qvga works fine with just 0x01
+    /////////// manual exposure and gain control                               //////
+    ov7675_aec(im_cfg_p->aec);
+    if(im_cfg_p->aec == AEC_OFF){
+        ov7675_wr_exposure(im_cfg_p->exposure);
+    }
+
+    ov7675_agc(im_cfg_p->agc);
+    if(im_cfg_p->agc == AGC_OFF){
+        ov7675_wr_gain(im_cfg_p->gain);
+    }
     ////////////////////////////////////////////////////////////////////////////////
     if(im_cfg_p->auto_range_time){
         k_msleep(im_cfg_p->auto_range_time);//delay for autoexposure awb, etc ...
     }
+
+    capture->exposure = ov7675_rd_exposure();
+    capture->gain = ov7675_rd_gain();
+
 }
 
 #define EBADIMAGESIZE 2
@@ -266,8 +363,8 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
     // fs_truncate(&imf, BMPIMAGEOFFSET+(RBG565_PIXEL_SIZE_BYTES*logical_lines*line_width));
     fs_write(&imf, image_resolutions[capture->resolution].bmp_header, BMPIMAGEOFFSET);
 
-    ov7675_aec(0);
-    ov7675_agc(0);
+    ov7675_aec(AEC_OFF);
+    ov7675_agc(AGC_OFF);
     ov7675_awb(0);
     
     //this is to make sure the auto exposure settings have stuck.
@@ -311,8 +408,8 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
     capture->where = DISK;
     capture->format = BMP;
 
-    ov7675_aec(1);
-    ov7675_agc(1);
+    ov7675_aec(capture->aec);
+    ov7675_agc(capture->agc);
     ov7675_awb(1);
 
     return 0;

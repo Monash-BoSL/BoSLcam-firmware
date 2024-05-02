@@ -25,6 +25,8 @@ int yydebug = 1;
 		enum image_resolution enum_image_resolution_value;
 		enum image_format enum_image_format_value;
 		enum flash_t enum_flash_t_value;
+		enum aec_t enum_aec_t_value;
+		enum agc_t enum_agc_t_value;
 		enum cypher_t enum_cypher_t_value;
                 enum trigger_t enum_trigger_t_value;
 		}         /* Yacc definitions */
@@ -34,6 +36,8 @@ int yydebug = 1;
 
 %token EOL
 
+%token uint8_t_tk
+%token uint16_t_tk
 %token uint32_t_tk
 %token enum_tk
 %token char_p_tk
@@ -47,6 +51,18 @@ int yydebug = 1;
 %token flash_t_tk
 %token flash_tk
 %token use_flash_tk
+%token aec_t_tk
+%token aec_tk
+%token enum_aec_t
+%token exposure_tk
+%token agc_t_tk
+%token agc_tk
+%token enum_agc_t
+%token image
+%token gain_t_tk
+%token mantissa_tk
+%token exponent_tk
+%token gain_tk
 
 %token ftp_config_t_tk
 %token apn_tk
@@ -76,6 +92,8 @@ int yydebug = 1;
 %token <enum_image_resolution_value> enum_image_resolution
 %token <enum_image_format_value> enum_image_format
 %token <enum_flash_t_value> enum_flash_t
+%token <enum_aec_t_value> enum_aec_t
+%token <enum_agc_t_value> enum_agc_t
 %token <enum_cypher_t_value> enum_cypher_t
 %token <enum_trigger_t_value> enum_trigger_t
 
@@ -105,8 +123,18 @@ image_config_t_entry    : uint32_t_tk auto_range_time_tk                   '=' i
                         | enum_tk image_format_tk format_tk                '=' enum_image_format           {parser_config_handle->im_cfg.format = $5;}
                         | enum_tk flash_t_tk flash_tk                      '=' enum_flash_t                {parser_config_handle->im_cfg.flash = $5;}
                         | uint32_t_tk use_flash_tk                         '=' integer                     {parser_config_handle->im_cfg.use_flash = $4;}
+                        | aec_t_tk aec_tk                                  '=' enum_aec_t                  {parser_config_handle->im_cfg.aec = $4;}
+                        | uint16_t_tk exposure_tk                          '=' integer                     {parser_config_handle->im_cfg.exposure = $4;}
+                        | agc_t_tk agc_tk                                  '=' enum_agc_t                  {parser_config_handle->im_cfg.agc = $4;}
+                        | gain_t_tk gain_tk                                gain_t_members                  {;}
                         ;
 
+gain_t_members          : gain_t_entry                          {;}
+                        | gain_t_members gain_t_entry           {;}
+                        ;
+                        
+gain_t_entry            : uint8_t_tk mantissa_tk                           '=' integer                     {parser_config_handle->im_cfg.gain.mantissa = $4;}
+                        | uint8_t_tk exponent_tk                           '=' integer                     {parser_config_handle->im_cfg.gain.exponent = $4;}
 
 ftp_config_t  : ftp_config_t_tk ftp_config_t_members      {;}
 
