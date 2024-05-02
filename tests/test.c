@@ -16,9 +16,9 @@ int test_runtime(void){
     // assert(ret == 0);
 
     // test_sleepy();
-
     // test_led();
 
+    test_low_power();
 
 
     printf("All tests successful!\n");

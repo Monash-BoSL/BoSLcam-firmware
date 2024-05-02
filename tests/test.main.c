@@ -5,9 +5,13 @@
 #include <modem/lte_lc.h>
 #include <nrf_modem.h>
 #include <nrf_modem_at.h>
+#include <hal/nrf_gpio.h>
 
 #include <logging/log.h>
 LOG_MODULE_REGISTER(test_main);
+
+#include "common.h"
+#include "sd.h"
 
 int test_printf_uint64_t(void){
     int ret = 0;
@@ -56,6 +60,26 @@ int test_sleepy(void){
         k_msleep(2349);
         LOG_INF("SLEEPING");
         tsleepy(15000);
+    }
+    return 0;
+}
+
+int test_low_power(void){
+
+    nrf_gpio_cfg_input(LED_FLASH_INBUILT_PIN, NRF_GPIO_PIN_PULLDOWN);//we haven't read the SD config file yet so we don't know which pin to pull down. We will guess the INBUILT one as it won't affect external UART if connected. This does mean that if the flash is external it will remain on until we read the config.
+    NRF_UARTE0->ENABLE = 0;
+    NRF_SPIM1->ENABLE = 0;
+    NRF_TWIM2->ENABLE = 0;
+
+    sdhc_mount();//very importaint for low power
+
+    nrf_gpio_cfg_input(SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
+    nrf_gpio_cfg_input(SCCB_PDN, NRF_GPIO_PIN_PULLUP);
+
+    while(1){
+        LOG_INF("WAKING");
+        LOG_INF("SLEEPING");
+        k_msleep(10000);
     }
     return 0;
 }

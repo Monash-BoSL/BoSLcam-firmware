@@ -87,9 +87,6 @@ struct status_t stats_global = {
 int sleepy(uint32_t target_duration_ms){
     int ret = 0;
 
-    nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
-    nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
-
     static int64_t unix_time_ms_last_call = 0;
     int64_t unix_time_ms_now = k_uptime_get();
     int64_t unix_time_ms_elapsed = unix_time_ms_now - unix_time_ms_last_call;
@@ -284,6 +281,9 @@ int loop(void){
 
     LOG_INF("ov7675 capture");
     ov7675_capture_sdhc_buffered(mcfg.im_cfg.flash, &capture);
+
+    LOG_INF("ov7675 deinit");
+    ov7675_deinit(mcfg.im_cfg.flash);
 
 #ifdef _DBG_SEND_IMAGE_RTT
     sdhc_file_to_rtt(SCRATCH_FILE);

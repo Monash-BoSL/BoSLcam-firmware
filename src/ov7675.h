@@ -15,6 +15,8 @@ void ov7675_init(
 int ov7675_capture(const enum flash_t flash, struct capture_t* capture);
 int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* capture);
 
+void ov7675_deinit(const enum flash_t flash);
+
 struct regval_list{
     uint8_t reg_num;
     uint8_t value;
