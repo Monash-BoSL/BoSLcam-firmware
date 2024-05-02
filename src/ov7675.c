@@ -288,7 +288,6 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
 
     capture->exposure = ov7675_rd_exposure();
     capture->gain = ov7675_rd_gain();
-
 }
 
 #define EBADIMAGESIZE 2
@@ -412,7 +411,16 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
     ov7675_agc(capture->agc);
     ov7675_awb(1);
 
+
     return 0;
+}
+
+void ov7675_deinit(const enum flash_t flash){
+    gpio_pin_set_raw(gpio, flash, 0);
+    nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
+    nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
+
+    nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_STOP);
 }
 
 void __ov7675_capture_stop_test(struct capture_t* capture){
