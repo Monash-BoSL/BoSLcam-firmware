@@ -106,7 +106,7 @@ struct image_config_t {
     enum aec_t              aec;
     uint16_t                exposure;
     enum agc_t              agc;
-    struct gain_t    gain;
+    struct gain_t           gain;
 };
 
 enum cypher_t {
