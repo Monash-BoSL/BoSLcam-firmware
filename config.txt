@@ -23,7 +23,7 @@
 //**********************************************
 
 image_config_t
-    uint32_t auto_range_time = 10000
+    uint32_t auto_range_time            = 10000
     enum image_resolution resolution    = VGA                       // VGA, QVGA
     enum image_format format            = JPG                       // BMP, JPG
     enum flash_t flash                  = LED_EXTERNAL_FLASH        // NO_FLASH, LED_INBUILT_FLASH, LED_EXTERNAL_FLASH 

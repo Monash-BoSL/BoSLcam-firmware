@@ -3,9 +3,11 @@
 
  ## Programming
 
-Instructions for programming the BoSLcam can be found at: https://www.bosl.com.au/wiki/BoSLcam
+ Instructions for programming the BoSLcam can be found at: https://www.bosl.com.au/wiki/BoSLcam
 
- ## status file format
+ ## Config File Format
+
+ ## Status File Format
  As of firmware revision v1.4.0 the status file format is given as:
  DATE-TIME, TIME_SOURCE, CAPTURE_NO, BATTERY_mV, MCCMNC, RSRQ, RSRP
  So the log:
