@@ -1,6 +1,10 @@
  # Native nRF9160 Camera
  A program to interface the nRF9160 to the OV7675 camera module
- 
+
+ ## Programming
+
+Instructions for programming the BoSLcam can be found at: https://www.bosl.com.au/wiki/BoSLcam
+
  ## status file format
  As of firmware revision v1.4.0 the status file format is given as:
  DATE-TIME, TIME_SOURCE, CAPTURE_NO, BATTERY_mV, MCCMNC, RSRQ, RSRP
