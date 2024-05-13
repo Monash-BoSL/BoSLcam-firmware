@@ -191,9 +191,9 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
     capture->aec            = im_cfg_p->aec;
     capture->agc            = im_cfg_p->agc;
 
-    gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
+    gpio = DEVICE_DT_GET(DT_NODELABEL(gpio0));
     LOG_INF("bind %s\n", gpio->name);
-    i2c_sccb = device_get_binding(DT_LABEL(DT_NODELABEL(i2c2)));
+    i2c_sccb = DEVICE_DT_GET(DT_NODELABEL(i2c2));
     LOG_INF("bind %s\n", i2c_sccb->name);
 
     //setup gpio for all pins
@@ -213,7 +213,7 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
     NRF_P0->PIN_CNF[SCCB_XCLK] = 0b00000000000000000000000000000001;
 
     //setup clock on XCLK pin at 8 MHz.
-    nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_16MHz);
+    nrf_timer_prescaler_set(NRF_TIMER0, NRF_TIMER_FREQ_16MHz);
     nrf_timer_mode_set(NRF_TIMER0, NRF_TIMER_MODE_TIMER);
     nrf_timer_cc_set(NRF_TIMER0,NRF_TIMER_CC_CHANNEL0, 0x01);
     nrf_timer_bit_width_set(NRF_TIMER0, NRF_TIMER_BIT_WIDTH_8);
