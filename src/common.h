@@ -18,6 +18,8 @@
     #include <zephyr/logging/log_ctrl.h>
     #include <zephyr/fs/fs.h>
     #include <zephyr/storage/disk_access.h>
+
+    #define log_strdup 
 #else
     #include <zephyr.h>
     #include <device.h>
