@@ -20,6 +20,7 @@ struct wdt_data_storage {
 
 /* Flag set when the library has been initialized and started. */
 static struct wdt_data_storage wdt_data;
+static int watchdog_start(struct wdt_data_storage *data);
 
 static int watchdog_timeout_install(struct wdt_data_storage *data)
 {
@@ -31,11 +32,6 @@ static int watchdog_timeout_install(struct wdt_data_storage *data)
 		.callback = NULL,
 		.flags = WDT_FLAG_RESET_SOC
 	};
-	struct watchdog_evt evt = {
-		.type = WATCHDOG_EVT_TIMEOUT_INSTALLED,
-		.timeout = WATCHDOG_TIMEOUT_MSEC
-	};
-
 	__ASSERT_NO_MSG(data != NULL);
 
 	data->wdt_channel_id =
@@ -51,7 +47,7 @@ static int watchdog_timeout_install(struct wdt_data_storage *data)
 	return 0;
 }
 
-static int watchdog_start(struct wdt_data_storage *data)
+int watchdog_start(struct wdt_data_storage *data)
 {
 	__ASSERT_NO_MSG(data != NULL);
 
@@ -92,12 +88,7 @@ static int watchdog_enable(struct wdt_data_storage *data)
 
 int watchdog_init_and_start(void)
 {
-	int err;
-	struct watchdog_evt evt = {
-		.type = WATCHDOG_EVT_START
-	};
-
-	err = watchdog_enable(&wdt_data);
+	int err = watchdog_enable(&wdt_data);
 	if (err) {
 		LOG_ERR("Failed to enable watchdog, error: %d", err);
 		return err;
@@ -111,7 +102,7 @@ int watchdog_init_and_start(void)
 void watchdog_feed()
 {
 
-	int err = wdt_feed(wdt_data.wdt_drv, wdt_data.wdt_channel_id);
+	wdt_feed(wdt_data.wdt_drv, wdt_data.wdt_channel_id);
 
 	LOG_INF("fed");
 

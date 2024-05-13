@@ -33,19 +33,20 @@ struct operator_t {
 
 uint8_t operators_len = 0;
 struct operator_t operators[MAX_OPERATORS];
+static int modem_signal_strength(uint8_t* rsrq_p, uint8_t* rsrp_p);
+static int modem_current_mccmnc(char* mccmnc);
+int modem_network_select(const char* mccmnc);
 
 
 
-
-
-void ftp_data_callback(const uint8_t *msg, uint16_t len)
+void ftp_data_callback(const uint8_t *msg, uint16_t /*len*/)
 {
-    printk(msg);//this can be disabled once a wrong password returns a fail from ftp_login
+    printk("%s", msg);//this can be disabled once a wrong password returns a fail from ftp_login
 }
 
-void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
+void ftp_ctrl_callback(const uint8_t *msg, uint16_t /*len*/)
 {
-    printk(msg);
+    printk("%s", msg);
 }
 
 int ftp_mkdirs(const char* path) {
@@ -56,7 +57,7 @@ int ftp_mkdirs(const char* path) {
     char* current = k_malloc(pathlen);
     memset(current, '\0', pathlen);//null terminate
 
-    char* pos = path;
+    const char* pos = path;
     char* end = strchr(pos+1, '/');
     while(NULL != (end = strchr(pos+1, '/'))){
         strncpy(current+(pos-path), pos, end-pos);
@@ -108,7 +109,7 @@ int store_operators(const char* response, const size_t response_size){
         if(len > response_size){return -3;} 
 
         struct operator_t* o = &operators[operators_len];
-        uint8_t matches = sscanf(start, "(%d,%*[^,],%*[^,],\"%6[^\"]\",%d)", &o->status, &o->mccmnc, &o->netact);
+        uint8_t matches = sscanf(start, "(%d,%*[^,],%*[^,],\"%6[^\"]\",%d)", (int*)&o->status, o->mccmnc, (int*)&o->netact);
         if(matches == 3){
             o->rsrq = 0xFF;//not known or not detectable
             o->rsrp = 0xFF;//not known or not detectable
@@ -152,7 +153,7 @@ int modem_network_search(void){
         if(ret){continue;}
         
         char mccmnc_current[7] = "\0\0\0\0\0\0\0";
-        modem_current_mccmnc(mccmnc_current, sizeof(mccmnc_current));
+        modem_current_mccmnc(mccmnc_current);
         if(strcmp(o->mccmnc,mccmnc_current)){
           LOG_ERR("operators do not match");
           continue;
@@ -216,8 +217,6 @@ int modem_signal_strength(uint8_t* rsrq_p, uint8_t* rsrp_p){
 int modem_network_select(const char* mccmnc){
     int ret = 0;
     int timeout_ms     = 150000;
-    int retry_delay_ms = 250;//
-    int attempts = (mccmnc == NULL) ? timeout_ms/retry_delay_ms : 1;
 
     if(mccmnc == NULL){
         ret = nrf_modem_at_printf("AT+COPS=0");
@@ -331,7 +330,7 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 
     LOG_INF("modem begin");
 
-    if(strlen(ftp_cfg_p->image_path) > MAX_PATH + 12-1){//12 for unix time + extension
+    if(strlen(ftp_cfg_p->image_path) + 12 + 1 > sizeof(path)){//12 for unix time + extension
         LOG_ERR("file name too long");
         return -ENAMETOOLONG;
     }

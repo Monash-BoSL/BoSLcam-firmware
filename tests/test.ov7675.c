@@ -4,8 +4,6 @@ LOG_MODULE_REGISTER(test_ov7675);
 
 
 int test_led(void){
-    int ret = 0;
-
     const struct device* gpio;
 
 

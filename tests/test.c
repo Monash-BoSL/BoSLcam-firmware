@@ -8,9 +8,7 @@
 #include "test.ov7675.h"
 
 int test_runtime(void){
-    int ret = 0;
-        
-    // ret = test_automatic_network_selection();
+    // int ret = test_automatic_network_selection();
     // assert(ret == 0);
 
     // ret = test_printf_uint64_t();

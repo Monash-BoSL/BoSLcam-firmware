@@ -113,7 +113,7 @@ uint16_t ov7675_rd_exposure(void){
 }
 
 //for setting AEC[15:0]
-int ov7675_wr_exposure(const uint16_t time){
+void ov7675_wr_exposure(const uint16_t time){
     const uint8_t com1_mask  = 0b00000011;// REG_AECHH //[5:0]
     const uint8_t aech_mask  = 0b11111111;// REG_AECH  //[7:0]
     const uint8_t aechh_mask = 0b00111111;// REG_COM1  //[1:0]
@@ -128,7 +128,7 @@ int ov7675_wr_exposure(const uint16_t time){
 }
 
 uint8_t popcnt(const uint8_t i){
-    uint8_t cnt;
+    uint8_t cnt = 0;
     for(uint8_t x = 0; x < CHAR_BIT; x++){
         cnt += 0b1 & (i >> x);
     }
@@ -142,7 +142,6 @@ uint8_t popcnt(const uint8_t i){
 struct gain_t ov7675_rd_gain(void){
     struct gain_t gain;
 
-    const uint8_t gain_mask = 0b11111111;
     const uint8_t vref_mask = 0b11000000;
 
     const uint8_t gain_bits = rd_reg(REG_GAIN);

@@ -30,8 +30,6 @@ static struct fs_mount_t mp = {
 *  in ffconf.h
 */
 
-static struct master_config_t* mcfg;
-
 int lsdir(const char *path)
 {
     int ret = 0;
@@ -132,12 +130,11 @@ void sdhc_info(void){
 }
 
 int sdhc_mount(void){
-    int ret;
     mp.mnt_point = DISK_MOUNT_PT;
 
-    ret = fs_mount(&mp);
+    int ret = fs_mount(&mp);
     if(ret < 0){LOG_ERR("Error mounting disk.\n"); return ret;}
-
+    return ret;
 }
 
 int caesar_encrypt(char* msg, int key){
@@ -308,7 +305,7 @@ int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
     int ret = 0;
     char path[MAX_PATH];
 
-    if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
+    if(strlen(DISK_MOUNT_PT) + strlen(sdhc_path) + 12 + 1 > MAX_PATH){// 12 chars for timestamp and .bmp
         LOG_ERR("file name too long");
         return -ENAMETOOLONG;
     }
@@ -328,7 +325,7 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
     struct fs_file_t imf;
 
 
-    if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
+    if(strlen(DISK_MOUNT_PT) + strlen(sdhc_path) + 12 + 1 > MAX_PATH){// 12 chars for timestamp and .bmp
         LOG_ERR("file name too long");
         return -ENAMETOOLONG;
     }

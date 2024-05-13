@@ -90,11 +90,11 @@ int sleepy(uint32_t target_duration_ms){
     if (unix_time_ms_elapsed < target_duration_ms) {
         int64_t sleep_ms = target_duration_ms - unix_time_ms_elapsed;
         if(sleep_ms > target_duration_ms){
-            LOG_ERR("bad last sleep time, defaulting to %ld ms sleep", target_duration_ms);
+            LOG_ERR("bad last sleep time, defaulting to %u ms sleep", target_duration_ms);
             k_msleep(target_duration_ms);
             ret = -4; goto cleanup;
         }
-        LOG_INF("Sleeping for: %ld ms", sleep_ms);
+        LOG_INF("Sleeping for: %lld ms", sleep_ms);
         ret = k_msleep(sleep_ms); goto cleanup;
     } else {
         LOG_WRN("Loop duration too long, continuing without sleep");
@@ -336,7 +336,7 @@ int loop(void){
 }
 
 
-void main(void){
+int main(void){
     int ret = 0;
 
     // for the test suit to work it should always remain here as the first line of code!
@@ -379,4 +379,5 @@ void main(void){
     while(1){
         k_sleep(K_FOREVER);
     }
+    return 0;       // suppress compiler warning about main() having to return int
 }
