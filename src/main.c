@@ -3,17 +3,13 @@
 #include <nrf_modem_at.h>
 #include <hal/nrf_gpio.h>
 
-#include <zephyr.h>
-#include <device.h>
-
-#include <sys/util.h>
-#include <sys/printk.h>
 #include <inttypes.h>
-#include <logging/log.h>
 
 #include <date_time.h>
+#include <stdlib.h>
 
 #include <modem/lte_lc.h>
+#include <modem/nrf_modem_lib.h>
 #include <nrf_socket.h>
 
 #include "common.h"

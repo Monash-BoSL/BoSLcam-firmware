@@ -1,5 +1,42 @@
 #pragma once
 
+#include "ncs_version.h"
+#if NCS_VERSION_NUMBER==0x20500
+    #include <zephyr/kernel.h>
+    #include <zephyr/device.h>
+    #include <zephyr/devicetree.h>
+    #include <zephyr/drivers/gpio.h>
+    #include <zephyr/drivers/i2c.h>
+    #include <zephyr/drivers/led.h>
+    #include <zephyr/drivers/spi.h>
+    #include <zephyr/drivers/uart.h>
+    #include <zephyr/drivers/watchdog.h>
+    #include <zephyr/sys/printk.h>
+    #include <zephyr/sys/util.h>
+    #include <zephyr/sys/timeutil.h>
+    #include <zephyr/logging/log.h>
+    #include <zephyr/logging/log_ctrl.h>
+    #include <zephyr/fs/fs.h>
+    #include <zephyr/storage/disk_access.h>
+#else
+    #include <zephyr.h>
+    #include <device.h>
+    #include <devicetree.h>
+    #include <drivers/gpio.h>
+    #include <drivers/i2c.h>
+    #include <drivers/led.h>
+    #include <drivers/spi.h>
+    #include <drivers/uart.h>
+    #include <drivers/watchdog.h>
+    #include <sys/printk.h>
+    #include <sys/util.h>
+    #include <sys/timeutil.h>
+    #include <logging/log.h>
+    #include <logging/log_ctrl.h>
+    #include <fs/fs.h>
+    #include <storage/disk_access.h>
+#endif
+
 #include <date_time.h>
 
 // #define _DBG_SEND_IMAGE_RTT //enable to switch logic out for sending image over RTT after taken

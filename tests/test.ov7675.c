@@ -1,12 +1,5 @@
-
-
-#include <zephyr.h>
-#include <drivers/gpio.h>
-
-
 #include "../src/common.h"
 
-#include <logging/log.h>
 LOG_MODULE_REGISTER(test_ov7675);
 
 

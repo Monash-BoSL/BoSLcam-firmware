@@ -1,14 +1,11 @@
 
-#include <logging/log.h>
-
 #include <errno.h>
-#include <fs/fs.h>
+#include "common.h"
 
 #define NDEBUG
 #define TJE_IMPLEMENTATION
 #include "tjpg.h"
 
-#include "common.h"
 #include "sd.h"
 #include "jpg.h"
 

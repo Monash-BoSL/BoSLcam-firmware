@@ -1,17 +1,15 @@
 
 
-#include <zephyr.h>
 
 #include <modem/lte_lc.h>
 #include <nrf_modem.h>
 #include <nrf_modem_at.h>
 #include <hal/nrf_gpio.h>
 
-#include <logging/log.h>
-LOG_MODULE_REGISTER(test_main);
-
 #include "common.h"
 #include "sd.h"
+
+LOG_MODULE_REGISTER(test_main);
 
 int test_printf_uint64_t(void){
     int ret = 0;

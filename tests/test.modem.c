@@ -1,16 +1,14 @@
 
 
-#include <zephyr.h>
-
 #include <modem/lte_lc.h>
 #include <nrf_modem.h>
 #include <nrf_modem_at.h>
-
-#include <logging/log.h>
-LOG_MODULE_REGISTER(test_modem);
+#include <modem/nrf_modem_lib.h>
 
 #include "../src/common.h"
 #include "../src/ftp.h"
+
+LOG_MODULE_REGISTER(test_modem);
 
 int test_automatic_network_selection(void){
     int ret = 0;

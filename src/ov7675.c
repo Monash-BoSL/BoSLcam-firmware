@@ -1,14 +1,6 @@
 
-#include <zephyr.h>
-#include <device.h>
-#include <sys/util.h>
-#include <sys/printk.h>
 #include <inttypes.h>
 #include <limits.h>
-#include <logging/log.h>
-
-#include <drivers/i2c.h>
-#include <drivers/gpio.h>
 
 #include <nrfx.h>
 
@@ -17,8 +9,6 @@
 #include <hal/nrf_gpiote.h>
 #include <hal/nrf_gpio.h>
 
-#include <storage/disk_access.h>
-#include <fs/fs.h>
 #include <ff.h>
 
 

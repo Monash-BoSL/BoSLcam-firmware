@@ -1,5 +1,6 @@
 
-#include <zephyr.h>
+#include <zephyr/kernel.h>
+#include <stdio.h>
 
 #include <assert.h>
 #include "test.modem.h"

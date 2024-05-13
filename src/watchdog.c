@@ -4,14 +4,9 @@
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
 
-#include <zephyr.h>
-#include <device.h>
-#include <drivers/watchdog.h>
-
 #include "watchdog.h"
 #include "common.h"
 
-#include <logging/log.h>
 LOG_MODULE_REGISTER(watchdog);
 
 #define WATCHDOG_TIMEOUT_MSEC						\

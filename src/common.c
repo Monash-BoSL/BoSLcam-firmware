@@ -1,6 +1,5 @@
 #include "common.h"
 
-#include <drivers/led.h>
 
 
 int LOG_UNIXTIME(const int32_t ln){
@@ -16,12 +15,6 @@ int LOG_UNIXTIME(const int32_t ln){
 
     return 0;
 }
-
-#include <zephyr.h>
-#include <device.h>
-#include <devicetree.h>
-#include <drivers/gpio.h>
-
 
 #define LED0_NODE DT_ALIAS(led0)
 

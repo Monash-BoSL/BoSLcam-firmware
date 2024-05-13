@@ -1,12 +1,5 @@
 
-#include <zephyr.h>
-#include <device.h>
-
-
-#include <sys/util.h>
-#include <sys/printk.h>
 #include <inttypes.h>
-#include <logging/log.h>
 
 #include <nrf_modem.h>
 #include <nrf_modem_at.h>
@@ -14,13 +7,14 @@
 #include <modem/at_monitor.h>
 
 #include <net/ftp_client.h>
-#include <fs/fs.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <time.h>
 
 #include "common.h"
 #include "ftp.h"
+#include "util.h"
 
 LOG_MODULE_REGISTER(ftp);
 

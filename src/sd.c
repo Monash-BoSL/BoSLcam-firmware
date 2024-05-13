@@ -1,24 +1,12 @@
 
-#include <zephyr.h>
-#include <device.h>
-
-#include <storage/disk_access.h>
-#include <fs/fs.h>
 #include <ff.h>
 
-#include <sys/util.h>
-#include <sys/printk.h>
 #include <inttypes.h>
-#include <logging/log.h>
-#include <logging/log_ctrl.h>
 
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-
-
-#include <sys/timeutil.h>
 
 #include "common.h"
 #include "sd.h"
