@@ -158,10 +158,16 @@ void time_source_stats_async(const struct date_time_evt* evt){
 }
 
 int modem_init(void){
+#if NCS_VERSION_NUMBER==0x20500
+    int ret = nrf_modem_lib_init();
+    if (ret != 0) {
+        printk("Modem library initialization failed, error: %d\n", ret);
+        return ret;
+#else
     int ret = 0;
-
     if (IS_ENABLED(CONFIG_LTE_AUTO_INIT_AND_CONNECT)) {
         /* Do nothing, modem is already configured and LTE connected. */
+#endif
     } else {
         ret = lte_lc_init();
         if (ret) {

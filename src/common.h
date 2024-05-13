@@ -40,6 +40,7 @@
 
     #define DEVICE_DT_GET(x)        device_get_binding(DT_LABEL(x))
     #define nrf_timer_prescaler_set nrf_timer_frequency_set
+    #define nrf_modem_lib_init()
 #endif
 
 #include <date_time.h>

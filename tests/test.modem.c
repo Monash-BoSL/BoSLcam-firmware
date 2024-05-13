@@ -11,10 +11,10 @@
 LOG_MODULE_REGISTER(test_modem);
 
 int test_automatic_network_selection(void){
-    int ret = 0;
     LOG_INF("TEST: AUTOMATIC NETWORK SELECTION");
 
-    ret = nrf_modem_at_printf("AT");
+    nrf_modem_lib_init();
+    int ret = nrf_modem_at_printf("AT");
     if(ret == 0){LOG_INF("AT initialised");}
     else if (ret < 0){LOG_ERR("AT initialisation error"); return ret;}
 
