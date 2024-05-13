@@ -219,15 +219,6 @@ enum time_source {
     EXT_TIME,
 };
 
-static const char* time_source_str[] = {
-                                        "GNSS_TIME",
-                                        "NETWORK_TIME",
-                                        "NTP_TIME",
-                                        "FS_TIME",
-                                        "NO_TIME",
-                                        "EXT_TIME",
-                                        };
-
 
 struct status_t {
     int32_t system_time;
@@ -289,3 +280,4 @@ static const struct image_resolution_properties image_resolutions[] = {
 int LOG_UNIXTIME(const int32_t ln);
 
 void led(bool on);
+const char* const get_time_source_str(const uint8_t index);

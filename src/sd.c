@@ -369,7 +369,7 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
     unix_date(&cal, status->system_time);
     strftime(path, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
     sprintf(path+strlen(path), ",%s,%d,%d,%s,%d,%d\n",
-                                time_source_str[status->time_src],
+                                get_time_source_str(status->time_src),
                                 status->captures,
                                 status->battery_voltage,
                                 status->mccmnc,

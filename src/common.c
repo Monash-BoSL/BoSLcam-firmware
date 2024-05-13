@@ -2,6 +2,15 @@
 
 
 
+static const char* time_source_str[] = {
+                                        "GNSS_TIME",
+                                        "NETWORK_TIME",
+                                        "NTP_TIME",
+                                        "FS_TIME",
+                                        "NO_TIME",
+                                        "EXT_TIME",
+                                        };
+
 int LOG_UNIXTIME(const int32_t ln){
     int ret = 0;
     int32_t ct;
@@ -36,3 +45,10 @@ void led(bool on) {
 
     gpio_pin_set(leddev, PIN, (int)on);
 }
+
+const char* const get_time_source_str(const uint8_t index)
+{
+    if (index < 6)  return time_source_str[index];
+    else            return NULL;
+}
+
