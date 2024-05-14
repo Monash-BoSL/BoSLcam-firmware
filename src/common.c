@@ -1,7 +1,15 @@
 #include "common.h"
 
-#include <drivers/led.h>
 
+
+static const char* time_source_str[] = {
+                                        "GNSS_TIME",
+                                        "NETWORK_TIME",
+                                        "NTP_TIME",
+                                        "FS_TIME",
+                                        "NO_TIME",
+                                        "EXT_TIME",
+                                        };
 
 int LOG_UNIXTIME(const int32_t ln){
     int ret = 0;
@@ -17,29 +25,30 @@ int LOG_UNIXTIME(const int32_t ln){
     return 0;
 }
 
-#include <zephyr.h>
-#include <device.h>
-#include <devicetree.h>
-#include <drivers/gpio.h>
-
-
-#define LED0_NODE DT_ALIAS(led0)
-
-#define LED0	DT_GPIO_LABEL(LED0_NODE, gpios)
-#define PIN	DT_GPIO_PIN(LED0_NODE, gpios)
-#define FLAGS	DT_GPIO_FLAGS(LED0_NODE, gpios)
-
-const struct device *leddev;
 
 void led(bool on) {
-    int ret = 0;
-
-    leddev = device_get_binding(LED0);
-
-    ret = gpio_pin_configure(leddev, PIN, GPIO_OUTPUT_ACTIVE | FLAGS);
-    if (ret < 0) {
-        return;
+#if NCS_VERSION_NUMBER >= 0x20500
+    static const struct gpio_dt_spec led_dt = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
+    int ret = gpio_pin_configure_dt(&led_dt, GPIO_OUTPUT_ACTIVE);
+    if (ret >= 0) {
+        gpio_pin_set_dt(&led_dt, (int)on);
     }
-
-    gpio_pin_set(leddev, PIN, (int)on);
+#else
+    #define LED0_NODE DT_ALIAS(led0)
+    #define PIN       DT_GPIO_PIN(LED0_NODE, gpios)
+    #define LED0      DT_GPIO_LABEL(LED0_NODE, gpios)
+    #define FLAGS     DT_GPIO_FLAGS(LED0_NODE, gpios)
+    const struct device* leddev = device_get_binding(LED0);
+    int ret = gpio_pin_configure(leddev, PIN, GPIO_OUTPUT_ACTIVE | FLAGS);
+    if (ret >= 0) {
+        gpio_pin_set(leddev, PIN, (int)on);
+    }
+#endif
 }
+
+const char* const get_time_source_str(const uint8_t index)
+{
+    if (index < 6)  return time_source_str[index];
+    else            return NULL;
+}
+

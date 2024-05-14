@@ -1,5 +1,49 @@
 #pragma once
 
+#include "ncs_version.h"
+#if NCS_VERSION_NUMBER >= 0x20500
+    #include <zephyr/kernel.h>
+    #include <zephyr/device.h>
+    #include <zephyr/devicetree.h>
+    #include <zephyr/drivers/gpio.h>
+    #include <zephyr/drivers/i2c.h>
+    #include <zephyr/drivers/led.h>
+    #include <zephyr/drivers/spi.h>
+    #include <zephyr/drivers/uart.h>
+    #include <zephyr/drivers/watchdog.h>
+    #include <zephyr/sys/printk.h>
+    #include <zephyr/sys/util.h>
+    #include <zephyr/sys/timeutil.h>
+    #include <zephyr/logging/log.h>
+    #include <zephyr/logging/log_ctrl.h>
+    #include <zephyr/fs/fs.h>
+    #include <zephyr/storage/disk_access.h>
+
+    #define log_strdup
+#else
+    #include <zephyr.h>
+    #include <device.h>
+    #include <devicetree.h>
+    #include <drivers/gpio.h>
+    #include <drivers/i2c.h>
+    #include <drivers/led.h>
+    #include <drivers/spi.h>
+    #include <drivers/uart.h>
+    #include <drivers/watchdog.h>
+    #include <sys/printk.h>
+    #include <sys/util.h>
+    #include <sys/timeutil.h>
+    #include <logging/log.h>
+    #include <logging/log_ctrl.h>
+    #include <fs/fs.h>
+    #include <storage/disk_access.h>
+
+    #undef  DEVICE_DT_GET
+    #define DEVICE_DT_GET(x)        device_get_binding(DT_LABEL(x))
+    #define nrf_timer_prescaler_set nrf_timer_frequency_set
+    #define nrf_modem_lib_init()
+#endif
+
 #include <date_time.h>
 
 // #define _DBG_SEND_IMAGE_RTT //enable to switch logic out for sending image over RTT after taken
@@ -180,15 +224,6 @@ enum time_source {
     EXT_TIME,
 };
 
-static const char* time_source_str[] = {
-                                        "GNSS_TIME",
-                                        "NETWORK_TIME",
-                                        "NTP_TIME",
-                                        "FS_TIME",
-                                        "NO_TIME",
-                                        "EXT_TIME",
-                                        };
-
 
 struct status_t {
     int32_t system_time;
@@ -250,3 +285,4 @@ static const struct image_resolution_properties image_resolutions[] = {
 int LOG_UNIXTIME(const int32_t ln);
 
 void led(bool on);
+const char* const get_time_source_str(const uint8_t index);

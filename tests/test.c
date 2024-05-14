@@ -1,5 +1,10 @@
+#if NCS_VERSION_NUMBER >= 0x205000
+    #include <zephyr/kernel.h>
+#else
+    #include <zephyr.h>
+#endif
 
-#include <zephyr.h>
+#include <stdio.h>
 
 #include <assert.h>
 #include "test.modem.h"
@@ -7,9 +12,7 @@
 #include "test.ov7675.h"
 
 int test_runtime(void){
-    int ret = 0;
-        
-    // ret = test_automatic_network_selection();
+    // int ret = test_automatic_network_selection();
     // assert(ret == 0);
 
     // ret = test_printf_uint64_t();

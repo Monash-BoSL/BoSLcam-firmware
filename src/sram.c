@@ -1,14 +1,7 @@
 
-#include <zephyr.h>
-#include <device.h>
-#include <sys/util.h>
-#include <sys/printk.h>
 #include <inttypes.h>
 #include <limits.h>
-#include <logging/log.h>
-
-#include <drivers/spi.h>
-#include <drivers/uart.h>
+#include "common.h"
 
 #include <nrfx.h>
 

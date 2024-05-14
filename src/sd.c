@@ -1,24 +1,12 @@
 
-#include <zephyr.h>
-#include <device.h>
-
-#include <storage/disk_access.h>
-#include <fs/fs.h>
 #include <ff.h>
 
-#include <sys/util.h>
-#include <sys/printk.h>
 #include <inttypes.h>
-#include <logging/log.h>
-#include <logging/log_ctrl.h>
 
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
-
-
-#include <sys/timeutil.h>
 
 #include "common.h"
 #include "sd.h"
@@ -41,8 +29,6 @@ static struct fs_mount_t mp = {
 *  Note the fatfs library is able to mount only strings inside _VOLUME_STRS
 *  in ffconf.h
 */
-
-static struct master_config_t* mcfg;
 
 int lsdir(const char *path)
 {
@@ -144,12 +130,11 @@ void sdhc_info(void){
 }
 
 int sdhc_mount(void){
-    int ret;
     mp.mnt_point = DISK_MOUNT_PT;
 
-    ret = fs_mount(&mp);
+    int ret = fs_mount(&mp);
     if(ret < 0){LOG_ERR("Error mounting disk.\n"); return ret;}
-
+    return ret;
 }
 
 int caesar_encrypt(char* msg, int key){
@@ -320,7 +305,7 @@ int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
     int ret = 0;
     char path[MAX_PATH];
 
-    if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
+    if(strlen(DISK_MOUNT_PT) + strlen(sdhc_path) + 12 + 1 > MAX_PATH){// 12 chars for timestamp and .bmp
         LOG_ERR("file name too long");
         return -ENAMETOOLONG;
     }
@@ -340,7 +325,7 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
     struct fs_file_t imf;
 
 
-    if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
+    if(strlen(DISK_MOUNT_PT) + strlen(sdhc_path) + 12 + 1 > MAX_PATH){// 12 chars for timestamp and .bmp
         LOG_ERR("file name too long");
         return -ENAMETOOLONG;
     }
@@ -384,7 +369,7 @@ int sdhc_write_status(char* sdhc_path, struct status_t* status){
     unix_date(&cal, status->system_time);
     strftime(path, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
     sprintf(path+strlen(path), ",%s,%d,%d,%s,%d,%d\n",
-                                time_source_str[status->time_src],
+                                get_time_source_str(status->time_src),
                                 status->captures,
                                 status->battery_voltage,
                                 status->mccmnc,

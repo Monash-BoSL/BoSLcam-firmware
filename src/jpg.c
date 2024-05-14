@@ -1,14 +1,11 @@
 
-#include <logging/log.h>
-
 #include <errno.h>
-#include <fs/fs.h>
+#include "common.h"
 
 #define NDEBUG
 #define TJE_IMPLEMENTATION
 #include "tjpg.h"
 
-#include "common.h"
 #include "sd.h"
 #include "jpg.h"
 
@@ -28,6 +25,11 @@ int buffer_closure_from_file(struct buffer_closure* bc, void* data){
     return ret/bc->line_size_bytes;
 };
 
+void tje_write(void *zfp, void *ptr, int size)
+{
+    fs_write(zfp, ptr, size);
+}
+
 //ensure that your path beings with a / eg "/im1.bmp" !!
 //overwrites the image buffer in ram with the jpg	  !!
 int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
@@ -36,7 +38,7 @@ int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
     struct fs_file_t jpgf;
     struct fs_file_t ibf;
 
-    if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
+    if(STRLEN(DISK_MOUNT_PT) + strlen(sdhc_path) + 8 + 4 + 1 > MAX_PATH ){// 8 for timestamp; 4 for .jpg
         LOG_ERR("file name too long");
         return -ENAMETOOLONG;
     }
@@ -60,15 +62,13 @@ int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
         .fill = buffer_closure_from_file,
     };
 
-
-    // typedef void tje_write_func(void* context, void* data, int size);
-    ret = tje_encode_with_func(fs_write,
+    ret = tje_encode_with_func(tje_write,
                         &jpgf,
                         2,//make quality a config parameter
                         image_resolutions[capture->resolution].width,
                         image_resolutions[capture->resolution].height,
                         TJE_RGB565,
-                        &bc
+                        (struct buffer_closure*)&bc
                         );
 
 

@@ -1,14 +1,6 @@
 
-#include <zephyr.h>
-#include <device.h>
-#include <sys/util.h>
-#include <sys/printk.h>
 #include <inttypes.h>
 #include <limits.h>
-#include <logging/log.h>
-
-#include <drivers/i2c.h>
-#include <drivers/gpio.h>
 
 #include <nrfx.h>
 
@@ -17,8 +9,6 @@
 #include <hal/nrf_gpiote.h>
 #include <hal/nrf_gpio.h>
 
-#include <storage/disk_access.h>
-#include <fs/fs.h>
 #include <ff.h>
 
 
@@ -123,7 +113,7 @@ uint16_t ov7675_rd_exposure(void){
 }
 
 //for setting AEC[15:0]
-int ov7675_wr_exposure(const uint16_t time){
+void ov7675_wr_exposure(const uint16_t time){
     const uint8_t com1_mask  = 0b00000011;// REG_AECHH //[5:0]
     const uint8_t aech_mask  = 0b11111111;// REG_AECH  //[7:0]
     const uint8_t aechh_mask = 0b00111111;// REG_COM1  //[1:0]
@@ -138,7 +128,7 @@ int ov7675_wr_exposure(const uint16_t time){
 }
 
 uint8_t popcnt(const uint8_t i){
-    uint8_t cnt;
+    uint8_t cnt = 0;
     for(uint8_t x = 0; x < CHAR_BIT; x++){
         cnt += 0b1 & (i >> x);
     }
@@ -152,7 +142,6 @@ uint8_t popcnt(const uint8_t i){
 struct gain_t ov7675_rd_gain(void){
     struct gain_t gain;
 
-    const uint8_t gain_mask = 0b11111111;
     const uint8_t vref_mask = 0b11000000;
 
     const uint8_t gain_bits = rd_reg(REG_GAIN);
@@ -202,9 +191,9 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
     capture->aec            = im_cfg_p->aec;
     capture->agc            = im_cfg_p->agc;
 
-    gpio = device_get_binding(DT_LABEL(DT_NODELABEL(gpio0)));
+    gpio = DEVICE_DT_GET(DT_NODELABEL(gpio0));
     LOG_INF("bind %s\n", gpio->name);
-    i2c_sccb = device_get_binding(DT_LABEL(DT_NODELABEL(i2c2)));
+    i2c_sccb = DEVICE_DT_GET(DT_NODELABEL(i2c2));
     LOG_INF("bind %s\n", i2c_sccb->name);
 
     //setup gpio for all pins
@@ -224,7 +213,7 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
     NRF_P0->PIN_CNF[SCCB_XCLK] = 0b00000000000000000000000000000001;
 
     //setup clock on XCLK pin at 8 MHz.
-    nrf_timer_frequency_set(NRF_TIMER0, NRF_TIMER_FREQ_16MHz);
+    nrf_timer_prescaler_set(NRF_TIMER0, NRF_TIMER_FREQ_16MHz);
     nrf_timer_mode_set(NRF_TIMER0, NRF_TIMER_MODE_TIMER);
     nrf_timer_cc_set(NRF_TIMER0,NRF_TIMER_CC_CHANNEL0, 0x01);
     nrf_timer_bit_width_set(NRF_TIMER0, NRF_TIMER_BIT_WIDTH_8);

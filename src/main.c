@@ -3,17 +3,13 @@
 #include <nrf_modem_at.h>
 #include <hal/nrf_gpio.h>
 
-#include <zephyr.h>
-#include <device.h>
-
-#include <sys/util.h>
-#include <sys/printk.h>
 #include <inttypes.h>
-#include <logging/log.h>
 
 #include <date_time.h>
+#include <stdlib.h>
 
 #include <modem/lte_lc.h>
+#include <modem/nrf_modem_lib.h>
 #include <nrf_socket.h>
 
 #include "common.h"
@@ -26,8 +22,8 @@
 #include "../tests/test.h"
 
 /*************** VERSION NUMBER ********************/
-// #define _VERSION "v1.5.1rc"
-#define _VERSION "v1.5.0"
+#define _VERSION "v1.5.1rc"
+// #define _VERSION "v1.5.0"
 /*************** TODO *******************************
 [X] add backup DNS configuration
 [ ] we should store the status string when we write to the SDHC so that it the same on the SDHC and FTP
@@ -94,11 +90,11 @@ int sleepy(uint32_t target_duration_ms){
     if (unix_time_ms_elapsed < target_duration_ms) {
         int64_t sleep_ms = target_duration_ms - unix_time_ms_elapsed;
         if(sleep_ms > target_duration_ms){
-            LOG_ERR("bad last sleep time, defaulting to %ld ms sleep", target_duration_ms);
+            LOG_ERR("bad last sleep time, defaulting to %u ms sleep", target_duration_ms);
             k_msleep(target_duration_ms);
             ret = -4; goto cleanup;
         }
-        LOG_INF("Sleeping for: %ld ms", sleep_ms);
+        LOG_INF("Sleeping for: %ld ms", sleep_ms);//%lld is unsupported
         ret = k_msleep(sleep_ms); goto cleanup;
     } else {
         LOG_WRN("Loop duration too long, continuing without sleep");
@@ -162,10 +158,16 @@ void time_source_stats_async(const struct date_time_evt* evt){
 }
 
 int modem_init(void){
+#if NCS_VERSION_NUMBER==0x20500
+    int ret = nrf_modem_lib_init();
+    if (ret != 0) {
+        printk("Modem library initialization failed, error: %d\n", ret);
+        return ret;
+#else
     int ret = 0;
-
     if (IS_ENABLED(CONFIG_LTE_AUTO_INIT_AND_CONNECT)) {
         /* Do nothing, modem is already configured and LTE connected. */
+#endif
     } else {
         ret = lte_lc_init();
         if (ret) {
@@ -340,7 +342,7 @@ int loop(void){
 }
 
 
-void main(void){
+int main(void){
     int ret = 0;
 
     // for the test suit to work it should always remain here as the first line of code!
@@ -383,4 +385,5 @@ void main(void){
     while(1){
         k_sleep(K_FOREVER);
     }
+    return 0;       // suppress compiler warning about main() having to return int
 }

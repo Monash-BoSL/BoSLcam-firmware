@@ -1,6 +1,5 @@
 %{
 #include <string.h>
-#include <zephyr.h>
 #include "common.h"
 #include "y.tab.h"
 #include <errno.h>
