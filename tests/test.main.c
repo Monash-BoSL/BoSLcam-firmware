@@ -1,6 +1,6 @@
 
-
-#if NCS_VERSION < 0x205000
+#include "ncs_version.h"
+#if NCS_VERSION_NUMBER < 0x020500
     #include <zephyr.h>
 #endif
 #include <modem/lte_lc.h>
