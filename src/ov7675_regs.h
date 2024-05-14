@@ -59,6 +59,8 @@ static struct regval_list ov7670_qcif_regs[] = {
     { 0xff, 0xff },
 };
 
+#if NCS_VERSION_NUMBER >= 0x020500
+#else
 static struct regval_list ov7670_qqvga_regs[] = {
     { REG_COM3, COM3_DCWEN },
     { REG_COM14, 0x1a},
@@ -72,6 +74,7 @@ static struct regval_list ov7670_qqvga_regs[] = {
     { REG_VREF, 0x0a },
     { 0xff, 0xff },	/* END MARKER */
 };
+#endif
 
 /*
  * To center the QQVGA window on the OV7675 the REG_VSTART value was increased

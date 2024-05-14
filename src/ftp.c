@@ -41,11 +41,13 @@ int modem_network_select(const char* mccmnc);
 
 void ftp_data_callback(const uint8_t *msg, uint16_t len)
 {
+    (void)len;
     printk("%s", msg);//this can be disabled once a wrong password returns a fail from ftp_login
 }
 
 void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
 {
+    (void)len;
     printk("%s", msg);
 }
 

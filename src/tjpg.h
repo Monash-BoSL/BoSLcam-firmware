@@ -109,7 +109,7 @@ typedef enum
     TJE_RGB565 = 2,
 } TJEColorFormat;
 
-
+struct buffer_closure;      // forward reference
 typedef int buffer_fill_func(struct buffer_closure* bc, void* data);
 
 struct buffer_closure {
@@ -1268,7 +1268,8 @@ int tje_encode_to_file_at_quality(const char* dest_path,
     }
 
     int result = tje_encode_with_func(tjei_stdlib_func, fd,
-                                      quality, width, height, color_format, src_data);
+                                      quality, width, height, color_format, 
+                                      (struct buffer_closure*)src_data);
 
     result |= 0 == fclose(fd);
 
