@@ -27,9 +27,9 @@ int LOG_UNIXTIME(const int32_t ln){
 
 
 void led(bool on) {
-#if NCS_VERSION_NUMBER==0x20500
+#if NCS_VERSION_NUMBER >= 0x20500
     static const struct gpio_dt_spec led_dt = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
-	int ret = gpio_pin_configure_dt(&led_dt, GPIO_OUTPUT_ACTIVE);
+    int ret = gpio_pin_configure_dt(&led_dt, GPIO_OUTPUT_ACTIVE);
     if (ret >= 0) {
         gpio_pin_set_dt(&led_dt, (int)on);
     }
@@ -37,6 +37,7 @@ void led(bool on) {
     #define LED0_NODE DT_ALIAS(led0)
     #define PIN       DT_GPIO_PIN(LED0_NODE, gpios)
     #define LED0      DT_GPIO_LABEL(LED0_NODE, gpios)
+    #define FLAGS     DT_GPIO_FLAGS(LED0_NODE, gpios)
     const struct device* leddev = device_get_binding(LED0);
     int ret = gpio_pin_configure(leddev, PIN, GPIO_OUTPUT_ACTIVE | FLAGS);
     if (ret >= 0) {

@@ -1,5 +1,7 @@
 
-
+#if NCS_VERSION < 0x205000
+    #include <zephyr.h>
+#endif
 #include <modem/lte_lc.h>
 #include <nrf_modem.h>
 #include <nrf_modem_at.h>

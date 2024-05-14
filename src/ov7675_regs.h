@@ -59,6 +59,20 @@ static struct regval_list ov7670_qcif_regs[] = {
     { 0xff, 0xff },
 };
 
+static struct regval_list ov7670_qqvga_regs[] = {
+    { REG_COM3, COM3_DCWEN },
+    { REG_COM14, 0x1a},
+    { 0x72, 0x22 },		// downsample by 4
+    { 0x73, 0xf2 },		// divide by 4
+    { REG_HSTART, 0x16 },
+    { REG_HSTOP, 0x04 },
+    { REG_HREF, 0xa4 },
+    { REG_VSTART, 0x02 },
+    { REG_VSTOP, 0x7a },
+    { REG_VREF, 0x0a },
+    { 0xff, 0xff },	/* END MARKER */
+};
+
 /*
  * To center the QQVGA window on the OV7675 the REG_VSTART value was increased
  */

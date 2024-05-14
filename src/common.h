@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ncs_version.h"
-#if NCS_VERSION_NUMBER==0x20500
+#if NCS_VERSION_NUMBER >= 0x20500
     #include <zephyr/kernel.h>
     #include <zephyr/device.h>
     #include <zephyr/devicetree.h>
@@ -19,7 +19,7 @@
     #include <zephyr/fs/fs.h>
     #include <zephyr/storage/disk_access.h>
 
-    #define log_strdup 
+    #define log_strdup
 #else
     #include <zephyr.h>
     #include <device.h>
@@ -38,6 +38,7 @@
     #include <fs/fs.h>
     #include <storage/disk_access.h>
 
+    #undef  DEVICE_DT_GET
     #define DEVICE_DT_GET(x)        device_get_binding(DT_LABEL(x))
     #define nrf_timer_prescaler_set nrf_timer_frequency_set
     #define nrf_modem_lib_init()
