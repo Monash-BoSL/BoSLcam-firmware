@@ -39,12 +39,12 @@ int modem_network_select(const char* mccmnc);
 
 
 
-void ftp_data_callback(const uint8_t *msg, uint16_t /*len*/)
+void ftp_data_callback(const uint8_t *msg, uint16_t len)
 {
     printk("%s", msg);//this can be disabled once a wrong password returns a fail from ftp_login
 }
 
-void ftp_ctrl_callback(const uint8_t *msg, uint16_t /*len*/)
+void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
 {
     printk("%s", msg);
 }
@@ -109,7 +109,7 @@ int store_operators(const char* response, const size_t response_size){
         if(len > response_size){return -3;} 
 
         struct operator_t* o = &operators[operators_len];
-        uint8_t matches = sscanf(start, "(%d,%*[^,],%*[^,],\"%6[^\"]\",%d)", (int*)&o->status, o->mccmnc, (int*)&o->netact);
+        uint8_t matches = sscanf(start, "(%hhu,%*[^,],%*[^,],\"%6[^\"]\",%hhu)", &o->status, o->mccmnc, &o->netact);
         if(matches == 3){
             o->rsrq = 0xFF;//not known or not detectable
             o->rsrp = 0xFF;//not known or not detectable

@@ -1,5 +1,9 @@
+#if NCS_VERSION_NUMBER >= 0x205000
+    #include <zephyr/kernel.h>
+#else
+    #include <zephyr.h>
+#endif
 
-#include <zephyr/kernel.h>
 #include <stdio.h>
 
 #include <assert.h>

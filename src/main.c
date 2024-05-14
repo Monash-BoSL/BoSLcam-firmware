@@ -22,8 +22,8 @@
 #include "../tests/test.h"
 
 /*************** VERSION NUMBER ********************/
-// #define _VERSION "v1.5.1rc"
-#define _VERSION "v1.5.0"
+#define _VERSION "v1.5.1rc"
+// #define _VERSION "v1.5.0"
 /*************** TODO *******************************
 [X] add backup DNS configuration
 [ ] we should store the status string when we write to the SDHC so that it the same on the SDHC and FTP
@@ -94,7 +94,7 @@ int sleepy(uint32_t target_duration_ms){
             k_msleep(target_duration_ms);
             ret = -4; goto cleanup;
         }
-        LOG_INF("Sleeping for: %lld ms", sleep_ms);
+        LOG_INF("Sleeping for: %ld ms", sleep_ms);//%lld is unsupported
         ret = k_msleep(sleep_ms); goto cleanup;
     } else {
         LOG_WRN("Loop duration too long, continuing without sleep");
