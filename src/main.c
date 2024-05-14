@@ -94,7 +94,7 @@ int sleepy(uint32_t target_duration_ms){
             k_msleep(target_duration_ms);
             ret = -4; goto cleanup;
         }
-        LOG_INF("Sleeping for: %ld ms", sleep_ms);//%lld is unsupported
+        LOG_INF("Sleeping for: %lld ms", sleep_ms);//%lld is unsupported
         ret = k_msleep(sleep_ms); goto cleanup;
     } else {
         LOG_WRN("Loop duration too long, continuing without sleep");
