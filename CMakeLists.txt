@@ -6,6 +6,7 @@ cmake_path(SET ZephyrBase $ENV{ZEPHYR_BASE})
 # set(DTC_OVERLAY_FILE ${ZephyrBase}/../modules/lib/Arduino-Zephyr-API/variants/${BOARD}/${BOARD}.overlay)
 # set(ZEPHYR_EXTRA_MODULES ${ZephyrBase}/../modules/lib/Arduino-Zephyr-API)
 
+list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(native_camera)

@@ -4,6 +4,9 @@ BOLD=\x1b[1m
 NORMAL=\x1b[0m
 HIGHLIGHT=\e[30;48;5;41m
 
+BOARD			= BoSLcam_ns
+
+BOSLCAM_BOARD_DIR	= ${ZEPHYR_BASE}/boards/arm/BoSLcam
 
 ifndef ZEPHYR_BASE
   $(info [ERROR] ZEPHYR_BASE is not set. Did you run env.sh? )
@@ -12,13 +15,18 @@ endif
 
 .SILENT:
 
-all:
+all: boslcam-board
 	cd ${CURDIR}/../.. && ./setup.sh
-	echo -e "$(GREEN)Building Cam for nrf9160dk_nrf9160_ns$(NORMAL)"
-	west.exe build -b nrf9160dk_nrf9160_ns
+	echo -e "$(GREEN)Building BoSLCam-firmware for $(BOARD)$(NORMAL)"
+	west.exe build -b $(BOARD)
 
 k:
 	west build -t guiconfig
+
+.PHONY: boslcam-board
+board:
+	rm -rf $(BOSLCAM_BOARD_DIR)
+	cp -r board/ $(BOSLCAM_BOARD_DIR)
 
 #prog:
 #	nrfjprog --program build/zephyr/merged.hex --chiperase --verify --pinreset
