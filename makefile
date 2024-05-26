@@ -15,8 +15,11 @@ ifndef ZEPHYR_BASE
 endif
 
 .SILENT:
+.PHONY: build
 
-all:
+all: build
+
+build:
 	cd ${CURDIR}/../.. && ./setup.sh
 	echo -e "$(GREEN)Building BoSLCam-firmware for $(BOARD)$(NORMAL)"
 	west.exe build -b $(BOARD)
@@ -24,8 +27,8 @@ all:
 k:
 	west build -t guiconfig
 
-#prog:
-#	nrfjprog --program build/zephyr/merged.hex --chiperase --verify --pinreset
+prog:
+	nrfjprog --program build/zephyr/merged.hex --chiperase --verify --pinreset
 
 clean:
 	rm -rf build
