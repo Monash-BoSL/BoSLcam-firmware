@@ -9,6 +9,26 @@ BOARD			= nrf9160dk_nrf9160_ns
 # BOARD			= BoSLcam_ns
 
 
+#-------------------------------------------------------------------------------
+#
+# We use arduino-cli.exe for building these samples. Let's check
+# if it is present on our system
+#
+ifeq (1, $(shell if [ -e $(CURDIR)/../arduino-cli.exe ]; then echo 1; fi))
+  ARDUINO_CLI_PATH := ../arduino-cli.exe
+else
+  ifeq (, $(shell which arduino-cli.exe 2> /dev/null))
+    $(info [ERROR] arduino-cli.exe is missing)
+    $(info . . . . It must be either in system path or the directory above this)
+    $(error  )
+  else
+    ARDUINO_CLI_PATH := arduino-cli.exe
+  endif
+endif
+
+
+
+
 ifndef ZEPHYR_BASE
   $(info [ERROR] ZEPHYR_BASE is not set. Did you run env.sh? )
   $(error  )
@@ -32,3 +52,23 @@ prog:
 
 clean:
 	rm -rf build
+
+#####################################3
+# Arduino build and flash
+a:
+	echo -e "$(GREEN)Building BoSL-cam by arduino_cli$(NORMAL)"
+	cp build/lex.yy.c src
+	cp build/y.tab.* src
+	$(ARDUINO_CLI_PATH) compile \
+			--output-dir arduino_build \
+			--fqbn bosl:nrf9160:nrf9160dk \
+			src
+	rm -rf src/lex.yy.c
+	rm -rf src/y.tab.*
+prog_a:
+	nrfjprog \
+			--program arduino_build/src.ino.hex \
+			--chiperase \
+			--verify \
+			--pinreset
+
