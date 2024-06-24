@@ -14,7 +14,7 @@ static const char* time_source_str[] = {
 int LOG_UNIXTIME(const int32_t ln){
     int ret = 0;
     int32_t ct;
-    uint64_t unix_time_ms;
+    int64_t unix_time_ms;
     ret = date_time_now(&unix_time_ms);
     if(ret < 0){return ret;}
     ct = (uint32_t) (unix_time_ms/1000);

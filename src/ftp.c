@@ -379,7 +379,7 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
     struct fs_file_t imf;
     switch(capture->where){
         case SRAM:
-            ret = ftp_put(path, image_resolutions[capture->resolution].bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
+            ret = ftp_put(path, (uint8_t*)image_resolutions[capture->resolution].bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
             if (ret < 0){LOG_ERR("put err %d", ret); goto cleanup;}
             else {LOG_INF("put ok");};
 
@@ -456,7 +456,7 @@ int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
     if (ret < 0){LOG_ERR("type binary err %d", ret); goto cleanup;}
     else {LOG_INF("type binary ok");};
 
-    ret = ftp_put(ftp_cfg_p->status_path, statstr, strlen(statstr), FTP_PUT_APPEND);
+    ret = ftp_put(ftp_cfg_p->status_path, (uint8_t*)statstr, strlen(statstr), FTP_PUT_APPEND);
     if (ret < 0){LOG_ERR("put err %d", ret); goto cleanup;}
     else {LOG_INF("put ok"); ret = 0;};
 
