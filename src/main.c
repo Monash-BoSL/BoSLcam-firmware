@@ -19,7 +19,9 @@
 #include "jpg.h"
 #include "watchdog.h"
 
-#include "../tests/test.h"
+#ifdef TEST
+	#include "test.h"
+#endif
 
 /*************** VERSION NUMBER ********************/
 #define _VERSION "v1.5.1rc"
@@ -345,8 +347,10 @@ int loop(void){
 int main(void){
     int ret = 0;
 
+#ifdef TEST
     // for the test suit to work it should always remain here as the first line of code!
-    // if(true){test_runtime();};
+    if(true){test_runtime();};
+#endif
 
     printk("*** BoSLcam firmware " _VERSION " complied on " __DATE__ " at " __TIME__ " ***\n");
 
