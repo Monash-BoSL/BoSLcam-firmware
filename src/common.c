@@ -27,7 +27,7 @@ int LOG_UNIXTIME(const int32_t ln){
 
 
 void led(bool on) {
-#if NCS_VERSION_NUMBER >= 0x20500
+#if NCS_VERSION_NUMBER >= 0x20100
     static const struct gpio_dt_spec led_dt = GPIO_DT_SPEC_GET(DT_ALIAS(led0), gpios);
     int ret = gpio_pin_configure_dt(&led_dt, GPIO_OUTPUT_ACTIVE);
     if (ret >= 0) {

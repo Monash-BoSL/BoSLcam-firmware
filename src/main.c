@@ -158,7 +158,7 @@ void time_source_stats_async(const struct date_time_evt* evt){
 }
 
 int modem_init(void){
-#if NCS_VERSION_NUMBER==0x20500
+#if NCS_VERSION_NUMBER >= 0x20100
     int ret = nrf_modem_lib_init();
     if (ret != 0) {
         printk("Modem library initialization failed, error: %d\n", ret);

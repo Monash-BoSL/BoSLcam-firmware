@@ -25,7 +25,7 @@
 	pwmleds {
 		compatible = "pwm-leds";
 		pwm_led0: pwm_led_0 {
-			pwms = <&pwm0 20>;
+			pwms = <&pwm0 20 0 PWM_POLARITY_NORMAL>;
 		};
 	};
 
@@ -45,6 +45,7 @@
 		pwm-led0 = &pwm_led0;
 		sw0 = &button0;
 		bootloader-led0 = &led0;
+		watchdog0 = &wdt0;
 	};
 };
 
@@ -88,6 +89,7 @@ arduino_serial: &uart0 {
 */
 
 arduino_i2c: &i2c2 {
+	label = "I2C2";
 	compatible = "nordic,nrf-twim";
 	status = "okay";
 	sda-pin = <10>;

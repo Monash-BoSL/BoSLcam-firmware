@@ -3,13 +3,13 @@
  *
  * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
  */
-#include <logging/log.h>
-#include <zephyr.h>
+#include <zephyr/logging/log.h>
+#include <zephyr/kernel.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
-#include <net/socket.h>
-#include <net/tls_credentials.h>
+#include <zephyr/net/socket.h>
+#include <zephyr/net/tls_credentials.h>
 #include <net/ftp_client.h>
 #include "ftp_commands.h"
 
@@ -19,13 +19,12 @@ LOG_MODULE_REGISTER(ftp_client, CONFIG_FTP_CLIENT_LOG_LEVEL);
 #define INVALID_SEC_TAG		-1
 
 #define FTP_MAX_BUFFER_SIZE	708 /* align with MSS on modem side */
-#define FTP_DATA_TIMEOUT_SEC	120  /* time in seconds to wait for "Transfer complete" */
+#define FTP_DATA_TIMEOUT_SEC	120 /* time in seconds to wait for "Transfer complete" */
 
 #define FTP_CODE_ANY		0
 
 #define FTP_STACK_SIZE		KB(2)
 #define FTP_PRIORITY		K_LOWEST_APPLICATION_THREAD_PRIO
-
 static K_THREAD_STACK_DEFINE(ftp_stack_area, FTP_STACK_SIZE);
 
 static struct ftp_client {
@@ -199,7 +198,7 @@ static int do_ftp_send_ctrl(const uint8_t *message, uint32_t length)
 	int ret = 0;
 	uint32_t offset = 0;
 
-	LOG_DBG("%s", log_strdup(message));
+	LOG_DBG("%s", (char *)message);
 	while (offset < length) {
 		uint16_t send_len = MIN(FTP_MAX_BUFFER_SIZE, length-offset);
 		ret = send(client.cmd_sock, message + offset, send_len, 0);
@@ -298,7 +297,7 @@ static int do_ftp_recv_ctrl(bool post_result, int success_code)
 		client.ctrl_callback(ctrl_buf, ret);
 	}
 
-	LOG_DBG("%s", log_strdup(ctrl_buf));
+	LOG_DBG("%s", ctrl_buf);
 	ftp_inactivity = false;
 	return parse_return_code(ctrl_buf, success_code);
 }
@@ -435,16 +434,20 @@ static int host_lookup(const char *hostname, int family, struct sockaddr *sa)
 int ftp_open(const char *hostname, uint16_t port, int sec_tag)
 {
 	int ret;
+
 	if (client.connected) {
 		LOG_ERR("FTP already connected");
 		return -EINVAL;
 	}
 
-	/* Attempt IPv4 resolution */
-	ret = host_lookup(hostname, AF_INET, (struct sockaddr *)(&client.remote));
+	/* Attempt IPv6 resolution, fallback to IPv4 if failed */
+	ret = host_lookup(hostname, AF_INET6, (struct sockaddr *)(&client.remote6));
 	if (ret) {
-		LOG_ERR("Failed to parse remote host");
-		return -EHOSTUNREACH;
+		ret = host_lookup(hostname, AF_INET, (struct sockaddr *)(&client.remote));
+		if (ret) {
+			LOG_ERR("Failed to parse remote host");
+			return -EHOSTUNREACH;
+		}
 	}
 
 	/* open control socket */
@@ -476,8 +479,9 @@ int ftp_open(const char *hostname, uint16_t port, int sec_tag)
 		ret = connect(client.cmd_sock, (struct sockaddr *)&client.remote,
 			sizeof(struct sockaddr_in));
 	} else {
-		LOG_ERR("bad ip or ipv6");
-		ret = -1;
+		client.remote6.sin6_port = htons(port);
+		ret = connect(client.cmd_sock, (struct sockaddr *)&client.remote6,
+			sizeof(struct sockaddr_in6));
 	}
 	if (ret < 0) {
 		LOG_ERR("connect(ctrl) failed: %d", -errno);
@@ -504,6 +508,81 @@ int ftp_open(const char *hostname, uint16_t port, int sec_tag)
 	LOG_DBG("FTP opened");
 	return FTP_CODE_200;
 }
+
+// this is the previous version of the function that does not every try ipv6, i'm not sure if this is still needed but we will keep it here in case we ever need to revert
+// int ftp_open(const char *hostname, uint16_t port, int sec_tag)
+// {
+// 	int ret;
+// 	if (client.connected) {
+// 		LOG_ERR("FTP already connected");
+// 		return -EINVAL;
+// 	}
+//
+// 	/* Attempt IPv4 resolution */
+// 	ret = host_lookup(hostname, AF_INET, (struct sockaddr *)(&client.remote));
+// 	if (ret) {
+// 		LOG_ERR("Failed to parse remote host");
+// 		return -EHOSTUNREACH;
+// 	}
+//
+// 	/* open control socket */
+// 	if (sec_tag == INVALID_SEC_TAG) {
+// 		client.cmd_sock = socket(client.family, SOCK_STREAM, IPPROTO_TCP);
+// 	} else {
+// 		client.cmd_sock = socket(client.family, SOCK_STREAM, IPPROTO_TLS_1_2);
+// 	}
+// 	if (client.cmd_sock < 0) {
+// 		LOG_ERR("socket(ctrl) failed: %d", -errno);
+// 		ret = -errno;
+// 	}
+// 	if (sec_tag != INVALID_SEC_TAG) {
+// 		sec_tag_t sec_tag_list[] = { sec_tag };
+//
+// 		ret = setsockopt(client.cmd_sock, SOL_TLS, TLS_SEC_TAG_LIST,
+// 				sec_tag_list, sizeof(sec_tag_t));
+// 		if (ret) {
+// 			LOG_ERR("set tag list failed: %d", -errno);
+// 			close(client.cmd_sock);
+// 			return -errno;
+// 		}
+// 		client.sec_tag = sec_tag;
+// 	}
+//
+// 	/* Connect to remote host */
+// 	if (client.family == AF_INET) {
+// 		client.remote.sin_port = htons(port);
+// 		ret = connect(client.cmd_sock, (struct sockaddr *)&client.remote,
+// 			sizeof(struct sockaddr_in));
+// 	} else {
+// 		LOG_ERR("bad ip or ipv6");
+// 		ret = -1;
+// 	}
+// 	if (ret < 0) {
+// 		LOG_ERR("connect(ctrl) failed: %d", -errno);
+// 		close(client.cmd_sock);
+// 		return -errno;
+// 	}
+//
+// 	/* Receive server greeting */
+// 	ret = do_ftp_recv_ctrl(true, FTP_CODE_220);
+// 	if (ret != FTP_CODE_220) {
+// 		close(client.cmd_sock);
+// 		return ret;
+// 	}
+//
+// 	/* Send UTF8 option */
+// 	sprintf(ctrl_buf, CMD_OPTS, "UTF8 ON");
+// 	ret = do_ftp_send_ctrl(ctrl_buf, strlen(ctrl_buf));
+// 	if (ret) {
+// 		close(client.cmd_sock);
+// 		return ret;
+// 	}
+// 	(void)do_ftp_recv_ctrl(true, FTP_CODE_ANY);
+//
+// 	LOG_DBG("FTP opened");
+// 	return FTP_CODE_200;
+// }
+//
 
 int ftp_login(const char *username, const char *password)
 {

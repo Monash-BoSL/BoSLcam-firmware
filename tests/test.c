@@ -1,5 +1,5 @@
 #include "ncs_version.h"
-#if NCS_VERSION_NUMBER >= 0x020500
+#if NCS_VERSION_NUMBER >= 0x020100
     #include <zephyr/kernel.h>
 #else
     #include <zephyr.h>
