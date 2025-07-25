@@ -302,11 +302,11 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
 
         return 0; 
     }
- 
+
     LOG_ERR("Unable to register to network");
     return -1;
 cleanup:
-    modem_signal_strength(&stats_global.rsrq, &stats_global.rsrp);//we ignore the error here as its not too important if the signal strength is bad; 
+    modem_signal_strength(&stats_global.rsrq, &stats_global.rsrp);//we ignore the error here as its not too important if the signal strength is bad;
     return ret;
 }
 
