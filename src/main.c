@@ -305,6 +305,7 @@ int loop(void){
         if(ret < 0){LOG_ERR("sdhc_write_jpg fail! ret=%d", ret);}
     }
 
+    // check that this gracefully exits if the signal is low and continues with SD only logging for this loop
     if ((d > 0) && (0 == (stats_global.captures % d))){
         LOG_INF("image -> ftp");
 

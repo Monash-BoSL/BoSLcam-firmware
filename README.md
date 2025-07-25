@@ -24,6 +24,6 @@
   CAPTURE_NO:    11                     (number of images since last reset)
   BATTERY_mV:    4175                   (battery voltage (mV))
   MCCMNC:        310260                 (the current network operator MCCMNC code)
-  RSRQ:          13                     (reference signal recieved power)
-  RSRP:          45                     (reference signal recieved quality)
+  RSRQ:          13                     (reference signal recieved quality)
+  RSRP:          45                     (reference signal recieved power)
  ```
