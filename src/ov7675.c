@@ -346,9 +346,8 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
 
     struct fs_file_t imf;
     fs_file_t_init(&imf);
-    fs_unlink(SDHC_PATH(SCRATCH_FILE));
     fs_open(&imf, SDHC_PATH(SCRATCH_FILE), FS_O_WRITE | FS_O_CREATE);
-    // fs_truncate(&imf, BMPIMAGEOFFSET+(RBG565_PIXEL_SIZE_BYTES*logical_lines*line_width));
+    fs_truncate(&imf, 0); //clear the scratch file
     fs_write(&imf, image_resolutions[capture->resolution].bmp_header, BMPIMAGEOFFSET);
 
     ov7675_aec(AEC_OFF);
@@ -477,5 +476,6 @@ void __ov7675_capture_stop_test(struct capture_t* capture){
     fs_write(&imf, capture->data, QVGA_WIDTH*VGA_HEIGHT);
 
     fs_close(&imf);
+
 }
 

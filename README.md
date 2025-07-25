@@ -27,3 +27,7 @@
   RSRQ:          13                     (reference signal recieved quality)
   RSRP:          45                     (reference signal recieved power)
  ```
+
+## Known Issues
+
+Filesystem operations may return an error code even though they succeed according to [this thread](https://devzone.nordicsemi.com/f/nordic-q-a/115228/fatfs-sample-file-close-error--5). This issue is purportedly fixed in nrf-sdk v2.8.0.
