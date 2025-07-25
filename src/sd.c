@@ -16,7 +16,7 @@
     #include <SEGGER_RTT.h>
 #endif
 
-LOG_MODULE_REGISTER(sd);
+LOG_MODULE_REGISTER(sdhc);
 
 static FATFS fat_fs;
 /* mounting info */

@@ -3,10 +3,15 @@
 # Copyright (c) 2018-2020 Nordic Semiconductor ASA
 # SPDX-License-Identifier: Apache-2.0
 
-if BOARD_NRF9160DK_NRF9160 || BOARD_NRF9160DK_NRF9160_NS
+if BOARD_NATIVE_CAMERA || BOARD_NATIVE_CAMERA_NS
 
 config BOARD
 	default "native_camera"
+
+# By default, if we build for a Non-Secure version of the board,
+# enable building with TF-M as the Secure Execution Environment.
+config BUILD_WITH_TFM
+	default y if BOARD_NATIVE_CAMERA_NS
 
 if BUILD_WITH_TFM
 
@@ -34,9 +39,9 @@ DT_CHOSEN_Z_CODE_PARTITION := zephyr,code-partition
 
 config FLASH_LOAD_SIZE
 	default $(dt_chosen_reg_size_hex,$(DT_CHOSEN_Z_CODE_PARTITION))
-	depends on BOARD_NRF9160DK_NRF9160 && TRUSTED_EXECUTION_SECURE
+	depends on BOARD_NATIVE_CAMERA && TRUSTED_EXECUTION_SECURE
 
-if BOARD_NRF9160DK_NRF9160_NS
+if BOARD_NATIVE_CAMERA_NS
 
 config FLASH_LOAD_OFFSET
 	default $(dt_chosen_reg_addr_hex,$(DT_CHOSEN_Z_CODE_PARTITION))
@@ -44,7 +49,7 @@ config FLASH_LOAD_OFFSET
 config FLASH_LOAD_SIZE
 	default $(dt_chosen_reg_size_hex,$(DT_CHOSEN_Z_CODE_PARTITION))
 
-endif # BOARD_NRF9160DK_NRF9160_NS
+endif # BOARD_NATIVE_CAMERA_NS
 
 config BT_HCI_VS
 	default y if BT
@@ -58,4 +63,4 @@ DT_COMPAT_NXP_PCAL6408A := nxp,pcal6408a
 config I2C
 	default $(dt_compat_on_bus,$(DT_COMPAT_NXP_PCAL6408A),i2c)
 
-endif # BOARD_NRF9160DK_NRF9160 || BOARD_NRF9160DK_NRF9160_NS
+endif # BOARD_NATIVE_CAMERA || BOARD_NATIVE_CAMERA_NS

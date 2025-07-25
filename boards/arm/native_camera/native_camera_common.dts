@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+#include "native_camera_common-pinctrl.dtsi"
+
 / {
 	model = "Native Camera";
 	compatible = "BoSL,nativecamera";
@@ -62,52 +64,36 @@
 };
 
 
-&uart0 {
-	status = "okay";
-	current-speed = <115200>;
-	tx-pin = <0xFFFFFFFF>;
-	rx-pin = <0xFFFFFFFF>;
-	rx-pull-up;
-	rts-pin = <0xFFFFFFFF>;
-	cts-pin = <0xFFFFFFFF>;
-	cts-pull-up;
-};
-
-// arduino_serial: &uart1 {
 arduino_serial: &uart0 {
 	status = "okay";
 	current-speed = <9600>;
-	tx-pin = <31>;
-	rx-pin = <30>;
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-1 = <&uart0_sleep>;
+	pinctrl-names = "default", "sleep";
 };
-
-/*
-&uart2 {
-	tx-pin = <24>;
-	rx-pin = <23>;
-};
-*/
 
 arduino_i2c: &i2c2 {
 	label = "I2C2";
 	compatible = "nordic,nrf-twim";
 	status = "okay";
-	sda-pin = <10>;
-	scl-pin = <9>;
+	pinctrl-0 = <&i2c2_default>;
+	pinctrl-1 = <&i2c2_sleep>;
+	pinctrl-names = "default", "sleep";
 };
 
 &pwm0 {
 	status = "okay";
-	ch0-pin = <20>;
+	pinctrl-0 = <&pwm0_default>;
+	pinctrl-1 = <&pwm0_sleep>;
+	pinctrl-names = "default", "sleep";
 };
 
 &spi1 {
 	compatible = "nordic,nrf-spim";
 	status = "okay";
-	sck-pin = <26>;
-	mosi-pin = <27>;
-	miso-pin = <29>;
-	cs-gpios = <&gpio0 28 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&spi1_default>;
+	pinctrl-1 = <&spi1_sleep>;
+	pinctrl-names = "default", "sleep";
 
 	spi_sram0: spi-device@0 {
 		reg = <0>;
@@ -119,19 +105,22 @@ arduino_i2c: &i2c2 {
 &spi3 {
         compatible = "nordic,nrf-spim";
         status = "okay";
-        sck-pin = <22>;
-        mosi-pin = <24>;
-        miso-pin = <23>;
-
         cs-gpios = <&gpio0 25 GPIO_ACTIVE_LOW>;
+	pinctrl-0 = <&spi3_default>;
+	pinctrl-1 = <&spi3_sleep>;
+	pinctrl-names = "default", "sleep";
 
-        sdhc0: sdhc@0 {
-                compatible = "zephyr,mmc-spi-slot";
-                reg = <0>;
-                status = "okay";
-                label = "SDHC0";
-                spi-max-frequency = <8000000>;
-        };
+	sdhc0: sdhc@0 {
+		compatible = "zephyr,sdhc-spi-slot";
+		reg = <0>;
+		status = "okay";
+		mmc {
+			compatible = "zephyr,sdmmc-disk";
+			disk-name = "SD";
+			status = "okay";
+		};
+		spi-max-frequency = <8000000>;
+	};
 };
 
 &timer0 {
