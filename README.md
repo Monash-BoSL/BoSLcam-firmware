@@ -3,7 +3,12 @@
 
  ## Building
 
- The firmware should be built against nrf-sdk v2.1.0. This can be done once the appropriate environment variables have been set via
+ The firmware should be built against nrf-sdk v2.1.0. 
+ The ftp_client needs to be patched with the version located in the `.\patch\` directory of this repo to enable large file upload.
+ I recommend renaming the current `ftp_client.h` and `ftp_client.c` in the nrf-sdk and then symlinking those against the files located in the `.\patch\` directory.
+ 
+ 
+ Once the appropriate environment variables have been set the firmware can be built as:
  ```
  west build -b native_camerans
  ```
