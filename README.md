@@ -1,6 +1,13 @@
  # Native nRF9160 Camera
  A program to interface the nRF9160 to the OV7675 camera module
 
+ ## Building
+
+ The firmware should be built against nrf-sdk v2.1.0. This can be done once the appropriate environment variables have been set via
+ ```
+ west build -b native_camerans
+ ```
+
  ## Programming
 
  Instructions for programming the BoSLcam can be found at: https://www.bosl.com.au/wiki/BoSLcam

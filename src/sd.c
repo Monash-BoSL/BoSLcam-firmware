@@ -12,7 +12,7 @@
 #include "sd.h"
 #include "util.h"
 
-#ifdef _DBG_SEND_IMAGE_RTT
+#ifdef CONFIG_DBG_SEND_IMAGE_RTT
     #include <SEGGER_RTT.h>
 #endif
 
@@ -387,7 +387,7 @@ cleanup:
 
 
 
-#ifdef _DBG_SEND_IMAGE_RTT
+#ifdef CONDFIG_DBG_SEND_IMAGE_RTT
 
 #define RTT_BUFFER_UP_SIZE (0x1000)
 #define RTT_BUFFER_DOWN_SIZE (0x08)

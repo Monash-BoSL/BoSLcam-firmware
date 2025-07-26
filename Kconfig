@@ -1,0 +1,15 @@
+# firmware configuration
+
+source "Kconfig.zephyr"
+
+config DBG_CONFIG_OVERLAY 
+ bool "Apply an overlay to the sdhc config file"
+ default n
+
+config DBG_SEND_IMAGE_RTT
+ bool "Send all images over RTT after capture"
+ default n
+
+config DBG_TEST_RUNTIME
+ bool "Run the test runtime before main code"
+ default n
