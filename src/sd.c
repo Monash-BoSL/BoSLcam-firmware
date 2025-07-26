@@ -12,16 +12,17 @@
 #include "sd.h"
 #include "util.h"
 
-#ifdef _DBG_SEND_IMAGE_RTT
+#ifdef CONFIG_DBG_SEND_IMAGE_RTT
     #include <SEGGER_RTT.h>
 #endif
 
-LOG_MODULE_REGISTER(sd);
+LOG_MODULE_REGISTER(sdhc);
 
 static FATFS fat_fs;
 /* mounting info */
 static struct fs_mount_t mp = {
     .type = FS_FATFS,
+    .mnt_point = DISK_MOUNT_PT,
     .fs_data = &fat_fs,
 };
 
@@ -130,8 +131,6 @@ void sdhc_info(void){
 }
 
 int sdhc_mount(void){
-    mp.mnt_point = DISK_MOUNT_PT;
-
     int ret = fs_mount(&mp);
     if(ret < 0){LOG_ERR("Error mounting disk.\n"); return ret;}
     return ret;
@@ -388,7 +387,7 @@ cleanup:
 
 
 
-#ifdef _DBG_SEND_IMAGE_RTT
+#ifdef CONFIG_DBG_SEND_IMAGE_RTT
 
 #define RTT_BUFFER_UP_SIZE (0x1000)
 #define RTT_BUFFER_DOWN_SIZE (0x08)

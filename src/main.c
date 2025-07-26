@@ -19,7 +19,10 @@
 #include "jpg.h"
 #include "watchdog.h"
 
-#include "../tests/test.h"
+
+#ifdef CONFIG_DBG_TEST_RUNTIME
+    #include "../tests/test.h"
+#endif
 
 /*************** VERSION NUMBER ********************/
 #define _VERSION "v1.5.1rc"
@@ -49,6 +52,7 @@
 [ ] issue with network time reset on low power sleep?
 [ ] find best idle states for pins (eg: 28) for low power
 ****************************************************/
+
 
 LOG_MODULE_REGISTER(main);
 
@@ -215,6 +219,10 @@ int setup(void){
         LOG_ERR("failed to load config. halting");
         return ret;
     }
+#ifdef CONFIG_DBG_CONFIG_OVERLAY
+    _dbg_config_overlay(&mcfg);
+#endif
+
     nrf_gpio_cfg_input(mcfg.im_cfg.flash, NRF_GPIO_PIN_PULLDOWN);
 
     int d = mcfg.trig_cfg.logging_decimation_ftp;
@@ -287,7 +295,7 @@ int loop(void){
     LOG_INF("ov7675 deinit");
     ov7675_deinit(mcfg.im_cfg.flash);
 
-#ifdef _DBG_SEND_IMAGE_RTT
+#ifdef CONFIG_DBG_SEND_IMAGE_RTT
     sdhc_file_to_rtt(SCRATCH_FILE);
 #endif
 
@@ -347,7 +355,10 @@ int main(void){
     int ret = 0;
 
     // for the test suit to work it should always remain here as the first line of code!
-    // if(true){test_runtime();};
+#ifdef CONFIG_DBG_TEST_RUNTIME
+    printk("*** ENTERING TEST RUNTIME ***");
+    test_runtime();
+#endif
 
     printk("*** BoSLcam firmware " _VERSION " complied on " __DATE__ " at " __TIME__ " ***\n");
 
@@ -388,3 +399,10 @@ int main(void){
     }
     return 0;       // suppress compiler warning about main() having to return int
 }
+
+#ifdef CONFIG_DBG_CONFIG_OVERLAY
+void _dbg_config_overlay(struct master_config_t* mcfg){
+    mcfg->im_cfg.format = BMP;
+    mcfg->im_cfg.resolution = QVGA;
+}
+#endif

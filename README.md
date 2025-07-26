@@ -1,6 +1,13 @@
  # Native nRF9160 Camera
  A program to interface the nRF9160 to the OV7675 camera module
 
+ ## Building
+
+ The firmware should be built against nrf-sdk v2.1.0. This can be done once the appropriate environment variables have been set via
+ ```
+ west build -b native_camerans
+ ```
+
  ## Programming
 
  Instructions for programming the BoSLcam can be found at: https://www.bosl.com.au/wiki/BoSLcam
@@ -27,3 +34,7 @@
   RSRQ:          13                     (reference signal recieved quality)
   RSRP:          45                     (reference signal recieved power)
  ```
+
+## Known Issues
+
+Filesystem operations may return an error code even though they succeed according to [this thread](https://devzone.nordicsemi.com/f/nordic-q-a/115228/fatfs-sample-file-close-error--5). This issue is purportedly fixed in nrf-sdk v2.8.0.
