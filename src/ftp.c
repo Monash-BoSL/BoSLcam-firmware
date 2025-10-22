@@ -246,6 +246,22 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     if(ret == 0){LOG_INF("AT initialised");}
     else if (ret < 0){LOG_ERR("AT initialisation error"); return ret;}
 
+    /* obviously we don't want to turn the cell off every registration but sometimes we need to set XSYSTEMMODE (esp on new boards)
+    // ideally we should check for this
+    // btw: this XSYSTEMMODE is for LTE and no NB-IoT or GNSS this is quite network specific
+    ret = nrf_modem_at_printf("AT+CFUN=0");
+    if(ret == 0){LOG_INF("CFUN off ok");}
+    else if (ret < 0){LOG_ERR("CFUN off error"); return ret;}
+
+    ret = nrf_modem_at_printf("AT%%XSYSTEMMODE=1,0,0,1");
+    if(ret == 0){LOG_INF("XSYSTEMMODE ok");}
+    else if (ret < 0){LOG_ERR("XSYSTEMMODE error"); return ret;}
+
+    char response[64];
+    ret = nrf_modem_at_cmd(response, sizeof(response), "AT%%XSYSTEMMODE?");
+    printf("%s", response);
+    */
+
     ret = nrf_modem_at_printf("AT+CGDCONT=0,\"IP\",\"%s\"", ftp_cfg_p->apn);
     if(ret == 0){LOG_INF("CGDCONT ok");}
     else if (ret < 0){LOG_ERR("CGDCONT error"); return ret;}

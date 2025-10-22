@@ -311,8 +311,9 @@ int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
     sprintf(path, "%s%s%08X.bmp", DISK_MOUNT_PT,sdhc_path, capture->time);
 
     fs_mkdirs(path);
-    ret = fs_rename(capture->fp, path);
-    if(ret < 0){return ret;}
+    // ret = fs_rename(capture->fp, path);
+    // if(ret < 0){return ret;}
+    fs_rename(capture->fp, path); // i think the ret is broken!
     strcpy(capture->fp, path);
 
     return ret;

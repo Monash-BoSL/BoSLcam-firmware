@@ -404,5 +404,6 @@ int main(void){
 void _dbg_config_overlay(struct master_config_t* mcfg){
     mcfg->im_cfg.format = BMP;
     mcfg->im_cfg.resolution = QVGA;
+    //mcfg->trig_cfg.logging_interval = 120000;
 }
 #endif
