@@ -25,6 +25,7 @@
 #define _VERSION "v1.5.1rc"
 // #define _VERSION "v1.5.0"
 /*************** TODO *******************************
+[ ] check that time source remains correct when modem is reset
 [X] add backup DNS configuration
 [ ] we should store the status string when we write to the SDHC so that it the same on the SDHC and FTP
 [ ] add 'damage' counter which will reset via WDT if too many errors accumulate
@@ -158,27 +159,6 @@ void time_source_stats_async(const struct date_time_evt* evt){
     }
 }
 
-
-
-int configure_low_power(void){
-    int ret;
-
-    /** Power Saving Mode */
-    ret = lte_lc_psm_req(true);
-    if (ret) {LOG_ERR("lte_lc_psm_req, error: %d\n", ret);}
-
-    /** enhanced Discontinuous Reception */
-    ret = lte_lc_edrx_req(true);
-    if (ret) {LOG_ERR("lte_lc_edrx_req, error: %d\n", ret);}
-
-    // /** Release Assistance Indication  */
-    // ret = lte_lc_rai_req(true);
-    // if (ret) {LOG_ERR("lte_lc_rai_req, error: %d\n", ret);}
-
-
-    return ret;
-}
-
 int setup(void){
     int ret = 0;
 
@@ -202,7 +182,6 @@ int setup(void){
         ftp_setup();
 
         modem_init();
-        configure_low_power();//this does not seem to work at the moment 
 
         //gets current network time
         ret = modem_network_register(&mcfg.ftp_cfg);

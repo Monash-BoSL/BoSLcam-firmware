@@ -9,7 +9,7 @@
 #include <modem/nrf_modem_lib.h>
 
 #include "../src/common.h"
-#include "../src/ftp.h"
+#include "../src/modem.h"
 
 LOG_MODULE_REGISTER(test_modem);
 
@@ -28,6 +28,51 @@ int test_automatic_network_selection(void){
    };
 
     modem_network_register(&ftp_cfg);
+
+
+    return 0;
+}
+
+
+int test_modem_shutdown_callback(void){
+    int ret;
+    LOG_INF("TEST: MODEM SHUTDOWN CALLBACK");
+
+    nrf_modem_lib_init();
+
+    ret = nrf_modem_at_printf("AT");
+    if(ret == 0){LOG_INF("AT initialised");}
+    else if (ret < 0){LOG_ERR("AT initialisation error"); return ret;}
+
+    LOG_INF("lib shutdown");
+    nrf_modem_lib_shutdown();
+
+    nrf_modem_lib_init();
+
+    ret = nrf_modem_at_printf("AT");
+    if(ret == 0){LOG_INF("AT initialised");}
+    else if (ret < 0){LOG_ERR("AT initialisation error"); return ret;}
+
+    LOG_INF("wrapper shutdown");
+    modem_shutdown();
+
+    return 0;
+}
+
+int test_modem_shutdowns_trigger_reset(void){
+    int ret;
+    LOG_INF("TEST: MODEM SHUTDOWNS TRIGGER RESET");
+
+    for(size_t i = 0;;i++){
+        nrf_modem_lib_init();
+
+        ret = nrf_modem_at_printf("AT");
+        if(ret == 0){LOG_INF("AT initialised");}
+        else if (ret < 0){LOG_ERR("AT initialisation error"); return ret;}
+
+        LOG_INF("shutdown nos. %d", i);
+        nrf_modem_lib_shutdown();
+    }
 
 
     return 0;

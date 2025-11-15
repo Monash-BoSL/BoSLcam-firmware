@@ -4,7 +4,7 @@
 #include <nrf_modem_at.h>
 #include <modem/nrf_modem_lib.h>
 #include <modem/at_monitor.h>
-#include <modem/lte_lc.h>
+// #include <modem/lte_lc.h>
 
 #include "common.h"
 #include "modem.h"
@@ -43,12 +43,13 @@ static K_SEM_DEFINE(modem_recent_shutdown_sem, 0, MODEM_MAX_DAILY_SHUTDOWNS); //
 
 static void shutdown_decrementer_worker(void *p1, void *p2, void *p3)
 {
+    LOG_INF("shutdown decrementer worker active");
     while (true) {
-        k_sem_take(&modem_recent_shutdown_sem, K_NO_WAIT);
         k_sleep(K_SECONDS(86400/MODEM_MAX_DAILY_SHUTDOWNS));
+        k_sem_take(&modem_recent_shutdown_sem, K_NO_WAIT);
     }
 }
-K_THREAD_DEFINE(modem_recent_shutdown_worker, 256, shutdown_decrementer_worker, NULL, NULL, NULL,
+K_THREAD_DEFINE(modem_recent_shutdown_worker, 512, shutdown_decrementer_worker, NULL, NULL, NULL,
         K_LOWEST_APPLICATION_THREAD_PRIO, K_ESSENTIAL, 0);
 
 static void on_modem_shutdown(void *ctx){
@@ -62,6 +63,14 @@ static void on_modem_shutdown(void *ctx){
 NRF_MODEM_LIB_ON_SHUTDOWN(shutdown_counter, on_modem_shutdown, NULL);
 /* end modem reset behaviour */
 
+/* sets a fallback dns*/
+static void on_modem_init(int ret, void *ctx){
+    struct nrf_in_addr dns;
+    dns.s_addr = 0x08080808; // Google DNS, 8.8.8.8
+    nrf_setdnsaddr(NRF_AF_INET, &dns, sizeof(struct nrf_in_addr));
+}
+NRF_MODEM_LIB_ON_INIT(dns_setter, on_modem_init, NULL);
+
 int modem_init(void){
 #if NCS_VERSION_NUMBER >= 0x20100
     int ret = nrf_modem_lib_init();
@@ -73,17 +82,7 @@ int modem_init(void){
     if (IS_ENABLED(CONFIG_LTE_AUTO_INIT_AND_CONNECT)) {
         /* Do nothing, modem is already configured and LTE connected. */
 #endif
-    } else {
-        ret = lte_lc_init();
-        if (ret) {
-            printk("Modem initialization failed, error: %d\n", ret);
-            return ret;
-        }
     }
-
-    struct nrf_in_addr dns;
-    dns.s_addr = 0x08080808; // Google DNS, 8.8.8.8
-    ret = nrf_setdnsaddr(NRF_AF_INET, &dns, sizeof(struct nrf_in_addr));
 
     return ret;
 }
@@ -271,21 +270,21 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     if(ret == 0){LOG_INF("AT initialised");}
     else if (ret < 0){LOG_ERR("AT initialisation error"); return ret;}
 
-    /* obviously we don't want to turn the cell off every registration but sometimes we need to set XSYSTEMMODE (esp on new boards)
-    // ideally we should check for this
-    // btw: this XSYSTEMMODE is for LTE and no NB-IoT or GNSS this is quite network specific
-    ret = nrf_modem_at_printf("AT+CFUN=0");
-    if(ret == 0){LOG_INF("CFUN off ok");}
-    else if (ret < 0){LOG_ERR("CFUN off error"); return ret;}
+    int lte, nbiot, gnss, preferred = -1;
+    ret = nrf_modem_at_scanf("AT%XSYSTEMMODE?", "%%XSYSTEMMODE: %d,%d,%d,%d", &lte, &nbiot, &gnss, &preferred);
+    if(ret == 4){LOG_INF("XSYSTEMMODE read ok");}
+    else if (ret < 0){LOG_ERR("XSYSTEMMODE read error"); return ret;}
+    else {LOG_ERR("XSYSTEMMODE scanf error"); return ret;}
 
-    ret = nrf_modem_at_printf("AT%%XSYSTEMMODE=1,0,0,1");
-    if(ret == 0){LOG_INF("XSYSTEMMODE ok");}
-    else if (ret < 0){LOG_ERR("XSYSTEMMODE error"); return ret;}
+    if (lte != 1 || nbiot != 0 || preferred != 1){
+        ret = nrf_modem_at_printf("AT+CFUN=0");
+        if(ret == 0){LOG_INF("CFUN off ok");}
+        else if (ret < 0){LOG_ERR("CFUN off error"); return ret;}
 
-    char response[64];
-    ret = nrf_modem_at_cmd(response, sizeof(response), "AT%%XSYSTEMMODE?");
-    printf("%s", response);
-    */
+        ret = nrf_modem_at_printf("AT%%XSYSTEMMODE=1,0,%d,1", gnss);
+        if(ret == 0){LOG_INF("XSYSTEMMODE set ok");}
+        else if (ret < 0){LOG_ERR("XSYSTEMMODE set error"); return ret;}
+    }
 
     ret = nrf_modem_at_printf("AT+CGDCONT=0,\"IP\",\"%s\"", ftp_cfg_p->apn);
     if(ret == 0){LOG_INF("CGDCONT ok");}
