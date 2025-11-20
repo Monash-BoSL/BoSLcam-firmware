@@ -298,6 +298,7 @@ int loop(void){
 
     stats_global.captures++;
 
+    k_msleep(1000); //guarantee other threads time to execute
     return 0;
 }
 

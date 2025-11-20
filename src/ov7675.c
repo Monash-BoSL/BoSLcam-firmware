@@ -293,6 +293,8 @@ int ov7675_capture(const enum flash_t flash, struct capture_t* capture){
 
     LOG_INF("ready\n");
     //Wait for vsync
+
+    k_sched_lock();
     while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
     while(nrf_gpio_pin_read(SCCB_VS));//wait for low
 
@@ -318,6 +320,7 @@ int ov7675_capture(const enum flash_t flash, struct capture_t* capture){
         while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
 
     }
+    k_sched_unlock();
 
     // //due to hardware error we need to swap the last 2 bits of buffer
     // for(uint32_t p = 0; p < IMAGE_SIZE_BYTES; p++){
@@ -363,6 +366,8 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
     for(int16_t lines_remaining = logical_lines; lines_remaining > 0; lines_remaining -= buffer_size_lines){
         uint32_t buffer_index = 0;
         //Wait for vsync
+
+        k_sched_lock();
         while(!nrf_gpio_pin_read(SCCB_VS));//wait for high
         while(nrf_gpio_pin_read(SCCB_VS));//wait for low
 
@@ -385,6 +390,7 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
             }
             while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
         }
+        k_sched_unlock();
         ret = fs_write(&imf, capture->data, buffer_index);
         capture->size = buffer_index;
     }
