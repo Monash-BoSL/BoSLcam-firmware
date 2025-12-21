@@ -45,15 +45,19 @@ static void shutdown_decrementer_worker(void *p1, void *p2, void *p3)
 {
     LOG_INF("shutdown decrementer worker active");
     while (true) {
+        LOG_INF("semaphore eater sleeping for: %d s", (86400/MODEM_MAX_DAILY_SHUTDOWNS));
         k_sleep(K_SECONDS(86400/MODEM_MAX_DAILY_SHUTDOWNS));
+        LOG_INF("taking semaphore. value: %d", k_sem_count_get(&modem_recent_shutdown_sem));
         k_sem_take(&modem_recent_shutdown_sem, K_NO_WAIT);
+        LOG_INF("taking semaphore taken. new value: %d", k_sem_count_get(&modem_recent_shutdown_sem));
     }
 }
-K_THREAD_DEFINE(modem_recent_shutdown_worker, 512, shutdown_decrementer_worker, NULL, NULL, NULL,
+// K_THREAD_DEFINE(modem_recent_shutdown_worker, 512, shutdown_decrementer_worker, NULL, NULL, NULL,
+K_THREAD_DEFINE(modem_recent_shutdown_worker, 1024, shutdown_decrementer_worker, NULL, NULL, NULL,
         K_LOWEST_APPLICATION_THREAD_PRIO, K_ESSENTIAL, 0);
 
 static void on_modem_shutdown(void *ctx){
-    LOG_WRN("modem shutting down");
+    LOG_WRN("modem shutting down. recent shutdown no: %d", k_sem_count_get(&modem_recent_shutdown_sem));
     k_sem_give(&modem_recent_shutdown_sem);
     if (k_sem_count_get(&modem_recent_shutdown_sem) >= MODEM_MAX_DAILY_SHUTDOWNS){
         LOG_ERR("resetting application due to %d modem shutdowns in last 24h!", MODEM_MAX_DAILY_SHUTDOWNS);

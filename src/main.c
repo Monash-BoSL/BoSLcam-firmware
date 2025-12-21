@@ -25,7 +25,7 @@
 #define _VERSION "v1.5.1rc"
 // #define _VERSION "v1.5.0"
 /*************** TODO *******************************
-[ ] check that time source remains correct when modem is reset
+[X] check that time source remains correct when modem is reset
 [X] add backup DNS configuration
 [ ] we should store the status string when we write to the SDHC so that it the same on the SDHC and FTP
 [ ] add 'damage' counter which will reset via WDT if too many errors accumulate
@@ -298,6 +298,7 @@ int loop(void){
 
     stats_global.captures++;
 
+    k_msleep(1000); //guarantee other threads time to execute
     return 0;
 }
 
