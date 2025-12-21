@@ -22,7 +22,10 @@ int test_runtime(void){
     // test_sleepy();
     // test_led();
 
-    test_low_power();
+    // test_low_power();
+
+    // test_modem_shutdown_callback();
+    // test_modem_shutdowns_trigger_reset();
 
 
     printf("All tests successful!\n");

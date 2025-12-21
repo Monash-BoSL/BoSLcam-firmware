@@ -1,6 +1,5 @@
 
 #include <nrfx.h>
-#include <nrf_modem_at.h>
 #include <hal/nrf_gpio.h>
 
 #include <inttypes.h>
@@ -8,13 +7,11 @@
 #include <date_time.h>
 #include <stdlib.h>
 
-#include <modem/lte_lc.h>
-#include <modem/nrf_modem_lib.h>
-#include <nrf_socket.h>
 
 #include "common.h"
 #include "ov7675.h"
 #include "sd.h"
+#include "modem.h"
 #include "ftp.h"
 #include "jpg.h"
 #include "watchdog.h"
@@ -28,6 +25,7 @@
 #define _VERSION "v1.5.1rc"
 // #define _VERSION "v1.5.0"
 /*************** TODO *******************************
+[X] check that time source remains correct when modem is reset
 [X] add backup DNS configuration
 [ ] we should store the status string when we write to the SDHC so that it the same on the SDHC and FTP
 [ ] add 'damage' counter which will reset via WDT if too many errors accumulate
@@ -161,52 +159,6 @@ void time_source_stats_async(const struct date_time_evt* evt){
     }
 }
 
-int modem_init(void){
-#if NCS_VERSION_NUMBER >= 0x20100
-    int ret = nrf_modem_lib_init();
-    if (ret != 0) {
-        printk("Modem library initialization failed, error: %d\n", ret);
-        return ret;
-#else
-    int ret = 0;
-    if (IS_ENABLED(CONFIG_LTE_AUTO_INIT_AND_CONNECT)) {
-        /* Do nothing, modem is already configured and LTE connected. */
-#endif
-    } else {
-        ret = lte_lc_init();
-        if (ret) {
-            printk("Modem initialization failed, error: %d\n", ret);
-            return ret;
-        }
-    }
-
-	struct nrf_in_addr dns;
-	dns.s_addr = 0x08080808; // Google DNS, 8.8.8.8
-	ret = nrf_setdnsaddr(NRF_AF_INET, &dns, sizeof(struct nrf_in_addr));
-
-    return ret;
-}
-
-
-int configure_low_power(void){
-    int ret;
-
-    /** Power Saving Mode */
-    ret = lte_lc_psm_req(true);
-    if (ret) {LOG_ERR("lte_lc_psm_req, error: %d\n", ret);}
-
-    /** enhanced Discontinuous Reception */
-    ret = lte_lc_edrx_req(true);
-    if (ret) {LOG_ERR("lte_lc_edrx_req, error: %d\n", ret);}
-
-    // /** Release Assistance Indication  */
-    // ret = lte_lc_rai_req(true);
-    // if (ret) {LOG_ERR("lte_lc_rai_req, error: %d\n", ret);}
-
-
-    return ret;
-}
-
 int setup(void){
     int ret = 0;
 
@@ -230,7 +182,6 @@ int setup(void){
         ftp_setup();
 
         modem_init();
-        configure_low_power();//this does not seem to work at the moment 
 
         //gets current network time
         ret = modem_network_register(&mcfg.ftp_cfg);
@@ -347,6 +298,7 @@ int loop(void){
 
     stats_global.captures++;
 
+    k_msleep(1000); //guarantee other threads time to execute
     return 0;
 }
 
