@@ -22,8 +22,8 @@
 #endif
 
 /*************** VERSION NUMBER ********************/
-#define _VERSION "v1.5.1rc"
-// #define _VERSION "v1.5.0"
+// #define _VERSION "v1.5.2rc"
+#define _VERSION "v1.5.1"
 /*************** TODO *******************************
 [X] check that time source remains correct when modem is reset
 [X] add backup DNS configuration
@@ -37,7 +37,7 @@
 [ ] add automatic detection of when image is exposed well/remembering of last exposure settings
 [ ] consider encoding image differences to better compression. Most objects in the static scene will not change with time.
 [X] automatically make directories on sd card and ftp
-    [X] automatically make 'images' folder on sd card. 
+    [X] automatically make 'images' folder on sd card.
 [X] use yacc flex for parsing SD card config file
 [ ] add versioning in config file
 [ ] figure out how to name files when no network info
