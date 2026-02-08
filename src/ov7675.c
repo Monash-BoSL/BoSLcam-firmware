@@ -23,8 +23,8 @@ extern const struct device * gpio;
 extern const struct device * i2c_sccb;
 
 uint8_t _mean_rbg(uint8_t* data, size_t capacity){
-    /* data must be in RBG565 */
-    /* capacity must be sizeof(data) */
+    /* data must be in RGB565 */
+    /* capacity must be sizeof() the data buffer */
     uint32_t sum = 0;
     for (size_t i = 0; i < capacity; i+=2) {
         uint8_t ub = data[i];
@@ -38,7 +38,7 @@ uint8_t _mean_rbg(uint8_t* data, size_t capacity){
 
         sum += r5 + g5 + b5;
     }
-    uint8_t mean_rgb = (255 * 2 * sum)/(31*capacity); // convert from 5-bit to 8-bit // 2x as 2-bytes per pixel
+    uint8_t mean_rgb = (255 * 2 * sum)/(3 * 31*capacity); // convert from 5-bit to 8-bit // 2x as 2-bytes per pixel // 3x for 3 channels
 
     return mean_rgb;
 }
