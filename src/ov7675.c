@@ -22,6 +22,26 @@ LOG_MODULE_REGISTER(ov7675);
 extern const struct device * gpio;
 extern const struct device * i2c_sccb;
 
+uint8_t _mean_rbg(uint8_t* data, size_t capacity){
+    /* data must be in RBG565 */
+    /* capacity must be sizeof(data) */
+    uint32_t sum = 0;
+    for (size_t i = 0; i < capacity; i+=2) {
+        uint8_t ub = data[i];
+        uint8_t lb = data[i+1];
+
+        uint8_t r5 = (ub >> 3) & 0x1F;
+        uint8_t g6 = ((ub & 0x07) << 3) | (lb >> 5);
+        uint8_t b5 = lb & 0x1F;
+
+        uint8_t g5 = (g6 >> 1);
+
+        sum += r5 + g5 + b5;
+    }
+    uint8_t mean_rgb = (255 * 2 * sum)/(31*capacity); // convert from 5-bit to 8-bit // 2x as 2-bytes per pixel
+
+    return mean_rgb;
+}
 
 void wr_reg(const uint8_t reg,const uint8_t dat){
     i2c_reg_write_byte(i2c_sccb, OV7675_I2C_ADDRESS, reg, dat);
@@ -280,7 +300,8 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
 }
 
 #define EBADIMAGESIZE 2
-int ov7675_capture(const enum flash_t flash, struct capture_t* capture){
+int ov7675_capture(const enum flash_t flash, struct capture_t* capture, int do_mean, uint8_t* mean_rgb){
+    /* mean_rgb is populated with the mean R+G+B greyscale value */
     uint16_t wg = QVGA_WIDTH;//line width in pixels
     uint16_t hg = VGA_HEIGHT;//number of lines per frame
     uint16_t lg2;
@@ -322,6 +343,8 @@ int ov7675_capture(const enum flash_t flash, struct capture_t* capture){
     }
     k_sched_unlock();
 
+    if(do_mean){*mean_rgb = _mean_rbg(capture->data, capture->capacity);}
+
     // //due to hardware error we need to swap the last 2 bits of buffer
     // for(uint32_t p = 0; p < IMAGE_SIZE_BYTES; p++){
         // uint8_t x = buffer[p];
@@ -332,7 +355,8 @@ int ov7675_capture(const enum flash_t flash, struct capture_t* capture){
 }
 
 #define EBUFFERTOOSMALL 1
-int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* capture){
+int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* capture, int do_mean, uint8_t* mean_rgb){
+    /* mean_rgb is populated with the mean R+G+B greyscale value */
     int ret = 0;
     const uint16_t line_width = ov7675_resolutions[capture->resolution].width;//line width in pixels
 
@@ -344,7 +368,7 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
     if(buffer_size_lines < 1){
         LOG_ERR("image buffer too small (<1 line)");
         return -EBUFFERTOOSMALL;
-        }
+    }
 
 
     struct fs_file_t imf;
@@ -362,6 +386,7 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
     while(nrf_gpio_pin_read(SCCB_VS));//wait for low
 
     LOG_INF("ready\n");
+    uint32_t sub_mean_rgb = 0;
     uint16_t current_line = physical_lines;
     for(int16_t lines_remaining = logical_lines; lines_remaining > 0; lines_remaining -= buffer_size_lines){
         uint32_t buffer_index = 0;
@@ -391,6 +416,8 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
             while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
         }
         k_sched_unlock();
+        if(do_mean){sub_mean_rgb += _mean_rbg(capture->data, capture->capacity);}
+
         ret = fs_write(&imf, capture->data, buffer_index);
         capture->size = buffer_index;
     }
@@ -405,6 +432,7 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
     ov7675_agc(capture->agc);
     ov7675_awb(1);
 
+    if(do_mean){*mean_rgb = (uint8_t) ((buffer_size_lines*sub_mean_rgb) / logical_lines);} // divide by number of buffer averages
 
     return 0;
 }
