@@ -43,6 +43,7 @@ ftp_config_t
     char* password                      = "bosl" 
     char* image_path                    = "/jpg/images/img"
     char* status_path                   = "/jpg/status"
+    uint8_t dark_noup                   = 30                        // [0,255], 255 to disable (< 20 cuts most nighttime images, > 40 keeps most daytime)
 sd_config_t 
     char* image_path                    = "/dne/images/img"
     char* status_path                   = "/dne/status"
