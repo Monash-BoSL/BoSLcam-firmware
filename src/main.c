@@ -219,6 +219,9 @@ int do_upload(uint8_t mean_rgb){
     int decimation = ((d > 0) && (0 == (stats_global.captures % d)));
     int is_dark = (mean_rgb < mcfg.trig_cfg.dark_noup);
 
+    LOG_INF("mean_rgb: %u", mean_rgb);
+    LOG_INF("is_dark: %d", is_dark);
+
     return decimation && !is_dark;
 }
 
