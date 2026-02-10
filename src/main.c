@@ -353,8 +353,9 @@ int main(void){
 #ifdef CONFIG_DBG_CONFIG_OVERLAY
 void _dbg_config_overlay(struct master_config_t* mcfg){
     mcfg->im_cfg.format = BMP;
-    mcfg->im_cfg.resolution = QVGA;
+    mcfg->im_cfg.resolution = VGA;
     //mcfg->trig_cfg.logging_interval = 120000;
-    // mcfg->trig_cfg.logging_decimation_ftp = 0;
+    mcfg->trig_cfg.logging_decimation_ftp = 0;
+    mcfg->trig_cfg.dark_noup = 30;
 }
 #endif

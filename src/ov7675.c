@@ -22,13 +22,13 @@ LOG_MODULE_REGISTER(ov7675);
 extern const struct device * gpio;
 extern const struct device * i2c_sccb;
 
-uint8_t _mean_rbg(uint8_t* data, size_t capacity){
+uint8_t _mean_rbg(uint8_t* data, size_t size){
     /* data must be in RGB565 */
-    /* capacity must be sizeof() the data buffer */
+    /* size must be sizeof() the data buffer */
     uint32_t sum = 0;
-    for (size_t i = 0; i < capacity; i+=2) {
-        uint8_t ub = data[i];
-        uint8_t lb = data[i+1];
+    for (size_t i = 0; i < size; i+=2) {
+        uint8_t ub = data[i+1]; /* bmp is little-endian */
+        uint8_t lb = data[i];
 
         uint8_t r5 = (ub >> 3) & 0x1F;
         uint8_t g6 = ((ub & 0x07) << 3) | (lb >> 5);
@@ -38,7 +38,7 @@ uint8_t _mean_rbg(uint8_t* data, size_t capacity){
 
         sum += r5 + g5 + b5;
     }
-    uint8_t mean_rgb = (255 * 2 * sum)/(3 * 31*capacity); // convert from 5-bit to 8-bit // 2x as 2-bytes per pixel // 3x for 3 channels
+    uint8_t mean_rgb = (255 * 2 * sum)/(3 * 31*size); // convert from 5-bit to 8-bit // 2x as 2-bytes per pixel // 3x for 3 channels
 
     return mean_rgb;
 }
@@ -416,7 +416,7 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
             while((NRF_P0->IN & (0x1 << SCCB_HREF)));//SYNC line on HREF
         }
         k_sched_unlock();
-        if(do_mean){sub_mean_rgb += _mean_rbg(capture->data, capture->capacity);}
+        if(do_mean){sub_mean_rgb += _mean_rbg(capture->data, buffer_index);}
 
         ret = fs_write(&imf, capture->data, buffer_index);
         capture->size = buffer_index;
