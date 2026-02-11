@@ -214,15 +214,9 @@ int setup(void){
     return 0;
 }
 
-int do_upload(uint8_t mean_rgb){
+int do_upload(){
     int d = mcfg.trig_cfg.logging_decimation_ftp;
-    int decimation = ((d > 0) && (0 == (stats_global.captures % d)));
-    int is_dark = (mean_rgb < mcfg.trig_cfg.dark_noup);
-
-    LOG_INF("mean_rgb: %u", mean_rgb);
-    LOG_INF("is_dark: %d", is_dark);
-
-    return decimation && !is_dark;
+    return ((d > 0) && (0 == (stats_global.captures % d)));
 }
 
 int loop(void){
@@ -240,6 +234,7 @@ int loop(void){
     LOG_INF("ov7675 capture");
     int do_mean = (mcfg.trig_cfg.dark_noup != 0xFF) && (mcfg.trig_cfg.dark_noup != 0) && (mcfg.trig_cfg.logging_decimation_ftp > 0);
     ov7675_capture_sdhc_buffered(mcfg.im_cfg.flash, &capture, do_mean, &mean_rgb);
+    LOG_INF("mean_rgb: %u", mean_rgb);
 
     LOG_INF("ov7675 deinit");
     ov7675_deinit(mcfg.im_cfg.flash);
@@ -263,11 +258,13 @@ int loop(void){
     }
 
     // check that this gracefully exits if the signal is low and continues with SD only logging for this loop
-    if (do_upload(mean_rgb)){
-        LOG_INF("image -> ftp");
+    if (do_upload()){
+        if (!do_mean || ! (mean_rgb < mcfg.trig_cfg.dark_noup)){ /* if the image is not dark */
+            LOG_INF("image -> ftp");
 
-        ret = ftp_write_image(&mcfg.ftp_cfg, &capture);
-        if(ret){modem_network_deregister();}
+            ret = ftp_write_image(&mcfg.ftp_cfg, &capture);
+            if(ret){modem_network_deregister();}
+        }
 
         LOG_INF("status -> ftp");
         ret = ftp_write_status(&mcfg.ftp_cfg, &stats_global);
