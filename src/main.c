@@ -22,8 +22,8 @@
 #endif
 
 /*************** VERSION NUMBER ********************/
-// #define _VERSION "v1.5.2rc"
-#define _VERSION "v1.5.1"
+#define _VERSION "v1.6.0rc"
+// #define _VERSION "v1.5.1"
 /*************** TODO *******************************
 [X] check that time source remains correct when modem is reset
 [X] add backup DNS configuration
@@ -120,20 +120,6 @@ int get_time(int32_t* ct){
     return 0;
 }
 
-int slm_vbat(int* bat_mv){
-    int ret = 0;
-    char response[1024];
-
-    ret = nrf_modem_at_cmd(response, sizeof(response), "AT%%XVBAT");
-    if(ret == 0){
-        char* start = strchr(response, ':')+1;
-        char* end = strchr(start, '\n');
-        *bat_mv = strtol(start, &end, 10);
-    }
-    return ret;
-}
-
-
 int update_status(){
     stats_global.system_time = capture.time;
     slm_vbat(&stats_global.battery_voltage);
@@ -228,11 +214,16 @@ int setup(void){
     return 0;
 }
 
+int do_upload(){
+    int d = mcfg.trig_cfg.logging_decimation_ftp;
+    return ((d > 0) && (0 == (stats_global.captures % d)));
+}
+
 int loop(void){
     int ret;
     watchdog_feed();
 
-    int d = mcfg.trig_cfg.logging_decimation_ftp;
+    uint8_t mean_rgb;
 
     get_time(&capture.time);
     update_status();
@@ -241,7 +232,9 @@ int loop(void){
     ov7675_init(&mcfg.im_cfg, &capture);
 
     LOG_INF("ov7675 capture");
-    ov7675_capture_sdhc_buffered(mcfg.im_cfg.flash, &capture);
+    int do_mean = (mcfg.trig_cfg.dark_noup != 0xFF) && (mcfg.trig_cfg.dark_noup != 0) && (mcfg.trig_cfg.logging_decimation_ftp > 0);
+    ov7675_capture_sdhc_buffered(mcfg.im_cfg.flash, &capture, do_mean, &mean_rgb);
+    LOG_INF("mean_rgb: %u", mean_rgb);
 
     LOG_INF("ov7675 deinit");
     ov7675_deinit(mcfg.im_cfg.flash);
@@ -265,11 +258,13 @@ int loop(void){
     }
 
     // check that this gracefully exits if the signal is low and continues with SD only logging for this loop
-    if ((d > 0) && (0 == (stats_global.captures % d))){
-        LOG_INF("image -> ftp");
+    if (do_upload()){
+        if (!do_mean || ! (mean_rgb < mcfg.trig_cfg.dark_noup)){ /* if the image is not dark */
+            LOG_INF("image -> ftp");
 
-        ret = ftp_write_image(&mcfg.ftp_cfg, &capture);
-        if(ret){modem_network_deregister();}
+            ret = ftp_write_image(&mcfg.ftp_cfg, &capture);
+            if(ret){modem_network_deregister();}
+        }
 
         LOG_INF("status -> ftp");
         ret = ftp_write_status(&mcfg.ftp_cfg, &stats_global);
@@ -355,7 +350,9 @@ int main(void){
 #ifdef CONFIG_DBG_CONFIG_OVERLAY
 void _dbg_config_overlay(struct master_config_t* mcfg){
     mcfg->im_cfg.format = BMP;
-    mcfg->im_cfg.resolution = QVGA;
+    mcfg->im_cfg.resolution = VGA;
     //mcfg->trig_cfg.logging_interval = 120000;
+    mcfg->trig_cfg.logging_decimation_ftp = 0;
+    mcfg->trig_cfg.dark_noup = 30;
 }
 #endif

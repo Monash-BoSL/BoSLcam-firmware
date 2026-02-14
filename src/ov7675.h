@@ -12,8 +12,8 @@ void ov7675_init(
                  const struct image_config_t* im_cfg_p,
                  struct capture_t* capture
                 );
-int ov7675_capture(const enum flash_t flash, struct capture_t* capture);
-int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* capture);
+int ov7675_capture(const enum flash_t flash, struct capture_t* capture, int do_mean, uint8_t* mean_rgb);
+int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* capture, int do_mean, uint8_t* mean_rgb);
 
 void ov7675_deinit(const enum flash_t flash);
 

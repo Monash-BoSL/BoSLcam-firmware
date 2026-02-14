@@ -6,6 +6,8 @@
 #include <modem/at_monitor.h>
 // #include <modem/lte_lc.h>
 
+#include <stdlib.h>
+
 #include "common.h"
 #include "modem.h"
 
@@ -28,9 +30,9 @@ struct operator_t {
 uint8_t operators_len = 0;
 struct operator_t operators[MAX_OPERATORS];
 
-// static int modem_signal_strength(uint8_t* rsrq_p, uint8_t* rsrp_p);
-// static int modem_current_mccmnc(char* mccmnc);
-// static int modem_network_select(const char* mccmnc);
+static int modem_signal_strength(uint8_t* rsrq_p, uint8_t* rsrp_p);
+static int modem_current_mccmnc(char* mccmnc);
+static int modem_network_select(const char* mccmnc);
 
 /* 
     modem reset behaviour 
@@ -100,6 +102,18 @@ int modem_shutdown(void){
     return ret;
 }
 
+int slm_vbat(int* bat_mv){
+    int ret = 0;
+    char response[1024];
+
+    ret = nrf_modem_at_cmd(response, sizeof(response), "AT%%XVBAT");
+    if(ret == 0){
+        char* start = strchr(response, ':')+1;
+        char* end = strchr(start, '\n');
+        *bat_mv = strtol(start, &end, 10);
+    }
+    return ret;
+}
 
 int print_operators(void) {
     LOG_INF("operators length: %d", operators_len);

@@ -86,6 +86,7 @@ int yylex();
 "UART_TRIGGER"                          {yylval.enum_trigger_t_value = UART_TRIGGER; return enum_trigger_t;}
 "logging_interval"                      {return logging_interval_tk;}
 "logging_decimation_ftp"                {return logging_decimation_ftp_tk;}
+"dark_noup"                             {return dark_noup_tk;}
 
 
 [a-zA-Z_$][a-zA-Z_0-9]*                 {/*printf(" %s ", yytext)*/;return name;}

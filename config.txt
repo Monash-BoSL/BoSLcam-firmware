@@ -51,4 +51,5 @@ trigger_config_t
     enum trigger_t trigger              = TIME_TRIGGER              // TIME_TRIGGER, UART_TRIGGER
     uint32_t logging_interval           = 360000                    // ms (90000 is near the maximum logging frequency possible)
     uint32_t logging_decimation_ftp     = 1                         // 1 in every x photos captured to sd will be uploaded
+    uint8_t dark_noup                   = 30                        // [0,255], mean R+B+G value below which to not upload. 255 to disable. (< 20 cuts most nighttime images, > 40 keeps most daytime)
 
