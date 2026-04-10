@@ -239,6 +239,7 @@ struct status_t {
     uint8_t rsrq;
     uint8_t rsrp;
     uint8_t network_searched; 
+    uint8_t is_trigger;
 };
 
 

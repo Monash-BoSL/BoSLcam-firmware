@@ -79,16 +79,17 @@ struct status_t stats_global = {
                                 .mccmnc = "\0\0\0\0\0\0\0", 
                                 .rsrq = 0xFF, 
                                 .rsrp = 0xFF,
-                                .network_searched = 0
+                                .network_searched = 0,
+                                .is_trigger = 0,
                                 };
 
 static const struct device *gpio_dev = DEVICE_DT_GET(DT_NODELABEL(gpio0));
 static struct gpio_callback gpio_cb;
 
-static K_SEM_DEFINE(wakeup_sem, 0, 1);
+static K_SEM_DEFINE(trigger_sem, 0, 1);
 
 void pin_interrupt_handler(const struct device *dev, struct gpio_callback *cb, uint32_t pins) {
-    k_sem_give(&wakeup_sem);
+    k_sem_give(&trigger_sem);
 }
 
 int init_wakeup_interrupt(void){
@@ -112,7 +113,7 @@ int init_wakeup_interrupt(void){
     return ret;
 }
 
-int sleepy(uint32_t target_duration_ms){
+int sleepy(const uint32_t target_duration_ms){
     int ret = 0;
 
     static int64_t unix_time_ms_last_call = 0;
@@ -123,11 +124,20 @@ int sleepy(uint32_t target_duration_ms){
         int64_t sleep_ms = target_duration_ms - unix_time_ms_elapsed;
         if(sleep_ms > target_duration_ms){
             LOG_ERR("bad last sleep time, defaulting to %u ms sleep", target_duration_ms);
-            k_sem_take(&wakeup_sem, K_MSEC(target_duration_ms));
-            ret = -4; goto cleanup;
+            if(k_sem_take(&trigger_sem, K_MSEC(target_duration_ms))){
+                ret = -4; goto cleanup;
+            } else {
+                stats_global.is_trigger = 1;
+                return ret;
+            }
         }
         LOG_INF("Sleeping for: %ld ms", sleep_ms);//%lld is unsupported
-        ret = k_sem_take(&wakeup_sem, K_MSEC(sleep_ms)); goto cleanup;
+        if(k_sem_take(&trigger_sem, K_MSEC(sleep_ms))){
+            goto cleanup;
+        } else {
+            stats_global.is_trigger = 1;
+            return ret;
+        }
     } else {
         LOG_WRN("Loop duration too long, continuing without sleep");
         ret = -1; goto cleanup;
@@ -246,9 +256,9 @@ int setup(void){
     return 0;
 }
 
-int do_upload(){
+int do_upload(void){
     int d = mcfg.trig_cfg.logging_decimation_ftp;
-    return ((d > 0) && (0 == (stats_global.captures % d)));
+    return (d > 0) && (stats_global.is_trigger || (0 == (stats_global.captures % d)));
 }
 
 int loop(void){
@@ -291,7 +301,11 @@ int loop(void){
 
     // check that this gracefully exits if the signal is low and continues with SD only logging for this loop
     if (do_upload()){
-        if (!do_mean || ! (mean_rgb < mcfg.trig_cfg.dark_noup)){ /* if the image is not dark */
+        if (
+                stats_global.is_trigger
+                || !do_mean 
+                || ! (mean_rgb < mcfg.trig_cfg.dark_noup)
+            ){ /* if the image is not dark */
             LOG_INF("image -> ftp");
 
             ret = ftp_write_image(&mcfg.ftp_cfg, &capture);
@@ -305,6 +319,7 @@ int loop(void){
 
 
     LOG_INF("done");
+    stats_global.is_trigger = 0;
 
     switch (mcfg.trig_cfg.trigger){
     case TIME_TRIGGER:
@@ -384,7 +399,7 @@ void _dbg_config_overlay(struct master_config_t* mcfg){
     mcfg->im_cfg.format = BMP;
     mcfg->im_cfg.resolution = QVGA;
     mcfg->im_cfg.use_flash = 0;
-    mcfg->trig_cfg.logging_interval = 120000;
+    mcfg->trig_cfg.logging_interval = 240000;
     mcfg->trig_cfg.logging_decimation_ftp = 0;
     mcfg->trig_cfg.dark_noup = 30;
 }
