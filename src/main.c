@@ -22,8 +22,8 @@
 #endif
 
 /*************** VERSION NUMBER ********************/
-// #define _VERSION "v1.6.1rc"
-#define _VERSION "v1.6.0"
+#define _VERSION "v1.7.0rc"
+// #define _VERSION "v1.6.0"
 /*************** TODO *******************************
 [X] check that time source remains correct when modem is reset
 [X] add backup DNS configuration
@@ -82,6 +82,36 @@ struct status_t stats_global = {
                                 .network_searched = 0
                                 };
 
+static const struct device *gpio_dev = DEVICE_DT_GET(DT_NODELABEL(gpio0));
+static struct gpio_callback gpio_cb;
+
+static K_SEM_DEFINE(wakeup_sem, 0, 1);
+
+void pin_interrupt_handler(const struct device *dev, struct gpio_callback *cb, uint32_t pins) {
+    k_sem_give(&wakeup_sem);
+}
+
+int init_wakeup_interrupt(void){
+    int ret = 0;
+
+    ret = gpio_pin_configure(gpio_dev, WKE_PIN, GPIO_INPUT | GPIO_PULL_DOWN);
+
+    ret = gpio_pin_interrupt_configure(gpio_dev, WKE_PIN, GPIO_INT_EDGE_RISING);
+
+    gpio_init_callback(&gpio_cb, pin_interrupt_handler, BIT(WKE_PIN));
+
+    ret = gpio_add_callback(gpio_dev, &gpio_cb);
+
+    if (ret) {
+        LOG_ERR("Failed to enable wke interrupt, error: %d", ret);
+        return ret;
+    }else{
+        LOG_INF("Enabled wke interrupt success!");	
+    }
+
+    return ret;
+}
+
 int sleepy(uint32_t target_duration_ms){
     int ret = 0;
 
@@ -93,11 +123,11 @@ int sleepy(uint32_t target_duration_ms){
         int64_t sleep_ms = target_duration_ms - unix_time_ms_elapsed;
         if(sleep_ms > target_duration_ms){
             LOG_ERR("bad last sleep time, defaulting to %u ms sleep", target_duration_ms);
-            k_msleep(target_duration_ms);
+            k_sem_take(&wakeup_sem, K_MSEC(target_duration_ms));
             ret = -4; goto cleanup;
         }
         LOG_INF("Sleeping for: %ld ms", sleep_ms);//%lld is unsupported
-        ret = k_msleep(sleep_ms); goto cleanup;
+        ret = k_sem_take(&wakeup_sem, K_MSEC(sleep_ms)); goto cleanup;
     } else {
         LOG_WRN("Loop duration too long, continuing without sleep");
         ret = -1; goto cleanup;
@@ -149,6 +179,8 @@ int setup(void){
     int ret = 0;
 
     ret = watchdog_init_and_start();
+
+    ret = init_wakeup_interrupt();
 
     ret = sdhc_mount();//very importaint for low power
 
@@ -337,7 +369,7 @@ int main(void){
     }
 
     nrf_gpio_cfg_input(LED_FLASH_INBUILT_PIN, NRF_GPIO_PIN_PULLDOWN);//we haven't read the SD config file yet so we don't know which pin to pull down. We will guess the INBUILT one as it won't affect external UART if connected. This does mean that if the flash is external it will remain on until we read the config.
-    nrf_gpio_cfg_input(SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
+    nrf_gpio_cfg_input(WKE_PIN, NRF_GPIO_PIN_PULLDOWN);
     nrf_gpio_cfg_input(SCCB_PDN, NRF_GPIO_PIN_PULLUP);
 
 
@@ -350,8 +382,9 @@ int main(void){
 #ifdef CONFIG_DBG_CONFIG_OVERLAY
 void _dbg_config_overlay(struct master_config_t* mcfg){
     mcfg->im_cfg.format = BMP;
-    mcfg->im_cfg.resolution = VGA;
-    //mcfg->trig_cfg.logging_interval = 120000;
+    mcfg->im_cfg.resolution = QVGA;
+    mcfg->im_cfg.use_flash = 0;
+    mcfg->trig_cfg.logging_interval = 120000;
     mcfg->trig_cfg.logging_decimation_ftp = 0;
     mcfg->trig_cfg.dark_noup = 30;
 }

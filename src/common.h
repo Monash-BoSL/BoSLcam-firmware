@@ -63,10 +63,12 @@
 #define SCCB_HREF	(12)
 #define SCCB_PCLK	(13)
 #define SCCB_XCLK	(14)
-#define SCCB_PEN	(15)
+// #define SCCB_PEN	(15)
 #define SCCB_PDN	(16)
 
 #define DBGPIN		(18)
+
+#define WKE_PIN                  (15)
 
 #define TX_PIN                  (19)
 
