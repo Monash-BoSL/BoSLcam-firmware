@@ -15,6 +15,7 @@
 #include "ftp.h"
 #include "jpg.h"
 #include "watchdog.h"
+#include "uart.h"
 
 
 #ifdef CONFIG_DBG_TEST_RUNTIME
@@ -58,9 +59,12 @@ const struct device * gpio;
 const struct device * i2c_sccb;
 const struct device * spi_sram;
 
+
 uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
 static struct master_config_t mcfg;
+static struct master_config_t ccfg;
+
 struct capture_t capture = {
                             .data = image_buffer, 
                             .capacity = sizeof(image_buffer), 
@@ -82,6 +86,8 @@ struct status_t stats_global = {
                                 .network_searched = 0,
                                 .is_trigger = 0,
                                 };
+
+const struct device *uart = DEVICE_DT_GET(DT_NODELABEL(uart0));
 
 static const struct device *gpio_dev = DEVICE_DT_GET(DT_NODELABEL(gpio0));
 static struct gpio_callback gpio_cb;
@@ -192,6 +198,10 @@ int setup(void){
 
     ret = init_wakeup_interrupt();
 
+    if (!device_is_ready(uart)) {
+        return;
+    }
+
     ret = sdhc_mount();//very importaint for low power
 
     ret = sdhc_load_config(CONFIG_FILE, &mcfg);
@@ -199,20 +209,22 @@ int setup(void){
         LOG_ERR("failed to load config. halting");
         return ret;
     }
+    ccfg = mcfg; /* this should be the last time mcfg is written! */
+
 #ifdef CONFIG_DBG_CONFIG_OVERLAY
-    _dbg_config_overlay(&mcfg);
+    _dbg_config_overlay(&ccfg);
 #endif
 
-    nrf_gpio_cfg_input(mcfg.im_cfg.flash, NRF_GPIO_PIN_PULLDOWN);
+    nrf_gpio_cfg_input(ccfg.im_cfg.flash, NRF_GPIO_PIN_PULLDOWN);
 
-    int d = mcfg.trig_cfg.logging_decimation_ftp;
+    int d = ccfg.trig_cfg.logging_decimation_ftp;
     if(d > 0){//first try get time from network
         ftp_setup();
 
         modem_init();
 
         //gets current network time
-        ret = modem_network_register(&mcfg.ftp_cfg);
+        ret = modem_network_register(&ccfg.ftp_cfg);
         if(ret == 0){
             date_time_update_async(NULL);
             LOG_INF("busy wait for valid time");
@@ -229,7 +241,7 @@ int setup(void){
     if(!date_time_is_valid()){//then from SD
         LOG_WRN("no network time, resorting to SD");
         struct tm cal;
-        ret = sdhc_load_last_status_time(mcfg.sd_cfg.status_path, &cal);
+        ret = sdhc_load_last_status_time(ccfg.sd_cfg.status_path, &cal);
         if(ret == 0){
             ret = date_time_set(&cal);
             stats_global.time_src = FS_TIME;
@@ -257,7 +269,7 @@ int setup(void){
 }
 
 int do_upload(void){
-    int d = mcfg.trig_cfg.logging_decimation_ftp;
+    int d = ccfg.trig_cfg.logging_decimation_ftp;
     return (d > 0) && (stats_global.is_trigger || (0 == (stats_global.captures % d)));
 }
 
@@ -271,31 +283,31 @@ int loop(void){
     update_status();
 
     LOG_INF("ov7675 initialisation");
-    ov7675_init(&mcfg.im_cfg, &capture);
+    ov7675_init(&ccfg.im_cfg, &capture);
 
     LOG_INF("ov7675 capture");
-    int do_mean = (mcfg.trig_cfg.dark_noup != 0xFF) && (mcfg.trig_cfg.dark_noup != 0) && (mcfg.trig_cfg.logging_decimation_ftp > 0);
-    ov7675_capture_sdhc_buffered(mcfg.im_cfg.flash, &capture, do_mean, &mean_rgb);
+    int do_mean = (ccfg.trig_cfg.dark_noup != 0xFF) && (ccfg.trig_cfg.dark_noup != 0) && (ccfg.trig_cfg.logging_decimation_ftp > 0);
+    ov7675_capture_sdhc_buffered(ccfg.im_cfg.flash, &capture, do_mean, &mean_rgb);
     LOG_INF("mean_rgb: %u", mean_rgb);
 
     LOG_INF("ov7675 deinit");
-    ov7675_deinit(mcfg.im_cfg.flash);
+    ov7675_deinit(ccfg.im_cfg.flash);
 
 #ifdef CONFIG_DBG_SEND_IMAGE_RTT
     sdhc_file_to_rtt(SCRATCH_FILE);
 #endif
 
     LOG_INF("image -> sdhc");
-    ret = sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
+    ret = sdhc_move_image(ccfg.sd_cfg.image_path, &capture);
     if(ret < 0){LOG_ERR("sdhc_move_image fail! ret=%d",ret);}
 
     LOG_INF("status -> sdhc");
-    ret = sdhc_write_status(mcfg.sd_cfg.status_path, &stats_global);
+    ret = sdhc_write_status(ccfg.sd_cfg.status_path, &stats_global);
     if(ret < 0){LOG_ERR("sdhc_write_status fail! ret=%d",ret);}
 
-    if(mcfg.im_cfg.format == JPG){
+    if(ccfg.im_cfg.format == JPG){
         LOG_INF("jpg -> sdhc");
-        ret = sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
+        ret = sdhc_write_jpg(ccfg.sd_cfg.image_path, &capture);
         if(ret < 0){LOG_ERR("sdhc_write_jpg fail! ret=%d", ret);}
     }
 
@@ -304,16 +316,16 @@ int loop(void){
         if (
                 stats_global.is_trigger
                 || !do_mean 
-                || ! (mean_rgb < mcfg.trig_cfg.dark_noup)
+                || ! (mean_rgb < ccfg.trig_cfg.dark_noup)
             ){ /* if the image is not dark */
             LOG_INF("image -> ftp");
 
-            ret = ftp_write_image(&mcfg.ftp_cfg, &capture);
+            ret = ftp_write_image(&ccfg.ftp_cfg, &capture);
             if(ret){modem_network_deregister();}
         }
 
         LOG_INF("status -> ftp");
-        ret = ftp_write_status(&mcfg.ftp_cfg, &stats_global);
+        ret = ftp_write_status(&ccfg.ftp_cfg, &stats_global);
         if(ret){modem_network_deregister();}
     }
 
@@ -321,22 +333,16 @@ int loop(void){
     LOG_INF("done");
     stats_global.is_trigger = 0;
 
-    switch (mcfg.trig_cfg.trigger){
-    case TIME_TRIGGER:
-        LOG_INF("time sleep");
-        sleepy(mcfg.trig_cfg.logging_interval);
-        break;
-    case UART_TRIGGER:
-        LOG_INF("uart sleep");
-        // uart_sei();
-        sleepy(0);
-        // uart_cli();
-        break;
-    default:
-        LOG_ERR("trig_type misconfigred, oops!");
-        k_oops();
-        break;
+    if(ccfg.trig_cfg.use_uart){
+        uint8_t c;
+        parser_reset();
+        while(uart_poll_in(uart, &c) == 0) {
+            process_input(c, &ccfg, &mcfg);
+        }
     }
+
+    /* change to accept UART during sleep */
+    sleepy(ccfg.trig_cfg.logging_interval);
 
     stats_global.captures++;
 
@@ -395,12 +401,12 @@ int main(void){
 }
 
 #ifdef CONFIG_DBG_CONFIG_OVERLAY
-void _dbg_config_overlay(struct master_config_t* mcfg){
-    mcfg->im_cfg.format = BMP;
-    mcfg->im_cfg.resolution = QVGA;
-    mcfg->im_cfg.use_flash = 0;
-    mcfg->trig_cfg.logging_interval = 240000;
-    mcfg->trig_cfg.logging_decimation_ftp = 0;
-    mcfg->trig_cfg.dark_noup = 30;
+void _dbg_config_overlay(struct master_config_t* ccfg){
+    ccfg->im_cfg.format = BMP;
+    ccfg->im_cfg.resolution = QVGA;
+    ccfg->im_cfg.use_flash = 0;
+    ccfg->trig_cfg.logging_interval = 240000;
+    ccfg->trig_cfg.logging_decimation_ftp = 0;
+    ccfg->trig_cfg.dark_noup = 30;
 }
 #endif

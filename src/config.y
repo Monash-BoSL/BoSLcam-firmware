@@ -78,10 +78,11 @@ int yydebug = 1;
 %token logging_level_tk
 
 %token trigger_config_t_tk
-%token trigger_t_tk
-%token trigger_tk
+// %token trigger_t_tk
+// %token trigger_tk
 %token logging_interval_tk
 %token logging_decimation_ftp_tk
+%token use_uart_tk
 %token dark_noup_tk
 
 %token name
@@ -171,9 +172,10 @@ trigger_config_t_members  : trigger_config_t_entry                            {;
                           | trigger_config_t_members trigger_config_t_entry   {;}
                           ;
 
-trigger_config_t_entry  : enum_tk trigger_t_tk trigger_tk                  '=' enum_trigger_t              {parser_config_handle->trig_cfg.trigger = $5;}
-                        | uint32_t_tk logging_interval_tk                  '=' integer                     {parser_config_handle->trig_cfg.logging_interval = $4;}
+/* trigger_config_t_entry  : enum_tk trigger_t_tk trigger_tk                  '=' enum_trigger_t              {parser_config_handle->trig_cfg.trigger = $5;} */
+trigger_config_t_entry  : uint32_t_tk logging_interval_tk                  '=' integer                     {parser_config_handle->trig_cfg.logging_interval = $4;}
                         | uint32_t_tk logging_decimation_ftp_tk            '=' integer                     {parser_config_handle->trig_cfg.logging_decimation_ftp = $4;}
+                        | uint32_t_tk use_uart_tk                          '=' integer                     {parser_config_handle->trig_cfg.use_uart = $4;}
                         | uint8_t_tk dark_noup_tk                          '=' integer                     {parser_config_handle->trig_cfg.dark_noup = $4;}
                         ;
 

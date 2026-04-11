@@ -13,7 +13,6 @@
 #include <hal/nrf_uarte.h>
 
 #include "sram.h"
-#include "common.h"
 
 
 LOG_MODULE_REGISTER(sram);

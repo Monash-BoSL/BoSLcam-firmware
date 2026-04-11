@@ -80,12 +80,9 @@ int yylex();
 
 
 "trigger_config_t"                      {return trigger_config_t_tk;}
-"trigger_t"                             {return trigger_t_tk;}
-"trigger"                               {return trigger_tk;}
-"TIME_TRIGGER"                          {yylval.enum_trigger_t_value = TIME_TRIGGER; return enum_trigger_t;}
-"UART_TRIGGER"                          {yylval.enum_trigger_t_value = UART_TRIGGER; return enum_trigger_t;}
 "logging_interval"                      {return logging_interval_tk;}
 "logging_decimation_ftp"                {return logging_decimation_ftp_tk;}
+"use_uart"                              {return use_uart_tk;}
 "dark_noup"                             {return dark_noup_tk;}
 
 
@@ -97,4 +94,8 @@ int yylex();
 .                                       {ECHO; yyerror ("unexpected character");}
 
 %%
+/* "trigger_t"                             {return trigger_t_tk;} */
+/* "trigger"                               {return trigger_tk;} */
+/* "time_trigger"                          {yylval.enum_trigger_t_value = time_trigger; return enum_trigger_t;} */
+/* "uart_trigger"                          {yylval.enum_trigger_t_value = uart_trigger; return enum_trigger_t;} */
 int yywrap (void) {return 1;}

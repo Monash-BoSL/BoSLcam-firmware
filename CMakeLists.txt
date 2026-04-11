@@ -30,6 +30,7 @@ target_sources(app PRIVATE src/util.c)
 target_sources(app PRIVATE src/jpg.c)
 target_sources(app PRIVATE src/common.c)
 target_sources(app PRIVATE src/watchdog.c)
+target_sources(app PRIVATE src/uart.c)
 
 target_sources(app PRIVATE ${LEX_YY_C})
 target_sources(app PRIVATE ${Y_TAB_C})

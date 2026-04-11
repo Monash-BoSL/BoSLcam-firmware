@@ -188,9 +188,10 @@ enum trigger_t {
 };
 
 struct trigger_config_t {
-    enum trigger_t trigger;
+    // enum trigger_t trigger;
     uint32_t logging_interval; //ms
     uint32_t logging_decimation_ftp;//1 in every x photos captured to sd will be uploaded
+    uint32_t use_uart;//accept uart commands 
     uint8_t dark_noup;// mean R+G+B below which image is not uploaded. 255 to disable
 };
 
