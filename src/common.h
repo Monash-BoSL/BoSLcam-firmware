@@ -109,10 +109,21 @@ enum image_format {
     JPG,
 };
 
+static const char *const fmt_str[] = {
+    [BMP] = "BMP",
+    [JPG] = "JPG",
+};
+
 enum image_resolution {
     VGA = 0,
     QVGA,
     QQVGA,
+};
+
+static const char *const res_str[] = {
+    [VGA] = "VGA",
+    [QVGA] = "QVGA",
+    [QQVGA] = "QQVGA",
 };
 
 enum aec_t {
@@ -123,6 +134,11 @@ enum aec_t {
 enum agc_t {
     AGC_OFF = 0,
     AGC_ON,
+};
+
+static const char *const onoff_str[] = {
+    [0] = "OFF",
+    [1] = "ON",
 };
 
 //read gain as 1.<mantissa> x 2^<exponent>
@@ -163,6 +179,11 @@ enum cypher_t {
     SUFFIX,
 };
 
+static const char *const cypher_str[] = {
+    [NONE] = "NONE",
+    [CAESAR] = "CAESAR",
+    [SUFFIX] = "SUFFIX",
+};
 
 struct ftp_config_t {
     char* apn;
@@ -185,6 +206,11 @@ struct sd_config_t {
 enum trigger_t {
     TIME_TRIGGER = 0,
     UART_TRIGGER,
+};
+
+static const char *const trigger_str[] = {
+    [TIME_TRIGGER] = "TIME_TRIGGER",
+    [UART_TRIGGER] = "UART_TRIGGER",
 };
 
 struct trigger_config_t {
