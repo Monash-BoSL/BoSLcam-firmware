@@ -185,90 +185,6 @@ int decrypt_password(char** password_p, const enum cypher_t cypher){
     return -1;
 } 
 
-
-static const char *safe_idx(const char *const *tbl, size_t sz, int idx) {
-    return (idx >= 0 && (size_t)idx < sz && tbl[idx]) ? tbl[idx] : "UNKNOWN";
-}
-
-static const char *safe_str(const char *s) {
-    return s ? log_strdup(s) : "(null)";
-}
-
-void _log_config(const struct master_config_t *const m) {
-    /* printk is used for this dump to guarantee atomic, non-interleaved output by bypassing
-    * the Zephyr log subsystem (log thread, buffering, and RTT contention issues).
-    */
-    if (!m) {
-        LOG_INF("config=NULL");
-        return;
-    }
-
-
-    printk("============ CONFIG ============\n");
-
-    printk("image_config_t\n");
-    printk("\tauto_range_time            = %" PRIu32 "\n",
-        m->im_cfg.auto_range_time);
-    printk("\tresolution                 = %s\n",
-        safe_idx(res_str, ARRAY_SIZE(res_str), m->im_cfg.resolution));
-    printk("\tformat                     = %s\n",
-        safe_idx(fmt_str, ARRAY_SIZE(fmt_str), m->im_cfg.format));
-    printk("\tflash                      = %d\n",
-        (int)m->im_cfg.flash);
-    printk("\tuse_flash                  = %" PRIu32 "\n",
-        m->im_cfg.use_flash);
-    printk("\taec                        = %s\n",
-        safe_idx(onoff_str, ARRAY_SIZE(onoff_str), m->im_cfg.aec));
-    printk("\texposure                   = %u\n",
-        (unsigned int)m->im_cfg.exposure);
-    printk("\tagc                        = %s\n",
-        safe_idx(onoff_str, ARRAY_SIZE(onoff_str), m->im_cfg.agc));
-    printk("\tgain\n");
-    printk("\t\tmantissa               = %u\n",
-        (unsigned int)m->im_cfg.gain.mantissa);
-    printk("\t\texponent               = %u\n",
-        (unsigned int)m->im_cfg.gain.exponent);
-
-
-    printk("ftp_config_t\n");
-    printk("\tapn                        = %s\n",
-        safe_str(m->ftp_cfg.apn));
-    printk("\tmccmnc                     = %s\n",
-        safe_str(m->ftp_cfg.mccmnc));
-    printk("\tdomain                     = %s\n",
-        safe_str(m->ftp_cfg.domain));
-    printk("\tusername                   = %s\n",
-        safe_str(m->ftp_cfg.username));
-    printk("\tcypher                     = %s\n",
-        safe_idx(cypher_str, ARRAY_SIZE(cypher_str), m->ftp_cfg.cypher));
-    printk("\tpassword                   = ***\n");
-    printk("\timage_path                 = %s\n",
-        safe_str(m->ftp_cfg.image_path));
-    printk("\tstatus_path                = %s\n",
-        safe_str(m->ftp_cfg.status_path));
-
-
-    printk("sd_config_t\n");
-    printk("\timage_path                 = %s\n",
-        safe_str(m->sd_cfg.image_path));
-    printk("\tstatus_path                = %s\n",
-        safe_str(m->sd_cfg.status_path));
-    printk("\tlogging_level              = %" PRIu32 "\n",
-        m->sd_cfg.logging_level);
-
-
-    printk("trigger_config_t\n");
-    printk("\ttrigger                    = %s\n",
-        safe_idx(trigger_str, ARRAY_SIZE(trigger_str), m->trig_cfg.trigger));
-    printk("\tlogging_interval           = %" PRIu32 " ms\n",
-        m->trig_cfg.logging_interval);
-    printk("\tlogging_decimation_ftp     = %" PRIu32 "\n",
-        m->trig_cfg.logging_decimation_ftp);
-    printk("\tdark_noup                  = %u\n",
-        (unsigned int)m->trig_cfg.dark_noup);
-
-}
-
 typedef struct yy_buffer_state * YY_BUFFER_STATE;
 extern int yyparse(void);
 extern YY_BUFFER_STATE yy_scan_bytes(char* str, size_t len);
@@ -319,8 +235,6 @@ int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
     LOG_INF("config parsed with result %d", ret);
 
     decrypt_password(&master_cfg->ftp_cfg.password, master_cfg->ftp_cfg.cypher);
-
-    _log_config(master_cfg);
 
     return ret;
 }
