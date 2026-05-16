@@ -87,8 +87,16 @@ static const struct device *gpio_dev = DEVICE_DT_GET(DT_NODELABEL(gpio0));
 static struct gpio_callback gpio_cb;
 
 static K_SEM_DEFINE(trigger_sem, 0, 1);
+static int64_t last_wakeup_trigger_ms = 0;
 
-void pin_interrupt_handler(const struct device *dev, struct gpio_callback *cb, uint32_t pins) {
+void pin_interrupt_handler(const struct device *dev,
+                           struct gpio_callback *cb,
+                           uint32_t pins) {
+    int64_t now_ms = k_uptime_get();
+
+    if ((now_ms - last_wakeup_trigger_ms) < 5000) { return; }
+
+    last_wakeup_trigger_ms = now_ms;
     k_sem_give(&trigger_sem);
 }
 
