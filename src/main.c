@@ -95,7 +95,7 @@ void msgq_put_force(struct k_msgq* const q, const struct capture_task_t* const t
         case -EAGAIN:
             LOG_WRN("capture queue full (ret=%d): dropping oldest capture task", ret_put);
             // Try to drop the oldest item to make room
-            struct capture_t dummy;
+            struct capture_task_t dummy;
             int ret_get = k_msgq_get(q, &dummy, K_NO_WAIT);
             if (ret_get == 0 || ret_get == -ENOMSG) {
                 // Successfully dropped an item or queue was empty, retry the put
@@ -127,6 +127,7 @@ void time_trigger_handler(struct k_timer* timer_id) {
     };
     time_trigger_count++;
 
+    LOG_INF("time trigger capture task triggered");
     msgq_put_force(&capture_q, &capture_task);
 }
 
@@ -159,6 +160,7 @@ void wake_trigger_handler(const struct device *dev,
         .respect_dark_noup = 0, /* wake trigger should not respect the dark noup */
     };
 
+    LOG_INF("wake trigger capture task triggered");
     msgq_put_force(&capture_q, &capture_task);
 }
 
