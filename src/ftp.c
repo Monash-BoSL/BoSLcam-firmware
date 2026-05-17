@@ -10,6 +10,7 @@
 
 #include "common.h"
 #include "ftp.h"
+#include "modem.h"
 #include "util.h"
 
 LOG_MODULE_REGISTER(ftp);

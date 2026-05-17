@@ -53,7 +53,7 @@ int sdhc_write_jpg(const char* const sdhc_path, struct capture_t* const capture)
     ret = fs_open(&ibf, capture->fp, FS_O_READ);
     ret = fs_seek(&ibf, BMPIMAGEOFFSET, FS_SEEK_SET);
 
-    const struct buffer_closure bc = {
+    struct buffer_closure bc = {
         .lines = image_resolutions[capture->resolution].height,
         .line_size_bytes = (RBG565_PIXEL_SIZE_BYTES*image_resolutions[capture->resolution].width),
         .buffer_size_lines = capture->capacity/(RBG565_PIXEL_SIZE_BYTES*image_resolutions[capture->resolution].width),

@@ -4,9 +4,9 @@
 #include <nrf_modem_at.h>
 #include <modem/nrf_modem_lib.h>
 #include <modem/at_monitor.h>
-// #include <modem/lte_lc.h>
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "common.h"
 #include "modem.h"
@@ -277,7 +277,7 @@ int modem_network_select(const char* mccmnc){
     return ret;
 }
 
-int modem_network_register(struct ftp_config_t* ftp_cfg_p){
+int modem_network_register(const struct ftp_config_t* const ftp_cfg_p){
     int ret = 0;
 
     if(status_g.mccmnc[0] == '\0'){//if uninitialised
@@ -343,7 +343,7 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     if(!status_g.network_searched){
         LOG_INF("Performing forced network search");
         modem_network_search();
-        status_g.network_searched = 1;//not we never do this again regardless of if the search was successfull
+        status_g.network_searched = 1;//not we never do this again regardless of if the search was successful
     }
 
 

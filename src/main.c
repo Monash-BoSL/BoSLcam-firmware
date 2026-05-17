@@ -71,13 +71,14 @@ static uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 static struct master_config_t mcfg;
 
 struct status_t status_g = {
-                                .time_wall = 0, /* time at which this status is valid */
-                                .battery_voltage = -1, 
-                                .captures = 0, 
-                                .mccmnc = "\0\0\0\0\0\0\0", 
-                                .rsrq = 0xFF, 
-                                .rsrp = 0xFF,
-                                .network_searched = 0,
+                                .time_wall = 0,             /* updated by capture_f() */
+                                .battery_voltage = -1,      /* updated by capture_f() */
+                                .captures = 0,              /* updated by capture_worker() */ 
+                                .time_src = NO_TIME,        /* updated by time_source_stats_async() */
+                                .mccmnc = "\0\0\0\0\0\0\0", /* updated by modem.c */
+                                .rsrq = 0xFF,               /* updated by modem.c */
+                                .rsrp = 0xFF,               /* updated by modem.c */
+                                .network_searched = 0,      /* updated by modem.c */
                                 };
 
 
