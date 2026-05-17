@@ -51,6 +51,7 @@
 #include <date_time.h>
 
 #define WATCHDOG_TIMEOUT_SEC 86400 //allows silly values
+#define WAKE_PIN_TRIGGER_HOLDOUT_MS (5000)
 
 #define SUFFIX_KEY "_Z4GQ3tjuzu"
 #define CAESAR_KEY  (37)

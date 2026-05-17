@@ -211,11 +211,6 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
     capture->aec            = im_cfg_p->aec;
     capture->agc            = im_cfg_p->agc;
 
-    gpio = DEVICE_DT_GET(DT_NODELABEL(gpio0));
-    LOG_INF("bind %s\n", gpio->name);
-    i2c_sccb = DEVICE_DT_GET(DT_NODELABEL(i2c2));
-    LOG_INF("bind %s\n", i2c_sccb->name);
-
     //setup gpio for all pins
     // gpio_pin_configure(gpio, SCCB_PEN, GPIO_OUTPUT);
     gpio_pin_configure(gpio, SCCB_PDN, GPIO_OUTPUT);

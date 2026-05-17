@@ -22,8 +22,8 @@
 #endif
 
 /*************** VERSION NUMBER ********************/
-#define _VERSION "v1.7.0rc"
-// #define _VERSION "v1.6.0"
+#define _VERSION "v2.0.0rc"
+// #define _VERSION "v2.0.0"
 /*************** TODO *******************************
 [X] check that time source remains correct when modem is reset
 [X] add backup DNS configuration
@@ -51,18 +51,20 @@
 [ ] find best idle states for pins (eg: 28) for low power
 ****************************************************/
 
+LOG_MODULE_REGISTER(main);
+
 struct capture_task_t {
     int64_t requested_at_ms;
+    uint8_t upload;
+    uint8_t respect_dark_noup;
 };
 
 #define CAPTURE_QUEUE_SIZE 5
-K_MSGQ_DEFINE(capture_q, sizeof(struct capture_task_t), CAPTURE_QUEUE_SIZE, 1)
+K_MSGQ_DEFINE(capture_q, sizeof(struct capture_task_t), CAPTURE_QUEUE_SIZE, 1);
 
-LOG_MODULE_REGISTER(main);
-
-const struct device * gpio;
-const struct device * i2c_sccb;
-const struct device * spi_sram;
+const struct device* gpio      = DEVICE_DT_GET(DT_NODELABEL(gpio0));
+const struct device* i2c_sccb  = DEVICE_DT_GET(DT_NODELABEL(i2c2));
+const struct device* spi_sram; /* init in a bit of a different way? */
 
 uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
@@ -86,96 +88,207 @@ struct status_t stats_global = {
                                 .rsrq = 0xFF, 
                                 .rsrp = 0xFF,
                                 .network_searched = 0,
-                                .is_trigger = 0,
                                 };
 
-static const struct device *gpio_dev = DEVICE_DT_GET(DT_NODELABEL(gpio0));
-static struct gpio_callback gpio_cb;
 
+// This function puts a capture task into the capture queue. If the queue is full, it will drop the oldest item to make room for the new one.
+void msgq_put_force(struct k_msgq *q, struct capture_task_t *task) {
+    int ret_put = k_msgq_put(q, task, K_NO_WAIT);
 
-#define WAKE_PIN_TRIGGER_HOLDOUT_MS (5000)
-
-static int64_t last_wakeup_trigger_ms = 0;
-void wake_pin_trigger_handler(const struct device *dev,
-                           struct gpio_callback *cb,
-                           uint32_t pins) {
-    int64_t now_ms = k_uptime_get();
-    if ((now_ms - last_wakeup_trigger_ms) < WAKE_PIN_TRIGGER_HOLDOUT_MS) { return; }
-    last_wakeup_trigger_ms = now_ms;
-
-    struct capture_task_t capture_task = {
-        .requested_at_ms = now_ms,
-    };
-
-    int ret_put = k_msgq_put(&capture_q, &capture_task, K_NO_WAIT);
-    switch (ret_put){
+    switch (ret_put) {
         case 0:
+            LOG_INF("capture task pushed");
             break;
-
         case -ENOMSG:
         case -EAGAIN:
-            LOG_WRN("capture queue full (ret=%d): cannot push wake trigger capture", ret_put);
+            LOG_WRN("capture queue full (ret=%d): dropping oldest capture task", ret_put);
+            // Try to drop the oldest item to make room
+            struct capture_t dummy;
+            int ret_get = k_msgq_get(q, &dummy, K_NO_WAIT);
+            if (ret_get == 0 || ret_get == -ENOMSG) {
+                // Successfully dropped an item or queue was empty, retry the put
+                msgq_put_force(q, task);
+            } else {
+                LOG_WRN("cannot empty capture queue (ret=%d): dropping this capture task", ret_get);
+            }
             break;
-
         default:
-            LOG_ERR("unexpected msgq error (ret=%d)", ret_put);
+            LOG_ERR("unexpected msgq error (ret=%d): cannot push wake trigger capture", ret_put);
             break;
-    }
-
+        }
 }
 
-// TODO: handle if the tasks bet push on faster than they are drained out (rate limiting)
+/******************************************************************************/
+/* TIME TRIGGER                                                               */
+/******************************************************************************/
 
-int init_wakeup_interrupt(void){
+void time_trigger_handler(void) {
+    static int time_trigger_count = 0;
+    const int64_t now_ms = k_uptime_get();
+
+    const int d = mcfg.trig_cfg.logging_decimation_ftp; /* must exist as this thread only init after mcfg parsed successfully */
+
+    const struct capture_task_t capture_task = {
+        .requested_at_ms = now_ms,
+        .upload = (d > 0) && (0 == (time_trigger_count % d)), /* respect logging decimation on time triggers */
+        .respect_dark_noup = 1, /* respect dark_noup setting */
+    };
+    time_trigger_count++;
+
+    msgq_put_force(&capture_q, &capture_task);
+}
+
+int init_time_trigger_capture(uint32_t interval_ms) {
+    static struct k_timer capture_timer;
+    k_timer_init(&capture_timer, time_trigger_handler, NULL);
+    
+    k_timer_start(&capture_timer, K_NO_WAIT, K_MSEC(interval_ms));
+    
+    LOG_INF("Successfully scheduled periodic capture timer for %u ms interval.", interval_ms);
+    return 0;
+}
+
+/******************************************************************************/
+/* WAKE TRIGGER                                                               */
+/******************************************************************************/
+
+void wake_trigger_handler(const struct device *dev,
+              struct gpio_callback *cb,
+              uint32_t pins) {
+    static int64_t last_wake_trigger_ms = 0;
+    const int64_t now_ms = k_uptime_get();
+
+    if ((now_ms - last_wake_trigger_ms) < WAKE_PIN_TRIGGER_HOLDOUT_MS) { return; }
+    last_wake_trigger_ms = now_ms;
+
+    const struct capture_task_t capture_task = {
+        .requested_at_ms = now_ms,
+        .upload = 1,
+        .respect_dark_noup = 0, /* wake trigger should not respect the dark noup */
+    };
+
+    msgq_put_force(&capture_q, &capture_task);
+}
+
+static struct gpio_callback gpio_cb;
+int init_wake_trigger_capture(void){
     int ret = 0;
 
-    ret = gpio_pin_configure(gpio_dev, WKE_PIN, GPIO_INPUT | GPIO_PULL_DOWN);
-
-    ret = gpio_pin_interrupt_configure(gpio_dev, WKE_PIN, GPIO_INT_EDGE_RISING);
-
-    gpio_init_callback(&gpio_cb, wake_pin_trigger_handler, BIT(WKE_PIN));
-
-    ret = gpio_add_callback(gpio_dev, &gpio_cb);
-
+    ret = gpio_pin_configure(gpio, WKE_PIN, GPIO_INPUT | GPIO_PULL_DOWN);
     if (ret) {
-        LOG_ERR("Failed to enable wke interrupt, error: %d", ret);
+        LOG_ERR("Failed to configure WKE pin, error: %d", ret);
+        return ret;
+    }
+
+    ret = gpio_pin_interrupt_configure(gpio, WKE_PIN, GPIO_INT_EDGE_RISING);
+    if (ret) {
+        LOG_ERR("Failed to configure WKE interrupt, error: %d", ret);
+        return ret;
+    }
+
+    gpio_init_callback(&gpio_cb, wake_trigger_handler, BIT(WKE_PIN));
+
+    ret = gpio_add_callback(gpio, &gpio_cb);
+    if (ret) {
+        LOG_ERR("Failed to add wke interrupt callback, error: %d", ret);
         return ret;
     }else{
-        LOG_INF("Enabled wke interrupt success!");	
+        LOG_INF("Enabled wke interrupt success!");
     }
 
-    return ret;
+    return 0;
 }
 
-int sleepy(const uint32_t target_duration_ms){
-    int ret = 0;
+/******************************************************************************/
+/* CAPTURE WORKER                                                             */
+/******************************************************************************/
 
-    static int64_t unix_time_ms_last_call = 0;
-    int64_t unix_time_ms_now = k_uptime_get();
-    int64_t unix_time_ms_elapsed = unix_time_ms_now - unix_time_ms_last_call;
+int capture_f(const struct capture_task_t* const capture_task){
+    int ret;
+    watchdog_feed(); // TODO: BUG: this will fail if the capture is done less than once a day
 
-    if (unix_time_ms_elapsed < target_duration_ms) {
-        int64_t sleep_ms = target_duration_ms - unix_time_ms_elapsed;
-        if(sleep_ms > target_duration_ms){
-            LOG_ERR("bad last sleep time, defaulting to %u ms sleep", target_duration_ms);
-            k_msleep(target_duration_ms);
-                stats_global.is_trigger = 1;
-            return 0; // Assuming success after sleep
-            }
-        LOG_INF("Sleeping for: %ld ms", sleep_ms);//%lld is unsupported
-        k_msleep(sleep_ms);
-            stats_global.is_trigger = 1;
-        return 0; // Assuming success after sleep
-    } else {
-        LOG_WRN("Loop duration too long, continuing without sleep");
-        ret = -1; goto cleanup;
+    uint8_t mean_rgb;
+
+    get_time(&capture.time);
+    update_status();
+
+    LOG_INF("ov7675 initialisation");
+    ov7675_init(&mcfg.im_cfg, &capture);
+
+    LOG_INF("ov7675 capture");
+    int do_mean = (capture_task->respect_dark_noup) 
+                  && (mcfg.trig_cfg.dark_noup != 0xFF) 
+                  && (mcfg.trig_cfg.dark_noup != 0);
+
+    ov7675_capture_sdhc_buffered(mcfg.im_cfg.flash, &capture, do_mean, &mean_rgb);
+    LOG_INF("mean_rgb: %u", mean_rgb);
+
+    LOG_INF("ov7675 deinit");
+    ov7675_deinit(mcfg.im_cfg.flash);
+
+#ifdef CONFIG_DBG_SEND_IMAGE_RTT
+    sdhc_file_to_rtt(SCRATCH_FILE);
+#endif
+
+    LOG_INF("image -> sdhc");
+    ret = sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
+    if(ret < 0){LOG_ERR("sdhc_move_image fail! ret=%d",ret);}
+
+    LOG_INF("status -> sdhc");
+    ret = sdhc_write_status(mcfg.sd_cfg.status_path, &stats_global);
+    if(ret < 0){LOG_ERR("sdhc_write_status fail! ret=%d",ret);}
+
+    if(mcfg.im_cfg.format == JPG){
+        LOG_INF("jpg -> sdhc");
+        ret = sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
+        if(ret < 0){LOG_ERR("sdhc_write_jpg fail! ret=%d", ret);}
     }
 
-    ret = -3; goto cleanup;
-cleanup:
-    unix_time_ms_last_call = k_uptime_get();
-    return ret;
+    // check that this gracefully exits if the signal is low and continues with SD only logging for this loop
+    if (capture_task->upload){
+        if (!do_mean || ! (mean_rgb < mcfg.trig_cfg.dark_noup)){ /* if the image is not dark */
+            LOG_INF("image -> ftp");
+
+            ret = ftp_write_image(&mcfg.ftp_cfg, &capture);
+            if(ret){modem_network_deregister();}
+        }
+
+        LOG_INF("status -> ftp");
+        ret = ftp_write_status(&mcfg.ftp_cfg, &stats_global);
+        if(ret){modem_network_deregister();}
+    }
+
+    LOG_INF("done");
+
+    k_msleep(1000); //guarantee other threads time to execute
+    return 0;
 }
+
+void capture_worker_f(void *p1, void *p2, void *p3){
+    /*
+     * this thread should only start processing once setup() has passed
+     * in practice this guaranteed by only submitting tasks to the queue once
+     * setup() passes.
+     */
+    struct capture_task_t capture_task;
+
+    while(1){
+        if (!k_msgq_get(&capture_q, &capture_task, K_FOREVER)){ // always 0 for K_FOREVER unless queue is purged
+            int ret_cap = capture_f(&capture_task);
+            stats_global.captures++;
+            // TODO: what to do with ret?
+        }
+    }
+}
+
+/* setup the worker thread */
+#define CAPTURE_WORKER_THREAD_STACK_SIZE (4096)
+K_THREAD_DEFINE(capture_worker, CAPTURE_WORKER_THREAD_STACK_SIZE, capture_worker_f, NULL, NULL, NULL,
+        CONFIG_MAIN_THREAD_PRIORITY, K_ESSENTIAL, 0);
+
+/******************************************************************************/
+/* SETUP                                                                      */
+/******************************************************************************/
 
 int get_time(int32_t* ct){
     int ret = 0;
@@ -217,8 +330,6 @@ int setup(void){
     int ret = 0;
 
     ret = watchdog_init_and_start();
-
-    ret = init_wakeup_interrupt();
 
     ret = sdhc_mount();//very importaint for low power
 
@@ -284,117 +395,6 @@ int setup(void){
     return 0;
 }
 
-int do_upload(void){
-    int d = mcfg.trig_cfg.logging_decimation_ftp;
-    return (d > 0) && (stats_global.is_trigger || (0 == (stats_global.captures % d)));
-}
-
-int capture(const struct capture_task_t* const capture_task){
-    int ret;
-    watchdog_feed(); // TODO: BUG: this will fail if the capture is done less than once a day
-
-    uint8_t mean_rgb;
-
-    get_time(&capture.time);
-    update_status();
-
-    LOG_INF("ov7675 initialisation");
-    ov7675_init(&mcfg.im_cfg, &capture);
-
-    LOG_INF("ov7675 capture");
-    int do_mean = (mcfg.trig_cfg.dark_noup != 0xFF) && (mcfg.trig_cfg.dark_noup != 0) && (mcfg.trig_cfg.logging_decimation_ftp > 0);
-    ov7675_capture_sdhc_buffered(mcfg.im_cfg.flash, &capture, do_mean, &mean_rgb);
-    LOG_INF("mean_rgb: %u", mean_rgb);
-
-    LOG_INF("ov7675 deinit");
-    ov7675_deinit(mcfg.im_cfg.flash);
-
-#ifdef CONFIG_DBG_SEND_IMAGE_RTT
-    sdhc_file_to_rtt(SCRATCH_FILE);
-#endif
-
-    LOG_INF("image -> sdhc");
-    ret = sdhc_move_image(mcfg.sd_cfg.image_path, &capture);
-    if(ret < 0){LOG_ERR("sdhc_move_image fail! ret=%d",ret);}
-
-    LOG_INF("status -> sdhc");
-    ret = sdhc_write_status(mcfg.sd_cfg.status_path, &stats_global);
-    if(ret < 0){LOG_ERR("sdhc_write_status fail! ret=%d",ret);}
-
-    if(mcfg.im_cfg.format == JPG){
-        LOG_INF("jpg -> sdhc");
-        ret = sdhc_write_jpg(mcfg.sd_cfg.image_path, &capture);
-        if(ret < 0){LOG_ERR("sdhc_write_jpg fail! ret=%d", ret);}
-    }
-
-    // check that this gracefully exits if the signal is low and continues with SD only logging for this loop
-    if (do_upload()){
-        if (
-                stats_global.is_trigger
-                || !do_mean 
-                || ! (mean_rgb < mcfg.trig_cfg.dark_noup)
-            ){ /* if the image is not dark */
-            LOG_INF("image -> ftp");
-
-            ret = ftp_write_image(&mcfg.ftp_cfg, &capture);
-            if(ret){modem_network_deregister();}
-        }
-
-        LOG_INF("status -> ftp");
-        ret = ftp_write_status(&mcfg.ftp_cfg, &stats_global);
-        if(ret){modem_network_deregister();}
-    }
-
-
-    LOG_INF("done");
-    stats_global.is_trigger = 0;
-
-
-    stats_global.captures++;
-
-    k_msleep(1000); //guarantee other threads time to execute
-    return 0;
-}
-
-void capture_worker(void *p1, void *p2, void *p3){
-    /*
-     * this thread should only start processing once setup() has passed
-     * in practice this guaranteed by only submitting tasks to the queue once
-     * setup() passes.
-     */
-    struct capture_task_t capture_task;
-
-    while(1){
-        k_msgq_get(&capture_q, &capture_task, K_FOREVER); // always 0 for K_FOREVER
-        int ret = capture(&capture_task);
-        // TODO: what to do with ret?
-    }
-}
-
-int loop(void){
-    switch (mcfg.trig_cfg.trigger){
-    case TIME_TRIGGER:
-        LOG_INF("time sleep");
-        sleepy(mcfg.trig_cfg.logging_interval);
-        break;
-    case UART_TRIGGER:
-        LOG_INF("uart sleep");
-        // uart_sei();
-        sleepy(0);
-        // uart_cli();
-        break;
-    default:
-        LOG_ERR("trig_type misconfigred, oops!");
-        k_oops();
-        break;
-    }
-}
-
-
-#define CAPTURE_WORKER_THREAD_STACK_SIZE (4096)
-K_THREAD_DEFINE(capture_worker, 1024, CAPTURE_WORKER_THREAD_STACK_SIZE, NULL, NULL, NULL,
-        CONFIG_MAIN_THREAD_PRIORITY, K_ESSENTIAL, 0);
-
 int main(void){
     int ret = 0;
 
@@ -430,18 +430,20 @@ int main(void){
         //try call for help
     }
 
+
+    /* init capture triggers */
+    ret = init_time_trigger_capture(mcfg.trig_cfg.logging_interval);
+    ret = init_wake_trigger_capture(); /* failure not fatal */
+
    while(1){
-        loop();
+        k_sleep(K_FOREVER); /* execution now thread based */
     } 
 
+    /* this is dead code because all the execution threads are essential but this below is the correct graceful shutdown code */
     nrf_gpio_cfg_input(LED_FLASH_INBUILT_PIN, NRF_GPIO_PIN_PULLDOWN);//we haven't read the SD config file yet so we don't know which pin to pull down. We will guess the INBUILT one as it won't affect external UART if connected. This does mean that if the flash is external it will remain on until we read the config.
     nrf_gpio_cfg_input(WKE_PIN, NRF_GPIO_PIN_PULLDOWN);
     nrf_gpio_cfg_input(SCCB_PDN, NRF_GPIO_PIN_PULLUP);
 
-
-    while(1){
-        k_sleep(K_FOREVER);
-    }
     return 0;       // suppress compiler warning about main() having to return int
 }
 

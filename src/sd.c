@@ -345,7 +345,7 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
 }
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
-int sdhc_write_status(char* sdhc_path, struct status_t* status){
+int sdhc_write_status(const char* const sdhc_path, const struct status_t* const status){
     int ret = 0;
     char path[MAX_PATH];
     struct fs_file_t imf;
