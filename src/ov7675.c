@@ -205,7 +205,7 @@ void ov7675_awb(const int on){
     _ov7675_write_flag(REG_COM8, COM8_AWB, on);
 }
 
-void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* capture){
+void ov7675_init(const struct image_config_t* const im_cfg_p, struct capture_t* const capture){
     capture->resolution     = im_cfg_p->resolution;
     capture->format         = im_cfg_p->format;
     capture->aec            = im_cfg_p->aec;
@@ -420,7 +420,7 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
     fs_close(&imf);
     
     strcpy(capture->fp, SDHC_PATH(SCRATCH_FILE));
-    capture->where = DISK;
+    capture->where = DATA_LOCATION_DISK;
     capture->format = BMP;
 
     ov7675_aec(capture->aec);

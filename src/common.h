@@ -159,9 +159,9 @@ struct image_config_t {
 };
 
 enum cypher_t {
-    NONE = 0,
-    CAESAR,
-    SUFFIX,
+    CYPHER_NONE = 0,
+    CYPHER_CAESAR,
+    CYPHER_SUFFIX,
 };
 
 struct ftp_config_t {
@@ -202,7 +202,12 @@ struct master_config_t {
     struct sd_config_t sd_cfg;
 };
 
-enum data_location { SRAM = 0, DISK };
+enum data_location { 
+    DATA_LOCATION_NONE = 0,
+    DATA_LOCATION_SRAM, 
+    DATA_LOCATION_DISK,
+};
+
 struct capture_t {
     enum data_location where;
     char fp[MAX_PATH];

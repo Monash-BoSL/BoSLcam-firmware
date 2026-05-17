@@ -171,13 +171,13 @@ int suffix_decrypt(char** password_p, const char* suffix){
 
 int decrypt_password(char** password_p, const enum cypher_t cypher){
     switch(cypher){
-        case NONE:
+        case CYPHER_NONE:
             return 0;
             break;
-        case CAESAR:
+        case CYPHER_CAESAR:
             return caesar_decrypt(*password_p, CAESAR_KEY);
             break;
-        case SUFFIX:
+        case CYPHER_SUFFIX:
             return suffix_decrypt(password_p, SUFFIX_KEY);
             break;
     }

@@ -99,7 +99,7 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 
     struct fs_file_t imf;
     switch(capture->where){
-        case SRAM:
+        case DATA_LOCATION_SRAM:
             ret = ftp_put(path, image_resolutions[capture->resolution].bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
             if (ret < 0){LOG_ERR("put err %d", ret); goto cleanup;}
             else {LOG_INF("put ok");};
@@ -108,8 +108,8 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
             if (ret < 0){LOG_ERR("put err %d", ret); goto cleanup;}
             else {LOG_INF("put ok");};
 
-        break;
-        case DISK:
+            break;
+        case DATA_LOCATION_DISK:
             fs_file_t_init(&imf);
             ret = fs_open(&imf, capture->fp, FS_O_READ);
             int read_bytes;
@@ -128,7 +128,13 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
             }
             LOG_INF("put ok");
             fs_close(&imf);
-        break;
+            break;
+        case DATA_LOCATION_NONE:
+            LOG_ERR("data location not specified");
+            break;
+        default:
+            LOG_ERR("invalid data location (%d)", (int)capture->where);
+            break;
     }
 
 cleanup:

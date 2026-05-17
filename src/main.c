@@ -66,20 +66,10 @@ const struct device* gpio      = DEVICE_DT_GET(DT_NODELABEL(gpio0));
 const struct device* i2c_sccb  = DEVICE_DT_GET(DT_NODELABEL(i2c2));
 const struct device* spi_sram; /* init in a bit of a different way? */
 
-uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
+static uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
 static struct master_config_t mcfg;
-struct capture_t capture = {
-                            .data = image_buffer, 
-                            .capacity = sizeof(image_buffer), 
-                            .size = 0, 
 
-                            .aec = AEC_ON,
-                            .agc = AGC_ON,
-                            .resolution = QVGA, 
-                            .format = BMP, 
-                            .time = 0
-                            };
 struct status_t stats_global = {
                                 .system_time = 0, 
                                 .battery_voltage = -1, 
@@ -207,10 +197,16 @@ int capture_f(const struct capture_task_t* const capture_task){
     int ret;
     watchdog_feed(); // TODO: BUG: this will fail if the capture is done less than once a day
 
+    struct capture_t capture = {
+                                .data = image_buffer, 
+                                .capacity = sizeof(image_buffer), 
+                                .size = 0, 
+                                };
+
     uint8_t mean_rgb;
 
     get_time(&capture.time);
-    update_status();
+    update_status(capture.time);
 
     LOG_INF("ov7675 initialisation");
     ov7675_init(&mcfg.im_cfg, &capture);
@@ -301,8 +297,8 @@ int get_time(int32_t* ct){
     return 0;
 }
 
-int update_status(){
-    stats_global.system_time = capture.time;
+int update_status(int32_t time){
+    stats_global.system_time = time;
     slm_vbat(&stats_global.battery_voltage);
 
     return 0;

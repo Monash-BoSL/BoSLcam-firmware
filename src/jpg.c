@@ -89,7 +89,7 @@ int sdhc_write_jpg(char* sdhc_path, struct capture_t* capture){
     // fs_close(&jpgf);
     strcpy(capture->fp,path);
     capture->format=JPG;
-    capture->where=DISK;
+    capture->where=DATA_LOCATION_DISK;
 
 
     return (0 > ret ? ret : 0);
