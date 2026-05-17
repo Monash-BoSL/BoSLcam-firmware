@@ -190,7 +190,7 @@ extern int yyparse(void);
 extern YY_BUFFER_STATE yy_scan_bytes(char* str, size_t len);
 extern void yy_delete_buffer(YY_BUFFER_STATE buffer);
 extern struct master_config_t* parser_config_handle;
-int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
+int sdhc_load_config(const char* const sdhc_path, struct master_config_t* const master_cfg){
     int ret = -1;
     char path[MAX_PATH];
     struct fs_file_t imf;
@@ -240,7 +240,7 @@ int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
 }
 
 
-int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
+int sdhc_load_last_status_time(const char* const sdhc_path, struct tm* const cal){
     char path[MAX_PATH];
     struct fs_file_t imf;
     char strtime[80];
@@ -300,7 +300,7 @@ cleanup:
 
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
-int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
+int sdhc_move_image(const char* const sdhc_path, struct capture_t* const capture){
     int ret = 0;
     char path[MAX_PATH];
 
@@ -308,7 +308,7 @@ int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
         LOG_ERR("file name too long");
         return -ENAMETOOLONG;
     }
-    sprintf(path, "%s%s%08X.bmp", DISK_MOUNT_PT,sdhc_path, capture->time);
+    sprintf(path, "%s%s%08X.bmp", DISK_MOUNT_PT,sdhc_path, capture->time_wall);
 
     fs_mkdirs(path);
     // ret = fs_rename(capture->fp, path);
@@ -320,7 +320,7 @@ int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
 }
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
-int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
+int sdhc_write_image(const char* const sdhc_path, const struct capture_t* const capture){
     char path[MAX_PATH];
     struct fs_file_t imf;
 
@@ -329,7 +329,7 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
         LOG_ERR("file name too long");
         return -ENAMETOOLONG;
     }
-    sprintf(path, "%s%s%08X.bmp", DISK_MOUNT_PT,sdhc_path, capture->time);
+    sprintf(path, "%s%s%08X.bmp", DISK_MOUNT_PT,sdhc_path, capture->time_wall);
 
 
     fs_file_t_init(&imf);
@@ -366,7 +366,7 @@ int sdhc_write_status(const char* const sdhc_path, const struct status_t* const 
     if(ret < 0){return ret;}
 
     //here is where we write what we want to log to file
-    unix_date(&cal, status->system_time);
+    unix_date(&cal, status->time_wall);
     strftime(path, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
     sprintf(path+strlen(path), ",%s,%d,%d,%s,%d,%d\n",
                                 get_time_source_str(status->time_src),
@@ -423,7 +423,7 @@ int clear_rtt_image(void){
 }
 
 
-int sdhc_file_to_rtt(char* sdhc_path){
+int sdhc_file_to_rtt(const char* const sdhc_path){
     int ret = 0;
     char path[MAX_PATH];
     struct fs_file_t imf;

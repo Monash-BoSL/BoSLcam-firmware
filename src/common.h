@@ -222,7 +222,7 @@ struct capture_t {
     enum image_resolution resolution;
     enum image_format format;
 
-    int32_t time;
+    int32_t time_wall;
 };
 
 enum time_source {
@@ -236,7 +236,7 @@ enum time_source {
 
 
 struct status_t {
-    int32_t system_time;
+    int32_t time_wall;
     int32_t battery_voltage;
     uint32_t captures;
     enum time_source time_src;

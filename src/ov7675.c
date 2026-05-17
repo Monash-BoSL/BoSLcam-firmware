@@ -350,7 +350,7 @@ int ov7675_capture(const enum flash_t flash, struct capture_t* capture, int do_m
 }
 
 #define EBUFFERTOOSMALL 1
-int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* capture, int do_mean, uint8_t* mean_rgb){
+int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* const capture, const int do_mean, uint8_t* const mean_rgb){
     /* mean_rgb is populated with the mean R+G+B greyscale value */
     int ret = 0;
     const uint16_t line_width = ov7675_resolutions[capture->resolution].width;//line width in pixels

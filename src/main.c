@@ -70,8 +70,8 @@ static uint8_t image_buffer[2*QVGA_WIDTH*QVGA_HEIGHT];
 
 static struct master_config_t mcfg;
 
-struct status_t stats_global = {
-                                .system_time = 0, 
+struct status_t status_g = {
+                                .time_wall = 0, /* time at which this status is valid */
                                 .battery_voltage = -1, 
                                 .captures = 0, 
                                 .mccmnc = "\0\0\0\0\0\0\0", 
@@ -82,8 +82,8 @@ struct status_t stats_global = {
 
 
 // This function puts a capture task into the capture queue. If the queue is full, it will drop the oldest item to make room for the new one.
-void msgq_put_force(struct k_msgq *q, struct capture_task_t *task) {
-    int ret_put = k_msgq_put(q, task, K_NO_WAIT);
+void msgq_put_force(struct k_msgq* const q, const struct capture_task_t* const task) {
+    const int ret_put = k_msgq_put(q, task, K_NO_WAIT);
 
     switch (ret_put) {
         case 0:
@@ -112,7 +112,7 @@ void msgq_put_force(struct k_msgq *q, struct capture_task_t *task) {
 /* TIME TRIGGER                                                               */
 /******************************************************************************/
 
-void time_trigger_handler(void) {
+void time_trigger_handler(struct k_timer* timer_id) {
     static int time_trigger_count = 0;
     const int64_t now_ms = k_uptime_get();
 
@@ -193,28 +193,51 @@ int init_wake_trigger_capture(void){
 /* CAPTURE WORKER                                                             */
 /******************************************************************************/
 
+int unix_time_now(int32_t* ct_wall){
+    int ret = 0;
+
+    int64_t unix_time_ms;
+    ret = date_time_now(&unix_time_ms);
+    if(ret < 0){return ret;}
+    *ct_wall = (uint32_t) (unix_time_ms/1000);
+
+    return 0;
+}
+
+int update_status(int32_t time_wall){
+    status_g.time_wall = time_wall;
+    slm_vbat(&status_g.battery_voltage);
+
+    return 0;
+}
+
+
 int capture_f(const struct capture_task_t* const capture_task){
     int ret;
     watchdog_feed(); // TODO: BUG: this will fail if the capture is done less than once a day
+
+    uint8_t mean_rgb;
+
+    int32_t time_wall = 0;
+    unix_time_now(&time_wall);
+
+    update_status(time_wall);
 
     struct capture_t capture = {
                                 .data = image_buffer, 
                                 .capacity = sizeof(image_buffer), 
                                 .size = 0, 
+
+                                .time_wall = time_wall,
                                 };
-
-    uint8_t mean_rgb;
-
-    get_time(&capture.time);
-    update_status(capture.time);
 
     LOG_INF("ov7675 initialisation");
     ov7675_init(&mcfg.im_cfg, &capture);
 
     LOG_INF("ov7675 capture");
-    int do_mean = (capture_task->respect_dark_noup) 
-                  && (mcfg.trig_cfg.dark_noup != 0xFF) 
-                  && (mcfg.trig_cfg.dark_noup != 0);
+    const int do_mean =    (capture_task->respect_dark_noup) 
+                        && (mcfg.trig_cfg.dark_noup != 0xFF) 
+                        && (mcfg.trig_cfg.dark_noup != 0);
 
     ov7675_capture_sdhc_buffered(mcfg.im_cfg.flash, &capture, do_mean, &mean_rgb);
     LOG_INF("mean_rgb: %u", mean_rgb);
@@ -231,7 +254,7 @@ int capture_f(const struct capture_task_t* const capture_task){
     if(ret < 0){LOG_ERR("sdhc_move_image fail! ret=%d",ret);}
 
     LOG_INF("status -> sdhc");
-    ret = sdhc_write_status(mcfg.sd_cfg.status_path, &stats_global);
+    ret = sdhc_write_status(mcfg.sd_cfg.status_path, &status_g);
     if(ret < 0){LOG_ERR("sdhc_write_status fail! ret=%d",ret);}
 
     if(mcfg.im_cfg.format == JPG){
@@ -250,7 +273,7 @@ int capture_f(const struct capture_task_t* const capture_task){
         }
 
         LOG_INF("status -> ftp");
-        ret = ftp_write_status(&mcfg.ftp_cfg, &stats_global);
+        ret = ftp_write_status(&mcfg.ftp_cfg, &status_g);
         if(ret){modem_network_deregister();}
     }
 
@@ -271,7 +294,7 @@ void capture_worker_f(void *p1, void *p2, void *p3){
     while(1){
         if (!k_msgq_get(&capture_q, &capture_task, K_FOREVER)){ // always 0 for K_FOREVER unless queue is purged
             int ret_cap = capture_f(&capture_task);
-            stats_global.captures++;
+            status_g.captures++;
             // TODO: what to do with ret?
         }
     }
@@ -286,38 +309,19 @@ K_THREAD_DEFINE(capture_worker, CAPTURE_WORKER_THREAD_STACK_SIZE, capture_worker
 /* SETUP                                                                      */
 /******************************************************************************/
 
-int get_time(int32_t* ct){
-    int ret = 0;
-
-    int64_t unix_time_ms;
-    ret = date_time_now(&unix_time_ms);
-    if(ret < 0){return ret;}
-    *ct = (uint32_t) (unix_time_ms/1000);
-
-    return 0;
-}
-
-int update_status(int32_t time){
-    stats_global.system_time = time;
-    slm_vbat(&stats_global.battery_voltage);
-
-    return 0;
-}
-
-
 void time_source_stats_async(const struct date_time_evt* evt){
     switch (evt->type){
     case DATE_TIME_OBTAINED_MODEM:
-        stats_global.time_src = NETWORK_TIME;
+        status_g.time_src = NETWORK_TIME;
         break;
     case DATE_TIME_OBTAINED_NTP:
-        stats_global.time_src = NTP_TIME;
+        status_g.time_src = NTP_TIME;
         break;
     case DATE_TIME_OBTAINED_EXT:
-        stats_global.time_src = EXT_TIME;
+        status_g.time_src = EXT_TIME;
         break;
     case DATE_TIME_NOT_OBTAINED:
-        stats_global.time_src = NO_TIME;
+        status_g.time_src = NO_TIME;
         break;
     }
 }
@@ -355,7 +359,7 @@ int setup(void){
                 if(date_time_is_valid()){break;}
                 k_msleep(10);
             }
-            stats_global.time_src = NETWORK_TIME;
+            status_g.time_src = NETWORK_TIME;
         }
     }
 
@@ -367,7 +371,7 @@ int setup(void){
         ret = sdhc_load_last_status_time(mcfg.sd_cfg.status_path, &cal);
         if(ret == 0){
             ret = date_time_set(&cal);
-            stats_global.time_src = FS_TIME;
+            status_g.time_src = FS_TIME;
         }
     }
     if(!date_time_is_valid()){//then from default time epoch
@@ -383,7 +387,7 @@ int setup(void){
                             .tm_isdst = 0,
                         };//2020/01/01-00:00:00 UTC
         ret = date_time_set(&cal);
-        stats_global.time_src = NO_TIME;
+        status_g.time_src = NO_TIME;
     }
     if(!date_time_is_valid()){return -ENODATA;}
 

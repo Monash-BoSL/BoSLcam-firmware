@@ -47,7 +47,7 @@ int ftp_mkdirs(const char* path) {
     return res;//make sure that we return a nice error code here.
 }
 
-int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
+int ftp_write_image(const struct ftp_config_t* const ftp_cfg_p, const struct capture_t* const capture){
     int ret = 0;
     char path[MAX_PATH];
 
@@ -60,11 +60,14 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 
     switch(capture->format){
         case BMP:
-            sprintf(path, "%s%08X.bmp", ftp_cfg_p->image_path, capture->time);
+            sprintf(path, "%s%08X.bmp", ftp_cfg_p->image_path, capture->time_wall);
         break;
         case JPG:
-            sprintf(path, "%s%08X.jpg", ftp_cfg_p->image_path, capture->time);
+            sprintf(path, "%s%08X.jpg", ftp_cfg_p->image_path, capture->time_wall);
         break;
+        default:
+            LOG_ERR("bad capture format (%d)", (int)(capture->format));
+            return -1;
     }
 
     // ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CGMR");
@@ -144,14 +147,14 @@ cleanup:
     return ret;
 }
 
-int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
+int ftp_write_status(const struct ftp_config_t* const ftp_cfg_p, const struct status_t* const status){
     int ret = 0;
     char statstr[MAX_PATH];
     struct tm cal;
 
     LOG_INF("modem begin");
 
-    unix_date(&cal, status->system_time);
+    unix_date(&cal, status->time_wall);
     strftime(statstr, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
     sprintf(statstr+strlen(statstr), ",%s,%d,%d,%s,%d,%d\n",
                                 get_time_source_str(status->time_src),
