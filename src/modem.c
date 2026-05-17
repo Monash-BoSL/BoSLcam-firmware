@@ -54,7 +54,6 @@ static void shutdown_decrementer_worker(void *p1, void *p2, void *p3)
         LOG_INF("taking semaphore taken. new value: %d", k_sem_count_get(&modem_recent_shutdown_sem));
     }
 }
-// K_THREAD_DEFINE(modem_recent_shutdown_worker, 512, shutdown_decrementer_worker, NULL, NULL, NULL,
 K_THREAD_DEFINE(modem_recent_shutdown_worker, 1024, shutdown_decrementer_worker, NULL, NULL, NULL,
         K_LOWEST_APPLICATION_THREAD_PRIO, K_ESSENTIAL, 0);
 

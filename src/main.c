@@ -51,6 +51,12 @@
 [ ] find best idle states for pins (eg: 28) for low power
 ****************************************************/
 
+struct capture_task_t {
+    int64_t requested_at_ms;
+};
+
+#define CAPTURE_QUEUE_SIZE 5
+K_MSGQ_DEFINE(capture_q, sizeof(struct capture_task_t), CAPTURE_QUEUE_SIZE, 1)
 
 LOG_MODULE_REGISTER(main);
 
@@ -86,19 +92,39 @@ struct status_t stats_global = {
 static const struct device *gpio_dev = DEVICE_DT_GET(DT_NODELABEL(gpio0));
 static struct gpio_callback gpio_cb;
 
-static K_SEM_DEFINE(trigger_sem, 0, 1);
-static int64_t last_wakeup_trigger_ms = 0;
 
-void pin_interrupt_handler(const struct device *dev,
+#define WAKE_PIN_TRIGGER_HOLDOUT_MS (5000)
+
+static int64_t last_wakeup_trigger_ms = 0;
+void wake_pin_trigger_handler(const struct device *dev,
                            struct gpio_callback *cb,
                            uint32_t pins) {
     int64_t now_ms = k_uptime_get();
-
-    if ((now_ms - last_wakeup_trigger_ms) < 5000) { return; }
-
+    if ((now_ms - last_wakeup_trigger_ms) < WAKE_PIN_TRIGGER_HOLDOUT_MS) { return; }
     last_wakeup_trigger_ms = now_ms;
-    k_sem_give(&trigger_sem);
+
+    struct capture_task_t capture_task = {
+        .requested_at_ms = now_ms,
+    };
+
+    int ret_put = k_msgq_put(&capture_q, &capture_task, K_NO_WAIT);
+    switch (ret_put){
+        case 0:
+            break;
+
+        case -ENOMSG:
+        case -EAGAIN:
+            LOG_WRN("capture queue full (ret=%d): cannot push wake trigger capture", ret_put);
+            break;
+
+        default:
+            LOG_ERR("unexpected msgq error (ret=%d)", ret_put);
+            break;
+    }
+
 }
+
+// TODO: handle if the tasks bet push on faster than they are drained out (rate limiting)
 
 int init_wakeup_interrupt(void){
     int ret = 0;
@@ -107,7 +133,7 @@ int init_wakeup_interrupt(void){
 
     ret = gpio_pin_interrupt_configure(gpio_dev, WKE_PIN, GPIO_INT_EDGE_RISING);
 
-    gpio_init_callback(&gpio_cb, pin_interrupt_handler, BIT(WKE_PIN));
+    gpio_init_callback(&gpio_cb, wake_pin_trigger_handler, BIT(WKE_PIN));
 
     ret = gpio_add_callback(gpio_dev, &gpio_cb);
 
@@ -132,20 +158,14 @@ int sleepy(const uint32_t target_duration_ms){
         int64_t sleep_ms = target_duration_ms - unix_time_ms_elapsed;
         if(sleep_ms > target_duration_ms){
             LOG_ERR("bad last sleep time, defaulting to %u ms sleep", target_duration_ms);
-            if(k_sem_take(&trigger_sem, K_MSEC(target_duration_ms))){
-                ret = -4; goto cleanup;
-            } else {
+            k_msleep(target_duration_ms);
                 stats_global.is_trigger = 1;
-                return ret;
+            return 0; // Assuming success after sleep
             }
-        }
         LOG_INF("Sleeping for: %ld ms", sleep_ms);//%lld is unsupported
-        if(k_sem_take(&trigger_sem, K_MSEC(sleep_ms))){
-            goto cleanup;
-        } else {
+        k_msleep(sleep_ms);
             stats_global.is_trigger = 1;
-            return ret;
-        }
+        return 0; // Assuming success after sleep
     } else {
         LOG_WRN("Loop duration too long, continuing without sleep");
         ret = -1; goto cleanup;
@@ -269,9 +289,9 @@ int do_upload(void){
     return (d > 0) && (stats_global.is_trigger || (0 == (stats_global.captures % d)));
 }
 
-int loop(void){
+int capture(const struct capture_task_t* const capture_task){
     int ret;
-    watchdog_feed();
+    watchdog_feed(); // TODO: BUG: this will fail if the capture is done less than once a day
 
     uint8_t mean_rgb;
 
@@ -329,6 +349,29 @@ int loop(void){
     LOG_INF("done");
     stats_global.is_trigger = 0;
 
+
+    stats_global.captures++;
+
+    k_msleep(1000); //guarantee other threads time to execute
+    return 0;
+}
+
+void capture_worker(void *p1, void *p2, void *p3){
+    /*
+     * this thread should only start processing once setup() has passed
+     * in practice this guaranteed by only submitting tasks to the queue once
+     * setup() passes.
+     */
+    struct capture_task_t capture_task;
+
+    while(1){
+        k_msgq_get(&capture_q, &capture_task, K_FOREVER); // always 0 for K_FOREVER
+        int ret = capture(&capture_task);
+        // TODO: what to do with ret?
+    }
+}
+
+int loop(void){
     switch (mcfg.trig_cfg.trigger){
     case TIME_TRIGGER:
         LOG_INF("time sleep");
@@ -345,13 +388,12 @@ int loop(void){
         k_oops();
         break;
     }
-
-    stats_global.captures++;
-
-    k_msleep(1000); //guarantee other threads time to execute
-    return 0;
 }
 
+
+#define CAPTURE_WORKER_THREAD_STACK_SIZE (4096)
+K_THREAD_DEFINE(capture_worker, 1024, CAPTURE_WORKER_THREAD_STACK_SIZE, NULL, NULL, NULL,
+        CONFIG_MAIN_THREAD_PRIORITY, K_ESSENTIAL, 0);
 
 int main(void){
     int ret = 0;
@@ -375,6 +417,7 @@ int main(void){
     NRF_TWIM2->ENABLE = 0;
 
 
+    /* useful for knowing application has launched in the field */
     led(1);
     k_msleep(1000);
     led(0);
@@ -387,9 +430,9 @@ int main(void){
         //try call for help
     }
 
-    while(1){
+   while(1){
         loop();
-    }
+    } 
 
     nrf_gpio_cfg_input(LED_FLASH_INBUILT_PIN, NRF_GPIO_PIN_PULLDOWN);//we haven't read the SD config file yet so we don't know which pin to pull down. We will guess the INBUILT one as it won't affect external UART if connected. This does mean that if the flash is external it will remain on until we read the config.
     nrf_gpio_cfg_input(WKE_PIN, NRF_GPIO_PIN_PULLDOWN);
@@ -412,3 +455,4 @@ void _dbg_config_overlay(struct master_config_t* mcfg){
     mcfg->trig_cfg.dark_noup = 30;
 }
 #endif
+
