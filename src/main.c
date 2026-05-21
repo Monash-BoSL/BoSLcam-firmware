@@ -22,8 +22,8 @@
 #endif
 
 /*************** VERSION NUMBER ********************/
-#define _VERSION "v1.7.0rc"
-// #define _VERSION "v1.6.0"
+#define _VERSION "v1.7.0"
+// #define _VERSION "v1.7.1rc"
 /*************** TODO *******************************
 [X] check that time source remains correct when modem is reset
 [X] add backup DNS configuration
