@@ -247,11 +247,13 @@ int modem_current_mccmnc(char* mccmnc){
 
 int modem_signal_strength(uint8_t* rsrq_p, uint8_t* rsrp_p){
     int ret = 0;
-    ret = nrf_modem_at_scanf("AT+CESQ", "+CESQ: %*d,%*d,%*d,%*d,%d,%d", rsrq_p, rsrp_p);
-    if(ret != 2){
+    ret = nrf_modem_at_scanf("AT+CESQ", "+CESQ: %*d,%*d,%*d,%*d,%hhu,%hhu", rsrq_p, rsrp_p);
+    if(ret == 2){
+        return 0;
+    } else {
         *rsrq_p = 0xFF;
         *rsrp_p = 0xFF;
-        return 0;
+        return -1;
     }
     return -1;
 }

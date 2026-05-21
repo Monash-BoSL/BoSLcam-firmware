@@ -63,10 +63,12 @@
 #define SCCB_HREF	(12)
 #define SCCB_PCLK	(13)
 #define SCCB_XCLK	(14)
-#define SCCB_PEN	(15)
+// #define SCCB_PEN	(15)
 #define SCCB_PDN	(16)
 
 #define DBGPIN		(18)
+
+#define WKE_PIN                  (15)
 
 #define TX_PIN                  (19)
 
@@ -161,7 +163,6 @@ enum cypher_t {
     SUFFIX,
 };
 
-
 struct ftp_config_t {
     char* apn;
     char* mccmnc;//numertic network operator code
@@ -237,6 +238,7 @@ struct status_t {
     uint8_t rsrq;
     uint8_t rsrp;
     uint8_t network_searched; 
+    uint8_t is_trigger;
 };
 
 

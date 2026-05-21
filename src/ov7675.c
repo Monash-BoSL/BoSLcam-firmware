@@ -217,7 +217,7 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
     LOG_INF("bind %s\n", i2c_sccb->name);
 
     //setup gpio for all pins
-    gpio_pin_configure(gpio, SCCB_PEN, GPIO_OUTPUT);
+    // gpio_pin_configure(gpio, SCCB_PEN, GPIO_OUTPUT);
     gpio_pin_configure(gpio, SCCB_PDN, GPIO_OUTPUT);
     gpio_pin_configure(gpio, im_cfg_p->flash, GPIO_OUTPUT);
     for(int i = 0; i < 8; i++){
@@ -226,7 +226,7 @@ void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* captur
     gpio_pin_configure(gpio, SCCB_VS, GPIO_INPUT);
     gpio_pin_configure(gpio, SCCB_HREF, GPIO_INPUT);
     gpio_pin_configure(gpio, SCCB_PCLK, GPIO_INPUT);
-    gpio_pin_set_raw(gpio, SCCB_PEN, 1);
+    // gpio_pin_set_raw(gpio, SCCB_PEN, 1);
     gpio_pin_set_raw(gpio, SCCB_PDN, 0);
     gpio_pin_set_raw(gpio, im_cfg_p->flash, im_cfg_p->use_flash);
 
@@ -439,7 +439,7 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
 
 void ov7675_deinit(const enum flash_t flash){
     gpio_pin_set_raw(gpio, flash, 0);
-    nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
+    // nrf_gpio_cfg_input( SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
     nrf_gpio_cfg_input( SCCB_PDN, NRF_GPIO_PIN_PULLUP);
 
     nrf_timer_task_trigger(NRF_TIMER0,NRF_TIMER_TASK_STOP);

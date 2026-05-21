@@ -22,8 +22,8 @@
 #endif
 
 /*************** VERSION NUMBER ********************/
-// #define _VERSION "v1.6.1rc"
-#define _VERSION "v1.6.0"
+#define _VERSION "v1.7.0"
+// #define _VERSION "v1.7.1rc"
 /*************** TODO *******************************
 [X] check that time source remains correct when modem is reset
 [X] add backup DNS configuration
@@ -79,10 +79,49 @@ struct status_t stats_global = {
                                 .mccmnc = "\0\0\0\0\0\0\0", 
                                 .rsrq = 0xFF, 
                                 .rsrp = 0xFF,
-                                .network_searched = 0
+                                .network_searched = 0,
+                                .is_trigger = 0,
                                 };
 
-int sleepy(uint32_t target_duration_ms){
+static const struct device *gpio_dev = DEVICE_DT_GET(DT_NODELABEL(gpio0));
+static struct gpio_callback gpio_cb;
+
+static K_SEM_DEFINE(trigger_sem, 0, 1);
+static int64_t last_wakeup_trigger_ms = 0;
+
+void pin_interrupt_handler(const struct device *dev,
+                           struct gpio_callback *cb,
+                           uint32_t pins) {
+    int64_t now_ms = k_uptime_get();
+
+    if ((now_ms - last_wakeup_trigger_ms) < 5000) { return; }
+
+    last_wakeup_trigger_ms = now_ms;
+    k_sem_give(&trigger_sem);
+}
+
+int init_wakeup_interrupt(void){
+    int ret = 0;
+
+    ret = gpio_pin_configure(gpio_dev, WKE_PIN, GPIO_INPUT | GPIO_PULL_DOWN);
+
+    ret = gpio_pin_interrupt_configure(gpio_dev, WKE_PIN, GPIO_INT_EDGE_RISING);
+
+    gpio_init_callback(&gpio_cb, pin_interrupt_handler, BIT(WKE_PIN));
+
+    ret = gpio_add_callback(gpio_dev, &gpio_cb);
+
+    if (ret) {
+        LOG_ERR("Failed to enable wke interrupt, error: %d", ret);
+        return ret;
+    }else{
+        LOG_INF("Enabled wke interrupt success!");	
+    }
+
+    return ret;
+}
+
+int sleepy(const uint32_t target_duration_ms){
     int ret = 0;
 
     static int64_t unix_time_ms_last_call = 0;
@@ -93,11 +132,20 @@ int sleepy(uint32_t target_duration_ms){
         int64_t sleep_ms = target_duration_ms - unix_time_ms_elapsed;
         if(sleep_ms > target_duration_ms){
             LOG_ERR("bad last sleep time, defaulting to %u ms sleep", target_duration_ms);
-            k_msleep(target_duration_ms);
-            ret = -4; goto cleanup;
+            if(k_sem_take(&trigger_sem, K_MSEC(target_duration_ms))){
+                ret = -4; goto cleanup;
+            } else {
+                stats_global.is_trigger = 1;
+                return ret;
+            }
         }
         LOG_INF("Sleeping for: %ld ms", sleep_ms);//%lld is unsupported
-        ret = k_msleep(sleep_ms); goto cleanup;
+        if(k_sem_take(&trigger_sem, K_MSEC(sleep_ms))){
+            goto cleanup;
+        } else {
+            stats_global.is_trigger = 1;
+            return ret;
+        }
     } else {
         LOG_WRN("Loop duration too long, continuing without sleep");
         ret = -1; goto cleanup;
@@ -149,6 +197,8 @@ int setup(void){
     int ret = 0;
 
     ret = watchdog_init_and_start();
+
+    ret = init_wakeup_interrupt();
 
     ret = sdhc_mount();//very importaint for low power
 
@@ -214,9 +264,9 @@ int setup(void){
     return 0;
 }
 
-int do_upload(){
+int do_upload(void){
     int d = mcfg.trig_cfg.logging_decimation_ftp;
-    return ((d > 0) && (0 == (stats_global.captures % d)));
+    return (d > 0) && (stats_global.is_trigger || (0 == (stats_global.captures % d)));
 }
 
 int loop(void){
@@ -259,7 +309,11 @@ int loop(void){
 
     // check that this gracefully exits if the signal is low and continues with SD only logging for this loop
     if (do_upload()){
-        if (!do_mean || ! (mean_rgb < mcfg.trig_cfg.dark_noup)){ /* if the image is not dark */
+        if (
+                stats_global.is_trigger
+                || !do_mean 
+                || ! (mean_rgb < mcfg.trig_cfg.dark_noup)
+            ){ /* if the image is not dark */
             LOG_INF("image -> ftp");
 
             ret = ftp_write_image(&mcfg.ftp_cfg, &capture);
@@ -273,6 +327,7 @@ int loop(void){
 
 
     LOG_INF("done");
+    stats_global.is_trigger = 0;
 
     switch (mcfg.trig_cfg.trigger){
     case TIME_TRIGGER:
@@ -337,7 +392,7 @@ int main(void){
     }
 
     nrf_gpio_cfg_input(LED_FLASH_INBUILT_PIN, NRF_GPIO_PIN_PULLDOWN);//we haven't read the SD config file yet so we don't know which pin to pull down. We will guess the INBUILT one as it won't affect external UART if connected. This does mean that if the flash is external it will remain on until we read the config.
-    nrf_gpio_cfg_input(SCCB_PEN, NRF_GPIO_PIN_PULLDOWN);
+    nrf_gpio_cfg_input(WKE_PIN, NRF_GPIO_PIN_PULLDOWN);
     nrf_gpio_cfg_input(SCCB_PDN, NRF_GPIO_PIN_PULLUP);
 
 
@@ -350,8 +405,9 @@ int main(void){
 #ifdef CONFIG_DBG_CONFIG_OVERLAY
 void _dbg_config_overlay(struct master_config_t* mcfg){
     mcfg->im_cfg.format = BMP;
-    mcfg->im_cfg.resolution = VGA;
-    //mcfg->trig_cfg.logging_interval = 120000;
+    mcfg->im_cfg.resolution = QVGA;
+    mcfg->im_cfg.use_flash = 0;
+    mcfg->trig_cfg.logging_interval = 240000;
     mcfg->trig_cfg.logging_decimation_ftp = 0;
     mcfg->trig_cfg.dark_noup = 30;
 }
