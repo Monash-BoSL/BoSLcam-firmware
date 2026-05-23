@@ -19,6 +19,10 @@
     #include <zephyr/fs/fs.h>
     #include <zephyr/storage/disk_access.h>
 
+    #include <zephyr/device.h>
+    #include <zephyr/drivers/hwinfo.h>
+    #include <zephyr/logging/log.h>
+
     #define log_strdup
 
     #if NCS_VERSION_NUMBER == 0x020100

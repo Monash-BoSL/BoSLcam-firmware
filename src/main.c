@@ -15,6 +15,7 @@
 #include "ftp.h"
 #include "jpg.h"
 #include "watchdog.h"
+#include "resets.h"
 
 
 #ifdef CONFIG_DBG_TEST_RUNTIME
@@ -400,6 +401,8 @@ int setup(void){
 
 int main(void){
     int ret = 0;
+
+    log_reset_reason();
 
     // for the test suit to work it should always remain here as the first line of code!
 #ifdef CONFIG_DBG_TEST_RUNTIME
