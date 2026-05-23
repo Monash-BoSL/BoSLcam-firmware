@@ -3,8 +3,14 @@
  *
  * Tiny JPEG Encoder
  *  - Sergio Gonzalez
+ * 
+ * Modified Stephen Catsamas 2026
+ *  - Added custom allocator to remove large objects from the stack
+ *  - Allocator points to empty region of sram (~ 10 kB needed)
+ *  - Useful on RTOS where stack space is at a premium
  *
  * This is a readable and simple single-header JPEG encoder.
+ * 2026: this now depends on the tmalloc.c memory allocator.
  *
  * Features
  *  - Implements Baseline DCT JPEG compression.
@@ -52,13 +58,15 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#include "tmalloc.h"
 
 #define TJE_IMPLEMENTATION
 #include "tiny_jpeg.h"
 
+char* workspace[0x4000];
 
-int main()
-{
+
+int main() {
     int width, height, color_format;
     unsigned char* data = stbi_load("in.bmp", &width, &height, &color_format, 0);
     if ( !data ) {
@@ -66,7 +74,10 @@ int main()
         return EXIT_FAILURE;
     }
 
-    if ( !tje_encode_to_file("out.jpg", width, height, color_format, data) ) {
+    tmalloc_t tmalloc;
+    t_init(&tmalloc, workspace, sizeof(workspace));
+
+    if ( !tje_encode_to_file("out.jpg", width, height, color_format, data, &tmalloc) ) {
         fprintf(stderr, "Could not write JPEG\n");
         return EXIT_FAILURE;
     }
@@ -96,6 +107,8 @@ extern "C"
 
 #ifndef TJE_HEADER_GUARD
 #define TJE_HEADER_GUARD
+
+#include "tmalloc.h"
 
 // - TJEColorFormat -
 //
@@ -131,7 +144,8 @@ struct buffer_closure {
 //      dest_path:          filename to which we will write. e.g. "out.jpg"
 //      width, height:      image size in pixels
 //      color_format:       2 is RGB565, 3 is RGB888. 4 is RGBA. Those are the only supported values
-//      bc->src_data:           pointer to the pixel data.
+//      bc->src_data:       pointer to the pixel data.
+//      tmalloc:            tmalloc handle with at least ~ 10 kB of free space
 //
 //  RETURN:
 //      0 on error. 1 on success.
@@ -140,7 +154,8 @@ int tje_encode_to_file(const char* dest_path,
                        const int width,
                        const int height,
                        TJEColorFormat color_format,
-                       const unsigned char* src_data);
+                       const unsigned char* src_data,
+                       tmalloc_t* tmalloc);
 
 // - tje_encode_to_file_at_quality -
 //
@@ -155,6 +170,7 @@ int tje_encode_to_file(const char* dest_path,
 //      width, height:      image size in pixels
 //      color_format:       2 is RGB565, 3 is RGB888. 4 is RGBA. Those are the only supported values
 //      bc->src_data:           pointer to the pixel data.
+//      tmalloc:            tmalloc handle with at least ~ 10 kB of free space
 //
 //  RETURN:
 //      0 on error. 1 on success.
@@ -164,7 +180,9 @@ int tje_encode_to_file_at_quality(const char* dest_path,
                                   const int width,
                                   const int height,
                                   TJEColorFormat color_format,
-                                  const unsigned char* src_data);
+                                  const unsigned char* src_data,
+                                  tmalloc_t* tmalloc
+                                );
 
 
 
@@ -185,7 +203,8 @@ int tje_encode_with_func(tje_write_func* func,
                          const int width,
                          const int height,
                          TJEColorFormat color_format,
-                         struct buffer_closure* bc
+                         struct buffer_closure* bc,
+                         tmalloc_t* tmalloc
                          );
 
 #endif // TJE_HEADER_GUARD
@@ -824,11 +843,12 @@ static void tjei_encode_and_write_MCU(TJEState* state,
                                       uint8_t* huff_ac_len, uint16_t* huff_ac_code,
                                       int* pred,  // Previous DC coefficient
                                       uint32_t* bitbuffer,  // Bitstack.
-                                      uint32_t* location)
+                                      uint32_t* location,
+                                      int* du, /* int[64] */ // Data unit in zig-zag order
+                                      float* dct_mcu /* float [64] */
+                                    )
 {
-    int du[64];  // Data unit in zig-zag order
-
-    float dct_mcu[64];
+    /* do du and dct_mcu need to be zero-initialised? */
     memcpy(dct_mcu, mcu, 64 * sizeof(float));
 
 #if TJE_USE_FAST_DCT
@@ -934,8 +954,10 @@ struct TJEProcessedQT
 #endif
 
 // Set up huffman tables in state.
-static void tjei_huff_expand(TJEState* state)
-{
+/* we should consider caching these values in program flash */
+/* this would improve runtime and reduce memory usage */
+/* both of which are at a premium in embedded application */
+static void tjei_huff_expand(TJEState* state, tmalloc_t* tmalloc) {
     assert(state);
 
     state->ht_bits[TJEI_LUMA_DC]   = tjei_default_ht_luma_dc_len;
@@ -958,8 +980,9 @@ static void tjei_huff_expand(TJEState* state)
     }
 
     // Fill out the extended tables..
-    uint8_t huffsize[4][257];
-    uint16_t huffcode[4][256];
+    uint8_t (*huffsize)[257] = TNEW(tmalloc, uint8_t[4][257]);
+    uint16_t (*huffcode)[256] = TNEW(tmalloc, uint16_t[4][256]);
+
     for ( int i = 0; i < 4; ++i ) {
         assert (256 >= spec_tables_len[i]);
         tjei_huff_get_code_lengths(huffsize[i], state->ht_bits[i]);
@@ -976,25 +999,108 @@ static void tjei_huff_expand(TJEState* state)
 }
 
 
+static void tjei_encode_metadata(TJEState* state, const int width, const int height, tmalloc_t* tmalloc) {
+    { // Write header
+        TJEJPEGHeader* header = TNEW(tmalloc, TJEJPEGHeader);
+        // JFIF header.
+        header->SOI = tjei_be_word(0xffd8);  // Sequential DCT
+        header->APP0 = tjei_be_word(0xffe0);
 
+        uint16_t jfif_len = sizeof(TJEJPEGHeader) - 4 /*SOI & APP0 markers*/;
+        header->jfif_len = tjei_be_word(jfif_len);
+        memcpy(header->jfif_id, (void*)tjeik_jfif_id, 5);
+        header->version = tjei_be_word(0x0102);
+        header->units = 0x01;  // Dots-per-inch
+        header->x_density = tjei_be_word(0x0060);  // 96 DPI
+        header->y_density = tjei_be_word(0x0060);  // 96 DPI
+        header->x_thumb = 0;
+        header->y_thumb = 0;
+        tjei_write(state, header, sizeof(TJEJPEGHeader), 1);
+    }
+    {  // Write comment
+        TJEJPEGComment* com = TNEW(tmalloc, TJEJPEGComment);
+        uint16_t com_len = 2 + sizeof(tjeik_com_str) - 1;
+        // Comment
+        com->com = tjei_be_word(0xfffe);
+        com->com_len = tjei_be_word(com_len);
+        memcpy(com->com_str, (void*)tjeik_com_str, sizeof(tjeik_com_str)-1);
+        tjei_write(state, com, sizeof(TJEJPEGComment), 1);
+    }
 
+    // Write quantization tables.
+    tjei_write_DQT(state, state->qt_luma, 0x00);
+    tjei_write_DQT(state, state->qt_chroma, 0x01);
 
-static int tjei_encode_main(TJEState* state,
+    {  // Write the frame marker.
+        TJEFrameHeader* header = TNEW(tmalloc, TJEFrameHeader);
+        header->SOF = tjei_be_word(0xffc0);
+        header->len = tjei_be_word(8 + 3 * 3);
+        header->precision = 8;
+        assert(width <= 0xffff);
+        assert(height <= 0xffff);
+        header->width = tjei_be_word((uint16_t)width);
+        header->height = tjei_be_word((uint16_t)height);
+        header->color_format = 3;
+        uint8_t tables[3] = {
+            0,  // Luma component gets luma table (see tjei_write_DQT call above.)
+            1,  // Chroma component gets chroma table
+            1,  // Chroma component gets chroma table
+        };
+        for (int i = 0; i < 3; ++i) {
+            TJEComponentSpec spec;
+            spec.component_id = (uint8_t)(i + 1);  // No particular reason. Just 1, 2, 3.
+            spec.sampling_factors = (uint8_t)0x11;
+            spec.qt = tables[i];
+
+            header->component_spec[i] = spec;
+        }
+        // Write to file.
+        tjei_write(state, header, sizeof(TJEFrameHeader), 1);
+    }
+
+    tjei_write_DHT(state, state->ht_bits[TJEI_LUMA_DC],   state->ht_vals[TJEI_LUMA_DC], TJEI_DC, 0);
+    tjei_write_DHT(state, state->ht_bits[TJEI_LUMA_AC],   state->ht_vals[TJEI_LUMA_AC], TJEI_AC, 0);
+    tjei_write_DHT(state, state->ht_bits[TJEI_CHROMA_DC], state->ht_vals[TJEI_CHROMA_DC], TJEI_DC, 1);
+    tjei_write_DHT(state, state->ht_bits[TJEI_CHROMA_AC], state->ht_vals[TJEI_CHROMA_AC], TJEI_AC, 1);
+
+    // Write start of scan
+    {
+        TJEScanHeader* header = TNEW(tmalloc, header);
+        header->SOS = tjei_be_word(0xffda);
+        header->len = tjei_be_word((uint16_t)(6 + (sizeof(TJEFrameComponentSpec) * 3)));
+        header->color_format = 3;
+
+        uint8_t tables[3] = {
+            0x00,
+            0x11,
+            0x11,
+        };
+        for (int i = 0; i < 3; ++i) {
+            TJEFrameComponentSpec cs;
+            // Must be equal to component_id from frame header above.
+            cs.component_id = (uint8_t)(i + 1);
+            cs.dc_ac = (uint8_t)tables[i];
+
+            header->component_spec[i] = cs;
+        }
+        header->first = 0;
+        header->last  = 63;
+        header->ah_al = 0;
+        tjei_write(state, header, sizeof(TJEScanHeader), 1);
+
+    }
+}
+
+static void tjei_encode_imagedata(
+                            TJEState* state,
                             struct buffer_closure* bc,
                             const int width,
                             const int height,
-                            TJEColorFormat color_format)
-{
-    if (color_format < 2 || color_format > 4) {
-        return 0;
-    }
-
-    if (width > 0xffff || height > 0xffff) {
-        return 0;
-    }
-
+                            TJEColorFormat color_format,
+                            tmalloc_t* tmalloc
+                        ) {
 #if TJE_USE_FAST_DCT
-    struct TJEProcessedQT pqt;
+    struct TJEProcessedQT* pqt = TNEW(tmalloc, struct TJEProcessedQT);
     // Again, taken from classic japanese implementation.
     //
     /* For float AA&N IDCT method, divisors are equal to quantization
@@ -1014,106 +1120,19 @@ static int tjei_encode_main(TJEState* state,
     for(int y=0; y<8; y++) {
         for(int x=0; x<8; x++) {
             int i = y*8 + x;
-            pqt.luma[y*8+x] = 1.0f / (8 * aan_scales[x] * aan_scales[y] * state->qt_luma[tjei_zig_zag[i]]);
-            pqt.chroma[y*8+x] = 1.0f / (8 * aan_scales[x] * aan_scales[y] * state->qt_chroma[tjei_zig_zag[i]]);
+            pqt->luma[y*8+x] = 1.0f / (8 * aan_scales[x] * aan_scales[y] * state->qt_luma[tjei_zig_zag[i]]);
+            pqt->chroma[y*8+x] = 1.0f / (8 * aan_scales[x] * aan_scales[y] * state->qt_chroma[tjei_zig_zag[i]]);
         }
     }
 #endif
 
-    { // Write header
-        TJEJPEGHeader header;
-        // JFIF header.
-        header.SOI = tjei_be_word(0xffd8);  // Sequential DCT
-        header.APP0 = tjei_be_word(0xffe0);
-
-        uint16_t jfif_len = sizeof(TJEJPEGHeader) - 4 /*SOI & APP0 markers*/;
-        header.jfif_len = tjei_be_word(jfif_len);
-        memcpy(header.jfif_id, (void*)tjeik_jfif_id, 5);
-        header.version = tjei_be_word(0x0102);
-        header.units = 0x01;  // Dots-per-inch
-        header.x_density = tjei_be_word(0x0060);  // 96 DPI
-        header.y_density = tjei_be_word(0x0060);  // 96 DPI
-        header.x_thumb = 0;
-        header.y_thumb = 0;
-        tjei_write(state, &header, sizeof(TJEJPEGHeader), 1);
-    }
-    {  // Write comment
-        TJEJPEGComment com;
-        uint16_t com_len = 2 + sizeof(tjeik_com_str) - 1;
-        // Comment
-        com.com = tjei_be_word(0xfffe);
-        com.com_len = tjei_be_word(com_len);
-        memcpy(com.com_str, (void*)tjeik_com_str, sizeof(tjeik_com_str)-1);
-        tjei_write(state, &com, sizeof(TJEJPEGComment), 1);
-    }
-
-    // Write quantization tables.
-    tjei_write_DQT(state, state->qt_luma, 0x00);
-    tjei_write_DQT(state, state->qt_chroma, 0x01);
-
-    {  // Write the frame marker.
-        TJEFrameHeader header;
-        header.SOF = tjei_be_word(0xffc0);
-        header.len = tjei_be_word(8 + 3 * 3);
-        header.precision = 8;
-        assert(width <= 0xffff);
-        assert(height <= 0xffff);
-        header.width = tjei_be_word((uint16_t)width);
-        header.height = tjei_be_word((uint16_t)height);
-        header.color_format = 3;
-        uint8_t tables[3] = {
-            0,  // Luma component gets luma table (see tjei_write_DQT call above.)
-            1,  // Chroma component gets chroma table
-            1,  // Chroma component gets chroma table
-        };
-        for (int i = 0; i < 3; ++i) {
-            TJEComponentSpec spec;
-            spec.component_id = (uint8_t)(i + 1);  // No particular reason. Just 1, 2, 3.
-            spec.sampling_factors = (uint8_t)0x11;
-            spec.qt = tables[i];
-
-            header.component_spec[i] = spec;
-        }
-        // Write to file.
-        tjei_write(state, &header, sizeof(TJEFrameHeader), 1);
-    }
-
-    tjei_write_DHT(state, state->ht_bits[TJEI_LUMA_DC],   state->ht_vals[TJEI_LUMA_DC], TJEI_DC, 0);
-    tjei_write_DHT(state, state->ht_bits[TJEI_LUMA_AC],   state->ht_vals[TJEI_LUMA_AC], TJEI_AC, 0);
-    tjei_write_DHT(state, state->ht_bits[TJEI_CHROMA_DC], state->ht_vals[TJEI_CHROMA_DC], TJEI_DC, 1);
-    tjei_write_DHT(state, state->ht_bits[TJEI_CHROMA_AC], state->ht_vals[TJEI_CHROMA_AC], TJEI_AC, 1);
-
-    // Write start of scan
-    {
-        TJEScanHeader header;
-        header.SOS = tjei_be_word(0xffda);
-        header.len = tjei_be_word((uint16_t)(6 + (sizeof(TJEFrameComponentSpec) * 3)));
-        header.color_format = 3;
-
-        uint8_t tables[3] = {
-            0x00,
-            0x11,
-            0x11,
-        };
-        for (int i = 0; i < 3; ++i) {
-            TJEFrameComponentSpec cs;
-            // Must be equal to component_id from frame header above.
-            cs.component_id = (uint8_t)(i + 1);
-            cs.dc_ac = (uint8_t)tables[i];
-
-            header.component_spec[i] = cs;
-        }
-        header.first = 0;
-        header.last  = 63;
-        header.ah_al = 0;
-        tjei_write(state, &header, sizeof(TJEScanHeader), 1);
-
-    }
     // Write compressed data.
+    float* du_y = TNEW(tmalloc, float[64]);
+    float* du_b = TNEW(tmalloc, float[64]);
+    float* du_r = TNEW(tmalloc, float[64]);
 
-    float du_y[64];
-    float du_b[64];
-    float du_r[64];
+    int* du = TNEW(tmalloc, int[64]);
+    float* dct_mcu = TNEW(tmalloc, float[64]);
 
     // Set diff to 0.
     int pred_y = 0;
@@ -1189,31 +1208,31 @@ static int tjei_encode_main(TJEState* state,
 
             tjei_encode_and_write_MCU(state, du_y,
 #if TJE_USE_FAST_DCT
-                                     pqt.luma,
+                                     pqt->luma,
 #else
                                      state->qt_luma,
 #endif
                                      state->ehuffsize[TJEI_LUMA_DC], state->ehuffcode[TJEI_LUMA_DC],
                                      state->ehuffsize[TJEI_LUMA_AC], state->ehuffcode[TJEI_LUMA_AC],
-                                     &pred_y, &bitbuffer, &location);
+                                     &pred_y, &bitbuffer, &location, du, dct_mcu);
             tjei_encode_and_write_MCU(state, du_b,
 #if TJE_USE_FAST_DCT
-                                     pqt.chroma,
+                                     pqt->chroma,
 #else
                                      state->qt_chroma,
 #endif
                                      state->ehuffsize[TJEI_CHROMA_DC], state->ehuffcode[TJEI_CHROMA_DC],
                                      state->ehuffsize[TJEI_CHROMA_AC], state->ehuffcode[TJEI_CHROMA_AC],
-                                     &pred_b, &bitbuffer, &location);
+                                     &pred_b, &bitbuffer, &location, du, dct_mcu);
             tjei_encode_and_write_MCU(state, du_r,
 #if TJE_USE_FAST_DCT
-                                     pqt.chroma,
+                                     pqt->chroma,
 #else
                                      state->qt_chroma,
 #endif
                                      state->ehuffsize[TJEI_CHROMA_DC], state->ehuffcode[TJEI_CHROMA_DC],
                                      state->ehuffsize[TJEI_CHROMA_AC], state->ehuffcode[TJEI_CHROMA_AC],
-                                     &pred_r, &bitbuffer, &location);
+                                     &pred_r, &bitbuffer, &location, du, dct_mcu);
 
 
         }
@@ -1226,6 +1245,31 @@ static int tjei_encode_main(TJEState* state,
             tjei_write_bits(state, &bitbuffer, &location, (uint16_t)(8 - location), 0);
         }
     }
+}
+
+
+static int tjei_encode_main(TJEState* state,
+                            struct buffer_closure* bc,
+                            const int width,
+                            const int height,
+                            TJEColorFormat color_format,
+                            tmalloc_t* tmalloc
+                            )
+{
+    if (color_format < 2 || color_format > 4) {
+        return 0;
+    }
+
+    if (width > 0xffff || height > 0xffff) {
+        return 0;
+    }
+
+
+    tjei_encode_metadata(state, width, height, tmalloc);
+
+    tjei_encode_imagedata(state, bc, width, height, color_format, tmalloc);
+
+
     uint16_t EOI = tjei_be_word(0xffd9);
     tjei_write(state, &EOI, sizeof(uint16_t), 1);
 
@@ -1241,9 +1285,10 @@ int tje_encode_to_file(const char* dest_path,
                        const int width,
                        const int height,
                        TJEColorFormat color_format,
-                       const unsigned char* src_data)
+                       const unsigned char* src_data,
+                       tmalloc_t* tmalloc)
 {
-    int res = tje_encode_to_file_at_quality(dest_path, 3, width, height, color_format, src_data);
+    int res = tje_encode_to_file_at_quality(dest_path, 3, width, height, color_format, src_data, tmalloc);
     return res;
 }
 
@@ -1259,7 +1304,9 @@ int tje_encode_to_file_at_quality(const char* dest_path,
                                   const int width,
                                   const int height,
                                   TJEColorFormat color_format,
-                                  const unsigned char* src_data)
+                                  const unsigned char* src_data,
+                                  tmalloc_t* tmalloc
+                                )
 {
     FILE* fd = fopen(dest_path, "wb");
     if (!fd) {
@@ -1268,7 +1315,7 @@ int tje_encode_to_file_at_quality(const char* dest_path,
     }
 
     int result = tje_encode_with_func(tjei_stdlib_func, fd,
-                                      quality, width, height, color_format, src_data);
+                                      quality, width, height, color_format, src_data, tmalloc);
 
     result |= 0 == fclose(fd);
 
@@ -1284,7 +1331,8 @@ int tje_encode_with_func(tje_write_func* func,
                          const int width,
                          const int height,
                          TJEColorFormat color_format,
-                         struct buffer_closure* bc
+                         struct buffer_closure* bc,
+                         tmalloc_t* tmalloc
                          )
 {
     if (quality < 1 || quality > 3) {
@@ -1292,7 +1340,7 @@ int tje_encode_with_func(tje_write_func* func,
         return 0;
     }
 
-    TJEState* state_p = k_malloc(sizeof(TJEState));
+    TJEState* state_p = TNEW(tmalloc, TJEState);
     memset(state_p, 0x00, sizeof(TJEState));
 
     uint8_t qt_factor = 1;
@@ -1331,11 +1379,12 @@ int tje_encode_with_func(tje_write_func* func,
     state_p->write_context = wc;
 
 
-    tjei_huff_expand(state_p);
+    /* considering we have free sram we may consider computing this table
+     * at compile time
+     */
+    tjei_huff_expand(state_p, tmalloc);
 
-    int result = tjei_encode_main(state_p, bc, width, height, color_format);
-
-    k_free(state_p);
+    int result = tjei_encode_main(state_p, bc, width, height, color_format, tmalloc);
 
     return result;
 }

@@ -27,6 +27,7 @@
 // #define _VERSION "v2.0.0"
 /*************** TODO *******************************
 [ ] add UART trigger and configuration 
+[ ] compute jpg huffman coefficients at compile time and store in flash (tjpg.h)
 [X] check that time source remains correct when modem is reset
 [X] add backup DNS configuration
 [ ] we should store the status string when we write to the SDHC so that it the same on the SDHC and FTP
