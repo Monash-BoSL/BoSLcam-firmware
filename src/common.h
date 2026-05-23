@@ -305,5 +305,5 @@ static const struct image_resolution_properties image_resolutions[] = {
 int LOG_UNIXTIME(const int32_t ln);
 
 void led(bool on);
-const char* const get_time_source_str(const uint8_t index);
-const char* const get_trigger_str(const uint8_t index);
+const char* const strftimesource(const uint8_t index);
+const char* const strftrigger(const uint8_t index);

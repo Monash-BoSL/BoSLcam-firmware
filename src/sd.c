@@ -349,7 +349,6 @@ int sdhc_write_status(const char* const sdhc_path, const struct status_t* const 
     int ret = 0;
     char buf[MAX_PATH];
     struct fs_file_t imf;
-    struct tm cal;
 
     /* use buf to store file path */
 
@@ -368,19 +367,12 @@ int sdhc_write_status(const char* const sdhc_path, const struct status_t* const 
     if(ret < 0){return ret;}
 
     /* buf is now storing what we want to write to file */
+    ret = strfstatus(buf, sizeof(buf), status, capture_task);
+    if (ret < 0){
+        LOG_ERR("status string format fail (%d)", ret);
+        goto cleanup;
+    }
 
-    //here is where we write what we want to log to file
-    unix_date(&cal, status->time_wall);
-    strftime(buf, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
-    sprintf(buf+strlen(buf), ",%s,%d,%d,%s,%d,%d,%s\n",
-                                get_time_source_str(status->time_src),
-                                status->captures,
-                                status->battery_voltage,
-                                status->mccmnc,
-                                status->rsrq,
-                                status->rsrp,
-                                get_trigger_str(capture_task->trigger)
-                                );
     LOG_INF("logging status to sd: %s", log_strdup(buf));
 
     ret = fs_write(&imf, buf, strlen(buf));

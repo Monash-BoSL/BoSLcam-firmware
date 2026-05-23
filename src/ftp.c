@@ -153,21 +153,16 @@ cleanup:
 int ftp_write_status(const struct ftp_config_t* const ftp_cfg_p, const struct status_t* const status, const struct capture_task_t* const capture_task){
     int ret = 0;
     char statstr[MAX_PATH];
-    struct tm cal;
 
     LOG_INF("modem begin");
 
-    unix_date(&cal, status->time_wall);
-    strftime(statstr, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
-    sprintf(statstr+strlen(statstr), ",%s,%d,%d,%s,%d,%d,%s\n",
-                                get_time_source_str(status->time_src),
-                                status->captures,
-                                status->battery_voltage,
-                                status->mccmnc,
-                                status->rsrq,
-                                status->rsrp,
-                                get_trigger_str(capture_task->trigger)
-                                );
+    ret = strfstatus(statstr, sizeof(statstr), status, capture_task);
+    if (ret < 0){
+        LOG_ERR("status string format fail (%d)", ret);
+        return ret;
+    }
+
+    LOG_INF("logging status to ftp: %s", log_strdup(statstr));
 
     ret = modem_network_register(ftp_cfg_p);
     if (ret < 0){LOG_ERR("register err %d", ret); return ret;}
