@@ -15,14 +15,16 @@
 
 LOG_MODULE_REGISTER(ftp);
 
-void ftp_data_callback(const uint8_t *msg, uint16_t len)
-{
-    printk("%s", msg);//this can be disabled once a wrong password returns a fail from ftp_login
+void ftp_data_callback(const uint8_t *msg, const uint16_t len) {
+    uint8_t* const nonln = log_strdup(msg);
+    nonln[MIN(strcspn(nonln, "\r\n"), len)] = '\0';
+    LOG_DBG("%s", nonln);//this can be disabled once a wrong password returns a fail from ftp_login
 }
 
-void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
-{
-    printk("%s", msg);
+void ftp_ctrl_callback(const uint8_t *msg, const uint16_t len) {
+    uint8_t* const nonln = log_strdup(msg);
+    nonln[MIN(strcspn(nonln, "\r\n"), len)] = '\0';
+    LOG_DBG("%s", nonln);
 }
 
 int ftp_mkdirs(const char* path) {
@@ -148,7 +150,7 @@ cleanup:
     return ret;
 }
 
-int ftp_write_status(const struct ftp_config_t* const ftp_cfg_p, const struct status_t* const status){
+int ftp_write_status(const struct ftp_config_t* const ftp_cfg_p, const struct status_t* const status, const struct capture_task_t* const capture_task){
     int ret = 0;
     char statstr[MAX_PATH];
     struct tm cal;
@@ -157,13 +159,14 @@ int ftp_write_status(const struct ftp_config_t* const ftp_cfg_p, const struct st
 
     unix_date(&cal, status->time_wall);
     strftime(statstr, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
-    sprintf(statstr+strlen(statstr), ",%s,%d,%d,%s,%d,%d\n",
+    sprintf(statstr+strlen(statstr), ",%s,%d,%d,%s,%d,%d,%s\n",
                                 get_time_source_str(status->time_src),
                                 status->captures,
                                 status->battery_voltage,
                                 status->mccmnc,
                                 status->rsrq,
-                                status->rsrp
+                                status->rsrp,
+                                get_trigger_str(capture_task->trigger)
                                 );
 
     ret = modem_network_register(ftp_cfg_p);

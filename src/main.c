@@ -54,12 +54,6 @@
 
 LOG_MODULE_REGISTER(main);
 
-struct capture_task_t {
-    int64_t requested_at_ms;
-    uint8_t upload;
-    uint8_t respect_dark_noup;
-};
-
 #define CAPTURE_QUEUE_SIZE 5
 K_MSGQ_DEFINE(capture_q, sizeof(struct capture_task_t), CAPTURE_QUEUE_SIZE, 1);
 
@@ -122,6 +116,7 @@ void time_trigger_handler(struct k_timer* timer_id) {
 
     const struct capture_task_t capture_task = {
         .requested_at_ms = now_ms,
+        .trigger = TIME_TRIGGER,
         .upload = (d > 0) && (0 == (time_trigger_count % d)), /* respect logging decimation on time triggers */
         .respect_dark_noup = 1, /* respect dark_noup setting */
     };
@@ -156,6 +151,7 @@ void wake_trigger_handler(const struct device *dev,
 
     const struct capture_task_t capture_task = {
         .requested_at_ms = now_ms,
+        .trigger = WAKE_TRIGGER,
         .upload = 1,
         .respect_dark_noup = 0, /* wake trigger should not respect the dark noup */
     };
@@ -173,6 +169,7 @@ int init_wake_trigger_capture(void){
         LOG_ERR("Failed to configure WKE pin, error: %d", ret);
         return ret;
     }
+    k_sleep(K_MSEC(50)); /* allow time for pin to get pulled down */
 
     ret = gpio_pin_interrupt_configure(gpio, WKE_PIN, GPIO_INT_EDGE_RISING);
     if (ret) {
@@ -258,7 +255,7 @@ int capture_f(const struct capture_task_t* const capture_task){
     if(ret < 0){LOG_ERR("sdhc_move_image fail! ret=%d",ret);}
 
     LOG_INF("status -> sdhc");
-    ret = sdhc_write_status(mcfg.sd_cfg.status_path, &status_g);
+    ret = sdhc_write_status(mcfg.sd_cfg.status_path, &status_g, capture_task);
     if(ret < 0){LOG_ERR("sdhc_write_status fail! ret=%d",ret);}
 
     if(mcfg.im_cfg.format == JPG){
@@ -277,7 +274,7 @@ int capture_f(const struct capture_task_t* const capture_task){
         }
 
         LOG_INF("status -> ftp");
-        ret = ftp_write_status(&mcfg.ftp_cfg, &status_g);
+        ret = ftp_write_status(&mcfg.ftp_cfg, &status_g, capture_task);
         if(ret){modem_network_deregister();}
     }
 
@@ -297,6 +294,8 @@ void capture_worker_f(void *p1, void *p2, void *p3){
 
     while(1){
         if (!k_msgq_get(&capture_q, &capture_task, K_FOREVER)){ // always 0 for K_FOREVER unless queue is purged
+            LOG_INF("new capture task received! "); 
+            LOG_INF("============================================= CAPTURE #%09u =====", status_g.captures);
             int ret_cap = capture_f(&capture_task);
             status_g.captures++;
             // TODO: what to do with ret?
