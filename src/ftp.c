@@ -16,15 +16,11 @@
 LOG_MODULE_REGISTER(ftp);
 
 void ftp_data_callback(const uint8_t *msg, const uint16_t len) {
-    uint8_t* const nonln = log_strdup(msg);
-    nonln[MIN(strcspn(nonln, "\r\n"), len)] = '\0';
-    LOG_DBG("%s", nonln);//this can be disabled once a wrong password returns a fail from ftp_login
+    printk("%s", msg);//this can be disabled once a wrong password returns a fail from ftp_login
 }
 
 void ftp_ctrl_callback(const uint8_t *msg, const uint16_t len) {
-    uint8_t* const nonln = log_strdup(msg);
-    nonln[MIN(strcspn(nonln, "\r\n"), len)] = '\0';
-    LOG_DBG("%s", nonln);
+    printk("%s", msg);
 }
 
 int ftp_mkdirs(const char* path) {
