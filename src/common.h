@@ -19,6 +19,10 @@
     #include <zephyr/fs/fs.h>
     #include <zephyr/storage/disk_access.h>
 
+    #include <zephyr/device.h>
+    #include <zephyr/drivers/hwinfo.h>
+    #include <zephyr/logging/log.h>
+
     #define log_strdup
 
     #if NCS_VERSION_NUMBER == 0x020100
@@ -184,6 +188,7 @@ struct sd_config_t {
 
 enum trigger_t {
     TIME_TRIGGER = 0,
+    WAKE_TRIGGER,
     UART_TRIGGER,
 };
 
@@ -192,6 +197,13 @@ struct trigger_config_t {
     uint32_t logging_interval; //ms
     uint32_t logging_decimation_ftp;//1 in every x photos captured to sd will be uploaded
     uint8_t dark_noup;// mean R+G+B below which image is not uploaded. 255 to disable
+};
+
+struct capture_task_t {
+    int64_t requested_at_ms;
+    enum trigger_t trigger;
+    uint8_t upload;
+    uint8_t respect_dark_noup;
 };
 
 struct master_config_t {
@@ -207,6 +219,8 @@ enum data_location {
     DATA_LOCATION_SRAM, 
     DATA_LOCATION_DISK,
 };
+
+
 
 struct capture_t {
     enum data_location where;
@@ -295,4 +309,5 @@ static const struct image_resolution_properties image_resolutions[] = {
 int LOG_UNIXTIME(const int32_t ln);
 
 void led(bool on);
-const char* const get_time_source_str(const uint8_t index);
+const char* const strftimesource(const uint8_t index);
+const char* const strftrigger(const uint8_t index);

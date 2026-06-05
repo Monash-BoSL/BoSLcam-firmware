@@ -345,39 +345,37 @@ int sdhc_write_image(const char* const sdhc_path, const struct capture_t* const 
 }
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
-int sdhc_write_status(const char* const sdhc_path, const struct status_t* const status){
+int sdhc_write_status(const char* const sdhc_path, const struct status_t* const status, const struct capture_task_t* const capture_task){
     int ret = 0;
-    char path[MAX_PATH];
+    char buf[MAX_PATH];
     struct fs_file_t imf;
-    struct tm cal;
+
+    /* use buf to store file path */
 
     if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
         LOG_ERR("file name too long");
         return -ENAMETOOLONG;
     }
-    strcpy(path, DISK_MOUNT_PT);
-    strcat(path, sdhc_path);
+    strcpy(buf, DISK_MOUNT_PT);
+    strcat(buf, sdhc_path);
 
     fs_file_t_init(&imf);
 
-    fs_mkdirs(path);
+    fs_mkdirs(buf);
 
-    ret = fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE | FS_O_APPEND);
+    ret = fs_open(&imf, buf, FS_O_WRITE | FS_O_CREATE | FS_O_APPEND);
     if(ret < 0){return ret;}
 
-    //here is where we write what we want to log to file
-    unix_date(&cal, status->time_wall);
-    strftime(path, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
-    sprintf(path+strlen(path), ",%s,%d,%d,%s,%d,%d\n",
-                                get_time_source_str(status->time_src),
-                                status->captures,
-                                status->battery_voltage,
-                                status->mccmnc,
-                                status->rsrq,
-                                status->rsrp
-                                );
+    /* buf is now storing what we want to write to file */
+    ret = strfstatus(buf, sizeof(buf), status, capture_task);
+    if (ret < 0){
+        LOG_ERR("status string format fail (%d)", ret);
+        goto cleanup;
+    }
 
-    ret = fs_write(&imf, path, strlen(path));
+    LOG_INF("logging status to sd: %s", log_strdup(buf));
+
+    ret = fs_write(&imf, buf, strlen(buf));
     if(ret < 0){goto cleanup;}
 
 cleanup:
