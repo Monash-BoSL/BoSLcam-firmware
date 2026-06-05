@@ -4,16 +4,16 @@
 #include <nrf_modem_at.h>
 #include <modem/nrf_modem_lib.h>
 #include <modem/at_monitor.h>
-// #include <modem/lte_lc.h>
 
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "common.h"
 #include "modem.h"
 
 LOG_MODULE_REGISTER(modem);
 
-extern struct status_t stats_global;
+extern struct status_t status_g;
 
 #define AT_CMD_BUFFER_SIZE (512)
 
@@ -54,7 +54,6 @@ static void shutdown_decrementer_worker(void *p1, void *p2, void *p3)
         LOG_INF("taking semaphore taken. new value: %d", k_sem_count_get(&modem_recent_shutdown_sem));
     }
 }
-// K_THREAD_DEFINE(modem_recent_shutdown_worker, 512, shutdown_decrementer_worker, NULL, NULL, NULL,
 K_THREAD_DEFINE(modem_recent_shutdown_worker, 1024, shutdown_decrementer_worker, NULL, NULL, NULL,
         K_LOWEST_APPLICATION_THREAD_PRIO, K_ESSENTIAL, 0);
 
@@ -278,12 +277,12 @@ int modem_network_select(const char* mccmnc){
     return ret;
 }
 
-int modem_network_register(struct ftp_config_t* ftp_cfg_p){
+int modem_network_register(const struct ftp_config_t* const ftp_cfg_p){
     int ret = 0;
 
-    if(stats_global.mccmnc[0] == '\0'){//if uninitialised
-        strncpy(stats_global.mccmnc, ftp_cfg_p->mccmnc, sizeof(stats_global.mccmnc) -1 ); 
-        stats_global.mccmnc[sizeof(stats_global.mccmnc) - 1] = '\0';
+    if(status_g.mccmnc[0] == '\0'){//if uninitialised
+        strncpy(status_g.mccmnc, ftp_cfg_p->mccmnc, sizeof(status_g.mccmnc) -1 ); 
+        status_g.mccmnc[sizeof(status_g.mccmnc) - 1] = '\0';
     }
 
     ret = nrf_modem_at_printf("AT");
@@ -315,17 +314,17 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     else if (ret < 0){LOG_ERR("CFUN on error"); return ret;}
 
     //first connect to last used network
-    LOG_INF("Registration attempt to: %s", log_strdup(stats_global.mccmnc));
-    ret = modem_network_select(stats_global.mccmnc);
+    LOG_INF("Registration attempt to: %s", log_strdup(status_g.mccmnc));
+    ret = modem_network_select(status_g.mccmnc);
     if(ret == 0){goto cleanup;}
 
     //then try connect to the config network
     ret = modem_network_select(ftp_cfg_p->mccmnc);
     if(ret == 0){
-        ret = nrf_modem_at_scanf("AT%XMONITOR", "%%XMONITOR: %*[^,],%*[^,],%*[^,],\"%6[^\"]\",", stats_global.mccmnc);
+        ret = nrf_modem_at_scanf("AT%XMONITOR", "%%XMONITOR: %*[^,],%*[^,],%*[^,],\"%6[^\"]\",", status_g.mccmnc);
         if(ret != 1){//For some reason we didn't match and so for additional safety we will revert to config
-            strncpy(stats_global.mccmnc, ftp_cfg_p->mccmnc, sizeof(stats_global.mccmnc) -1 ); 
-            stats_global.mccmnc[sizeof(stats_global.mccmnc) - 1] = '\0';
+            strncpy(status_g.mccmnc, ftp_cfg_p->mccmnc, sizeof(status_g.mccmnc) -1 ); 
+            status_g.mccmnc[sizeof(status_g.mccmnc) - 1] = '\0';
         }
         goto cleanup;
     }
@@ -333,18 +332,18 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     //then attempt automatic connection
     ret = modem_network_select(NULL);
     if(ret == 0){
-        ret = nrf_modem_at_scanf("AT%XMONITOR", "%%XMONITOR: %*[^,],%*[^,],%*[^,],\"%6[^\"]\",", stats_global.mccmnc);
+        ret = nrf_modem_at_scanf("AT%XMONITOR", "%%XMONITOR: %*[^,],%*[^,],%*[^,],\"%6[^\"]\",", status_g.mccmnc);
         if(ret != 1){//For some reason we didn't match and so for additional safety we will revert to config
-            strncpy(stats_global.mccmnc, ftp_cfg_p->mccmnc, sizeof(stats_global.mccmnc) -1 ); 
-            stats_global.mccmnc[sizeof(stats_global.mccmnc) - 1] = '\0';
+            strncpy(status_g.mccmnc, ftp_cfg_p->mccmnc, sizeof(status_g.mccmnc) -1 ); 
+            status_g.mccmnc[sizeof(status_g.mccmnc) - 1] = '\0';
         }
         goto cleanup;
     }
 
-    if(!stats_global.network_searched){
+    if(!status_g.network_searched){
         LOG_INF("Performing forced network search");
         modem_network_search();
-        stats_global.network_searched = 1;//not we never do this again regardless of if the search was successfull
+        status_g.network_searched = 1;//not we never do this again regardless of if the search was successful
     }
 
 
@@ -355,9 +354,9 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
         ret = modem_network_select(o->mccmnc);
         if(ret){continue;}
 
-        ret = modem_current_mccmnc(stats_global.mccmnc);
+        ret = modem_current_mccmnc(status_g.mccmnc);
         if(ret == 0){
-            LOG_INF("Updating network preference to: %s", log_strdup(stats_global.mccmnc));
+            LOG_INF("Updating network preference to: %s", log_strdup(status_g.mccmnc));
         }
 
         return 0; 
@@ -366,7 +365,7 @@ int modem_network_register(struct ftp_config_t* ftp_cfg_p){
     LOG_ERR("Unable to register to network");
     return -1;
 cleanup:
-    modem_signal_strength(&stats_global.rsrq, &stats_global.rsrp);//we ignore the error here as its not too important if the signal strength is bad;
+    modem_signal_strength(&status_g.rsrq, &status_g.rsrp);//we ignore the error here as its not too important if the signal strength is bad;
     return ret;
 }
 

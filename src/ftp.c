@@ -10,17 +10,16 @@
 
 #include "common.h"
 #include "ftp.h"
+#include "modem.h"
 #include "util.h"
 
 LOG_MODULE_REGISTER(ftp);
 
-void ftp_data_callback(const uint8_t *msg, uint16_t len)
-{
+void ftp_data_callback(const uint8_t *msg, const uint16_t len) {
     printk("%s", msg);//this can be disabled once a wrong password returns a fail from ftp_login
 }
 
-void ftp_ctrl_callback(const uint8_t *msg, uint16_t len)
-{
+void ftp_ctrl_callback(const uint8_t *msg, const uint16_t len) {
     printk("%s", msg);
 }
 
@@ -47,7 +46,7 @@ int ftp_mkdirs(const char* path) {
     return res;//make sure that we return a nice error code here.
 }
 
-int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
+int ftp_write_image(const struct ftp_config_t* const ftp_cfg_p, const struct capture_t* const capture){
     int ret = 0;
     char path[MAX_PATH];
 
@@ -60,11 +59,14 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 
     switch(capture->format){
         case BMP:
-            sprintf(path, "%s%08X.bmp", ftp_cfg_p->image_path, capture->time);
+            sprintf(path, "%s%08X.bmp", ftp_cfg_p->image_path, capture->time_wall);
         break;
         case JPG:
-            sprintf(path, "%s%08X.jpg", ftp_cfg_p->image_path, capture->time);
+            sprintf(path, "%s%08X.jpg", ftp_cfg_p->image_path, capture->time_wall);
         break;
+        default:
+            LOG_ERR("bad capture format (%d)", (int)(capture->format));
+            return -1;
     }
 
     // ret = nrf_modem_at_cmd(response, sizeof(response), "AT+CGMR");
@@ -99,7 +101,7 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
 
     struct fs_file_t imf;
     switch(capture->where){
-        case SRAM:
+        case DATA_LOCATION_SRAM:
             ret = ftp_put(path, image_resolutions[capture->resolution].bmp_header, BMPIMAGEOFFSET, FTP_PUT_NORMAL);
             if (ret < 0){LOG_ERR("put err %d", ret); goto cleanup;}
             else {LOG_INF("put ok");};
@@ -108,8 +110,8 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
             if (ret < 0){LOG_ERR("put err %d", ret); goto cleanup;}
             else {LOG_INF("put ok");};
 
-        break;
-        case DISK:
+            break;
+        case DATA_LOCATION_DISK:
             fs_file_t_init(&imf);
             ret = fs_open(&imf, capture->fp, FS_O_READ);
             int read_bytes;
@@ -128,7 +130,13 @@ int ftp_write_image(struct ftp_config_t* ftp_cfg_p, struct capture_t* capture){
             }
             LOG_INF("put ok");
             fs_close(&imf);
-        break;
+            break;
+        case DATA_LOCATION_NONE:
+            LOG_ERR("data location not specified");
+            break;
+        default:
+            LOG_ERR("invalid data location (%d)", (int)capture->where);
+            break;
     }
 
 cleanup:
@@ -138,23 +146,19 @@ cleanup:
     return ret;
 }
 
-int ftp_write_status(struct ftp_config_t* ftp_cfg_p, struct status_t* status){
+int ftp_write_status(const struct ftp_config_t* const ftp_cfg_p, const struct status_t* const status, const struct capture_task_t* const capture_task){
     int ret = 0;
     char statstr[MAX_PATH];
-    struct tm cal;
 
     LOG_INF("modem begin");
 
-    unix_date(&cal, status->system_time);
-    strftime(statstr, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
-    sprintf(statstr+strlen(statstr), ",%s,%d,%d,%s,%d,%d\n",
-                                get_time_source_str(status->time_src),
-                                status->captures,
-                                status->battery_voltage,
-                                status->mccmnc,
-                                status->rsrq,
-                                status->rsrp
-                                );
+    ret = strfstatus(statstr, sizeof(statstr), status, capture_task);
+    if (ret < 0){
+        LOG_ERR("status string format fail (%d)", ret);
+        return ret;
+    }
+
+    LOG_INF("logging status to ftp: %s", log_strdup(statstr));
 
     ret = modem_network_register(ftp_cfg_p);
     if (ret < 0){LOG_ERR("register err %d", ret); return ret;}

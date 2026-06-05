@@ -171,13 +171,13 @@ int suffix_decrypt(char** password_p, const char* suffix){
 
 int decrypt_password(char** password_p, const enum cypher_t cypher){
     switch(cypher){
-        case NONE:
+        case CYPHER_NONE:
             return 0;
             break;
-        case CAESAR:
+        case CYPHER_CAESAR:
             return caesar_decrypt(*password_p, CAESAR_KEY);
             break;
-        case SUFFIX:
+        case CYPHER_SUFFIX:
             return suffix_decrypt(password_p, SUFFIX_KEY);
             break;
     }
@@ -190,7 +190,7 @@ extern int yyparse(void);
 extern YY_BUFFER_STATE yy_scan_bytes(char* str, size_t len);
 extern void yy_delete_buffer(YY_BUFFER_STATE buffer);
 extern struct master_config_t* parser_config_handle;
-int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
+int sdhc_load_config(const char* const sdhc_path, struct master_config_t* const master_cfg){
     int ret = -1;
     char path[MAX_PATH];
     struct fs_file_t imf;
@@ -240,7 +240,7 @@ int sdhc_load_config(char* sdhc_path, struct master_config_t* master_cfg){
 }
 
 
-int sdhc_load_last_status_time(char* sdhc_path, struct tm* cal){
+int sdhc_load_last_status_time(const char* const sdhc_path, struct tm* const cal){
     char path[MAX_PATH];
     struct fs_file_t imf;
     char strtime[80];
@@ -300,7 +300,7 @@ cleanup:
 
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
-int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
+int sdhc_move_image(const char* const sdhc_path, struct capture_t* const capture){
     int ret = 0;
     char path[MAX_PATH];
 
@@ -308,7 +308,7 @@ int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
         LOG_ERR("file name too long");
         return -ENAMETOOLONG;
     }
-    sprintf(path, "%s%s%08X.bmp", DISK_MOUNT_PT,sdhc_path, capture->time);
+    sprintf(path, "%s%s%08X.bmp", DISK_MOUNT_PT,sdhc_path, capture->time_wall);
 
     fs_mkdirs(path);
     // ret = fs_rename(capture->fp, path);
@@ -320,7 +320,7 @@ int sdhc_move_image(char* sdhc_path, struct capture_t* capture){
 }
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
-int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
+int sdhc_write_image(const char* const sdhc_path, const struct capture_t* const capture){
     char path[MAX_PATH];
     struct fs_file_t imf;
 
@@ -329,7 +329,7 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
         LOG_ERR("file name too long");
         return -ENAMETOOLONG;
     }
-    sprintf(path, "%s%s%08X.bmp", DISK_MOUNT_PT,sdhc_path, capture->time);
+    sprintf(path, "%s%s%08X.bmp", DISK_MOUNT_PT,sdhc_path, capture->time_wall);
 
 
     fs_file_t_init(&imf);
@@ -345,39 +345,37 @@ int sdhc_write_image(char* sdhc_path, struct capture_t* capture){
 }
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
-int sdhc_write_status(char* sdhc_path, struct status_t* status){
+int sdhc_write_status(const char* const sdhc_path, const struct status_t* const status, const struct capture_task_t* const capture_task){
     int ret = 0;
-    char path[MAX_PATH];
+    char buf[MAX_PATH];
     struct fs_file_t imf;
-    struct tm cal;
+
+    /* use buf to store file path */
 
     if(strlen(sdhc_path) > MAX_PATH + STRLEN(DISK_MOUNT_PT)){
         LOG_ERR("file name too long");
         return -ENAMETOOLONG;
     }
-    strcpy(path, DISK_MOUNT_PT);
-    strcat(path, sdhc_path);
+    strcpy(buf, DISK_MOUNT_PT);
+    strcat(buf, sdhc_path);
 
     fs_file_t_init(&imf);
 
-    fs_mkdirs(path);
+    fs_mkdirs(buf);
 
-    ret = fs_open(&imf, path, FS_O_WRITE | FS_O_CREATE | FS_O_APPEND);
+    ret = fs_open(&imf, buf, FS_O_WRITE | FS_O_CREATE | FS_O_APPEND);
     if(ret < 0){return ret;}
 
-    //here is where we write what we want to log to file
-    unix_date(&cal, status->system_time);
-    strftime(path, MAX_PATH, "%Y/%m/%d-%H:%M:%S UTC" , &cal);
-    sprintf(path+strlen(path), ",%s,%d,%d,%s,%d,%d\n",
-                                get_time_source_str(status->time_src),
-                                status->captures,
-                                status->battery_voltage,
-                                status->mccmnc,
-                                status->rsrq,
-                                status->rsrp
-                                );
+    /* buf is now storing what we want to write to file */
+    ret = strfstatus(buf, sizeof(buf), status, capture_task);
+    if (ret < 0){
+        LOG_ERR("status string format fail (%d)", ret);
+        goto cleanup;
+    }
 
-    ret = fs_write(&imf, path, strlen(path));
+    LOG_INF("logging status to sd: %s", log_strdup(buf));
+
+    ret = fs_write(&imf, buf, strlen(buf));
     if(ret < 0){goto cleanup;}
 
 cleanup:
@@ -423,7 +421,7 @@ int clear_rtt_image(void){
 }
 
 
-int sdhc_file_to_rtt(char* sdhc_path){
+int sdhc_file_to_rtt(const char* const sdhc_path){
     int ret = 0;
     char path[MAX_PATH];
     struct fs_file_t imf;

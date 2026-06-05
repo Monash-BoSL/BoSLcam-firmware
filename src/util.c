@@ -1,9 +1,8 @@
 
 #include "util.h"
+#include "errno.h"
 
-
-
-void unix_date(struct tm* cal, int32_t unixtime){
+void unix_date(struct tm* cal, int32_t unixtime) {
   uint32_t seconds, minutes, hours, days, year, month;
   uint32_t day_of_week;
   seconds = unixtime;
@@ -64,4 +63,28 @@ void unix_date(struct tm* cal, int32_t unixtime){
   cal->tm_mon  = month;
   cal->tm_year = year-1900;//for correct callender epoch
   cal->tm_wday = day_of_week;
+}
+
+
+int strfstatus(char* buf, const size_t len, const struct status_t* const status, const struct capture_task_t* const capture_task) {
+    struct tm cal;
+
+    unix_date(&cal, status->time_wall);
+    const size_t timelen = strftime(buf, len, "%Y/%m/%d-%H:%M:%S UTC", &cal);
+    if (!timelen){return -ERANGE;}
+    const int printret = snprintf(
+                buf+timelen, 
+                len-timelen,
+                ",%s,%d,%d,%s,%d,%d,%s\n",
+                strftimesource(status->time_src),
+                status->captures,
+                status->battery_voltage,
+                status->mccmnc,
+                status->rsrq,
+                status->rsrp,
+                strftrigger(capture_task->trigger)
+            );
+    if (printret < 0){ return printret; }
+    else if(printret >= len){ return -ERANGE; }
+    else { return 0; }
 }

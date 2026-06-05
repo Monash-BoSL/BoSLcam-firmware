@@ -19,6 +19,10 @@
     #include <zephyr/fs/fs.h>
     #include <zephyr/storage/disk_access.h>
 
+    #include <zephyr/device.h>
+    #include <zephyr/drivers/hwinfo.h>
+    #include <zephyr/logging/log.h>
+
     #define log_strdup
 
     #if NCS_VERSION_NUMBER == 0x020100
@@ -51,6 +55,7 @@
 #include <date_time.h>
 
 #define WATCHDOG_TIMEOUT_SEC 86400 //allows silly values
+#define WAKE_PIN_TRIGGER_HOLDOUT_MS (5000)
 
 #define SUFFIX_KEY "_Z4GQ3tjuzu"
 #define CAESAR_KEY  (37)
@@ -158,9 +163,9 @@ struct image_config_t {
 };
 
 enum cypher_t {
-    NONE = 0,
-    CAESAR,
-    SUFFIX,
+    CYPHER_NONE = 0,
+    CYPHER_CAESAR,
+    CYPHER_SUFFIX,
 };
 
 struct ftp_config_t {
@@ -183,6 +188,7 @@ struct sd_config_t {
 
 enum trigger_t {
     TIME_TRIGGER = 0,
+    WAKE_TRIGGER,
     UART_TRIGGER,
 };
 
@@ -193,6 +199,13 @@ struct trigger_config_t {
     uint8_t dark_noup;// mean R+G+B below which image is not uploaded. 255 to disable
 };
 
+struct capture_task_t {
+    int64_t requested_at_ms;
+    enum trigger_t trigger;
+    uint8_t upload;
+    uint8_t respect_dark_noup;
+};
+
 struct master_config_t {
     //struct gnss_config;
     struct trigger_config_t trig_cfg;
@@ -201,7 +214,14 @@ struct master_config_t {
     struct sd_config_t sd_cfg;
 };
 
-enum data_location { SRAM = 0, DISK };
+enum data_location { 
+    DATA_LOCATION_NONE = 0,
+    DATA_LOCATION_SRAM, 
+    DATA_LOCATION_DISK,
+};
+
+
+
 struct capture_t {
     enum data_location where;
     char fp[MAX_PATH];
@@ -216,7 +236,7 @@ struct capture_t {
     enum image_resolution resolution;
     enum image_format format;
 
-    int32_t time;
+    int32_t time_wall;
 };
 
 enum time_source {
@@ -230,7 +250,7 @@ enum time_source {
 
 
 struct status_t {
-    int32_t system_time;
+    int32_t time_wall;
     int32_t battery_voltage;
     uint32_t captures;
     enum time_source time_src;
@@ -238,7 +258,6 @@ struct status_t {
     uint8_t rsrq;
     uint8_t rsrp;
     uint8_t network_searched; 
-    uint8_t is_trigger;
 };
 
 
@@ -290,4 +309,5 @@ static const struct image_resolution_properties image_resolutions[] = {
 int LOG_UNIXTIME(const int32_t ln);
 
 void led(bool on);
-const char* const get_time_source_str(const uint8_t index);
+const char* const strftimesource(const uint8_t index);
+const char* const strftrigger(const uint8_t index);

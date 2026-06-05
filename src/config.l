@@ -67,9 +67,9 @@ int yylex();
 "username"                              {return username_tk;}
 "cypher_t"                              {return cypher_t_tk;}
 "cypher"                                {return cypher_tk;}
-"NONE"                                  {yylval.enum_cypher_t_value = NONE; return enum_cypher_t;}
-"CAESAR"                                {yylval.enum_cypher_t_value = CAESAR; return enum_cypher_t;}
-"SUFFIX"                                {yylval.enum_cypher_t_value = SUFFIX; return enum_cypher_t;}
+"NONE"                                  {yylval.enum_cypher_t_value = CYPHER_NONE; return enum_cypher_t;}
+"CAESAR"                                {yylval.enum_cypher_t_value = CYPHER_CAESAR; return enum_cypher_t;}
+"SUFFIX"                                {yylval.enum_cypher_t_value = CYPHER_SUFFIX; return enum_cypher_t;}
 "password"                              {return password_tk;}
 "image_path"                            {return image_path_tk;}
 "status_path"                           {return status_path_tk;}

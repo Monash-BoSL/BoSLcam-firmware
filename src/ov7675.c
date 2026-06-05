@@ -205,16 +205,11 @@ void ov7675_awb(const int on){
     _ov7675_write_flag(REG_COM8, COM8_AWB, on);
 }
 
-void ov7675_init(const struct image_config_t* im_cfg_p, struct capture_t* capture){
+void ov7675_init(const struct image_config_t* const im_cfg_p, struct capture_t* const capture){
     capture->resolution     = im_cfg_p->resolution;
     capture->format         = im_cfg_p->format;
     capture->aec            = im_cfg_p->aec;
     capture->agc            = im_cfg_p->agc;
-
-    gpio = DEVICE_DT_GET(DT_NODELABEL(gpio0));
-    LOG_INF("bind %s\n", gpio->name);
-    i2c_sccb = DEVICE_DT_GET(DT_NODELABEL(i2c2));
-    LOG_INF("bind %s\n", i2c_sccb->name);
 
     //setup gpio for all pins
     // gpio_pin_configure(gpio, SCCB_PEN, GPIO_OUTPUT);
@@ -355,7 +350,7 @@ int ov7675_capture(const enum flash_t flash, struct capture_t* capture, int do_m
 }
 
 #define EBUFFERTOOSMALL 1
-int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* capture, int do_mean, uint8_t* mean_rgb){
+int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* const capture, const int do_mean, uint8_t* const mean_rgb){
     /* mean_rgb is populated with the mean R+G+B greyscale value */
     int ret = 0;
     const uint16_t line_width = ov7675_resolutions[capture->resolution].width;//line width in pixels
@@ -425,7 +420,7 @@ int ov7675_capture_sdhc_buffered(const enum flash_t flash, struct capture_t* cap
     fs_close(&imf);
     
     strcpy(capture->fp, SDHC_PATH(SCRATCH_FILE));
-    capture->where = DISK;
+    capture->where = DATA_LOCATION_DISK;
     capture->format = BMP;
 
     ov7675_aec(capture->aec);

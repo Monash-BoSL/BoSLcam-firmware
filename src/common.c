@@ -11,6 +11,12 @@ static const char* time_source_str[] = {
                                         "EXT_TIME",
                                         };
 
+static const char* trigger_str[] = {
+                                        "TIME_TRIGGER",
+                                        "WAKE_TRIGGER",
+                                        "UART_TRIGGER",
+                                        };
+
 int LOG_UNIXTIME(const int32_t ln){
     int ret = 0;
     int32_t ct;
@@ -46,9 +52,13 @@ void led(bool on) {
 #endif
 }
 
-const char* const get_time_source_str(const uint8_t index)
-{
+const char* const strftimesource(const uint8_t index) {
     if (index < 6)  return time_source_str[index];
+    else            return NULL;
+}
+
+const char* const strftrigger(const uint8_t index) {
+    if (index < 3)  return trigger_str[index];
     else            return NULL;
 }
 
