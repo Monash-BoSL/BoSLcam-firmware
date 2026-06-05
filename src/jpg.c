@@ -8,15 +8,11 @@
 
 #include "sd.h"
 #include "jpg.h"
+#include "tmalloc.h"
 
 
 LOG_MODULE_REGISTER(jpg);
 
-
-
-int buffer_closure_from_sram(struct buffer_closure* bc, void* data){
-    return bc->lines;
-};
 
 int buffer_closure_from_file(struct buffer_closure* bc, void* data){
     int read_lines = 8*(bc->buffer_size_lines/8);
@@ -25,13 +21,12 @@ int buffer_closure_from_file(struct buffer_closure* bc, void* data){
     return ret/bc->line_size_bytes;
 };
 
-void tje_write(void *zfp, void *ptr, int size)
-{
+void tje_write(void *zfp, void *ptr, int size) {
     fs_write(zfp, ptr, size);
 }
 
 //ensure that your path beings with a / eg "/im1.bmp" !!
-//overwrites the image buffer in ram with the jpg	  !!
+//overwrites the image buffer in ram with the jpg     !!
 int sdhc_write_jpg(const char* const sdhc_path, struct capture_t* const capture){
     int ret = 0;
     char path[MAX_PATH];
@@ -53,14 +48,32 @@ int sdhc_write_jpg(const char* const sdhc_path, struct capture_t* const capture)
     ret = fs_open(&ibf, capture->fp, FS_O_READ);
     ret = fs_seek(&ibf, BMPIMAGEOFFSET, FS_SEEK_SET);
 
+    /* jpg encoding uses a lot of ram, we can only afford to use half of the buffer */
     struct buffer_closure bc = {
         .lines = image_resolutions[capture->resolution].height,
         .line_size_bytes = (RBG565_PIXEL_SIZE_BYTES*image_resolutions[capture->resolution].width),
-        .buffer_size_lines = capture->capacity/(RBG565_PIXEL_SIZE_BYTES*image_resolutions[capture->resolution].width),
+        .buffer_size_lines = (capture->capacity/2)/(RBG565_PIXEL_SIZE_BYTES*image_resolutions[capture->resolution].width), /* /2 because we free the other half of the buffer for a jpg stack */
         .src_data = capture->data,
         .ibfp = &ibf,
         .fill = buffer_closure_from_file,
     };
+    /* the high half of the capture buffer we use for jpg encoding scratch space
+     * variables created in this scratch space with the TNEW macro exist for the
+     * lifetime of the tmalloc variable declared hear. Note however that no
+     * compiler warning will be thrown if you try to access these variables
+     * after tmalloc is deleted. We handle this here by only making all the 
+     * variables with TNEW local within the tje_encode_with_func function
+     * and its subfunctions therefore none exist after this function returns 
+     * which is shorter than the lifetime of tmalloc here.
+     * Likewise we are not checking for NULLPTR return of TNEW in this code and 
+     * so no error will be thrown if tmalloc runs out of space. However for this
+     * jpeg encoding this is unlikely as it only requires ~ 10 kB of memory and 
+     * the workspace length is 76 kB.
+     */
+    tmalloc_t tmalloc;
+    char* const workspace = &(capture->data[capture->capacity/2]);
+    const size_t workspace_len = capture->capacity/2;
+    t_init(&tmalloc, workspace, workspace_len);
 
     ret = tje_encode_with_func(tje_write,
                         &jpgf,
@@ -68,7 +81,8 @@ int sdhc_write_jpg(const char* const sdhc_path, struct capture_t* const capture)
                         image_resolutions[capture->resolution].width,
                         image_resolutions[capture->resolution].height,
                         TJE_RGB565,
-                        (struct buffer_closure*)&bc
+                        (struct buffer_closure*)&bc,
+                        &tmalloc
                         );
 
 
@@ -80,13 +94,6 @@ int sdhc_write_jpg(const char* const sdhc_path, struct capture_t* const capture)
         return EINVAL;
     }
 
-    // //overwrite capture with jpg data
-    // ret = fs_open(&jpgf, path, FS_O_READ);
-    // ret = fs_read(&jpgf, capture->data, capture->capacity);
-    // if(ret > 0){
-    //     capture->size = ret;//store the new file size the capture length
-    // }
-    // fs_close(&jpgf);
     strcpy(capture->fp,path);
     capture->format=JPG;
     capture->where=DATA_LOCATION_DISK;
