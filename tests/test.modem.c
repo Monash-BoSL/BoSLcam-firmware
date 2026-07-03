@@ -100,6 +100,7 @@ int test_modem_psm(void){
     if(ret == 0){LOG_INF("REGISTERED ");}
     else if (ret < 0){LOG_ERR("REGISTRATION error"); return ret;}
 
+    lte_lc_psm_req(0);
 
     char buffer[1024];
     for(size_t i = 0;;i++){
