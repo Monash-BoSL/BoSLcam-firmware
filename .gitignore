@@ -1,5 +1,6 @@
 .vscode
 
+build_dk/*
 build/*
 !/build/zephyr/
 build/zephyr/*
