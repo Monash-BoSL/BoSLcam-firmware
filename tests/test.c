@@ -26,13 +26,10 @@ int test_runtime(void){
 
     // test_modem_shutdown_callback();
     // test_modem_shutdowns_trigger_reset();
-    // test_modem_psm();
-    // test_parse_timer();
-    // test_tau_to_seconds();
-    // test_active_time_to_seconds();
+    test_modem_psm();
 
 
-    printf("All tests successful!\n");
+    printk("All tests successful!\n");
     for(;;){
         led(1);
         k_sleep(K_MSEC(300));

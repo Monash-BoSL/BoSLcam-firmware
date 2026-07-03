@@ -1,10 +1,5 @@
 #pragma once
 
-typedef struct {
-    uint8_t unit;
-    uint8_t value;
-} psm_timer_t;
-
 int modem_init(void);
 
 int modem_shutdown(void);
