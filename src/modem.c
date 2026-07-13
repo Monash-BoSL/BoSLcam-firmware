@@ -176,6 +176,33 @@ int cmp_operator_rsrq(const void *a, const void *b){
 
 }
 
+static void modem_uicc_debug(void) {
+    char buffer[128];
+    int ret = 0;
+
+    ret = nrf_modem_at_cmd(buffer, sizeof(buffer), "AT");
+    LOG_INF("AT result: %d", ret);
+    if(ret == 0){ LOG_INF("AT response: %s", log_strdup(buffer)); }
+
+    ret = nrf_modem_at_cmd(buffer, sizeof(buffer), "AT+CFUN?");
+    LOG_INF("CFUN ret=%d", ret);
+    LOG_INF("CFUN response: %s", log_strdup(buffer));
+
+    ret = nrf_modem_at_cmd(buffer, sizeof(buffer), "AT%XSIM?");
+    LOG_INF("XSIM ret=%d", ret);
+    LOG_INF("XSIM response: %s", log_strdup(buffer));
+
+    ret = nrf_modem_at_cmd(buffer, sizeof(buffer), "AT+CPIN?");
+    LOG_INF("CPIN raw ret=%d", ret);
+    LOG_INF("CPIN raw response: %s", log_strdup(buffer));
+
+    ret = nrf_modem_at_cmd(buffer, sizeof(buffer), "AT+CCID");
+    if(ret == 0){
+        LOG_INF("CCID: %s", log_strdup(buffer));
+    } else {
+        LOG_ERR("CCID failed: %d", ret);
+    }
+}
 
 int modem_network_search(void){
     int ret = false;
@@ -219,16 +246,18 @@ int modem_wait_registration(const uint32_t timeout_ms){
         int stat = 0;
         ret = nrf_modem_at_scanf("AT+CEREG?", "+CEREG: %*d,%d", &stat);
         if(ret == 1){
-            switch (stat){
-                case 1:
-                case 5:
-                    LOG_INF("CREG: registered, %d", stat);
-                    return 0;
-                break;
-                default:
-                    k_msleep(retry_delay_ms);
-                break;
+            if(stat == 1 || stat == 5){
+                LOG_INF("CREG: registered, %d", stat);
+                return 0;
             }
+
+            if(stat == 90){
+                LOG_ERR("CEREG UICC failure: %d", stat);
+                modem_uicc_debug();
+                return -90;
+            }
+
+            k_msleep(retry_delay_ms);
         }else{LOG_ERR("CEREG error"); return ret;}
     }
     LOG_INF("CREG: not registed");
@@ -260,6 +289,10 @@ int modem_signal_strength(uint8_t* rsrq_p, uint8_t* rsrp_p){
 int modem_network_select(const char* mccmnc){
     int ret = 0;
     int timeout_ms     = 150000;
+
+    ret = modem_wait_registration(2000);
+    if(ret == 0){ return ret; }
+    if(ret == -90){ LOG_INF("UICC failure detected"); return ret; }
 
     if(mccmnc == NULL){
         ret = nrf_modem_at_printf("AT+COPS=0");
