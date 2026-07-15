@@ -26,7 +26,7 @@ int test_runtime(void){
 
     // test_modem_shutdown_callback();
     // test_modem_shutdowns_trigger_reset();
-    test_modem_psm(0, 1);
+    test_modem_psm(1, 0);
 
 
     printk("All tests successful!\n");
