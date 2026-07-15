@@ -13,6 +13,7 @@
 #include "sd.h"
 #include "modem.h"
 #include "ftp.h"
+#include "http.h"
 #include "jpg.h"
 #include "watchdog.h"
 #include "resets.h"
@@ -56,7 +57,7 @@
 
 LOG_MODULE_REGISTER(main);
 
-#define CAPTURE_QUEUE_SIZE 5
+#define CAPTURE_QUEUE_SIZE 1
 K_MSGQ_DEFINE(capture_q, sizeof(struct capture_task_t), CAPTURE_QUEUE_SIZE, 1);
 
 const struct device* gpio      = DEVICE_DT_GET(DT_NODELABEL(gpio0));
@@ -193,6 +194,39 @@ int init_wake_trigger_capture(void){
 }
 
 /******************************************************************************/
+/* NETWORK TRIGGER                                                            */
+/******************************************************************************/
+
+void network_trigger_handler(struct k_timer* timer_id) {
+    const int64_t now_ms = k_uptime_get();
+    int ret;
+
+    const int d = mcfg.trig_cfg.logging_decimation_ftp; /* must exist as this thread only init after mcfg parsed successfully */
+    if (d == 0){return;}
+    LOG_INF("polling network for trigger task...");
+
+    const struct capture_task_t capture_task = {
+        .requested_at_ms = now_ms,
+        .trigger = NETWORK_TRIGGER,
+        .upload = 1,
+        .respect_dark_noup = 0, /* network trigger should not respect the dark noup */
+    };
+
+    LOG_INF("network trigger capture task triggered");
+    msgq_put_force(&capture_q, &capture_task);
+}
+
+int init_network_trigger_capture(uint32_t interval_ms) {
+    static struct k_timer capture_timer;
+    k_timer_init(&capture_timer, network_trigger_handler, NULL);
+    
+    k_timer_start(&capture_timer, K_NO_WAIT, K_MSEC(interval_ms));
+    
+    LOG_INF("Successfully scheduled network capture timer for %u ms interval.", interval_ms);
+    return 0;
+}
+
+/******************************************************************************/
 /* CAPTURE WORKER                                                             */
 /******************************************************************************/
 
@@ -297,6 +331,19 @@ void capture_worker_f(void *p1, void *p2, void *p3){
     while(1){
         if (!k_msgq_get(&capture_q, &capture_task, K_FOREVER)){ // always 0 for K_FOREVER unless queue is purged
             LOG_INF("new capture task received! "); 
+            if(capture_task.trigger == NETWORK_TRIGGER){ /* for whatever reason this needs to happen in the main thread */
+                /* need to think about how to not fill up pipline with http */
+                int ret = modem_network_register(&mcfg.ftp_cfg);
+                if (ret < 0){continue;}
+
+                ret = http_get_test(
+                        "bosl.com.au",
+                        "/IoT/AquaforBeech/scripts/ReadMe_v2.php?SiteName=SC.csv&Key=Temp"
+                    );
+                if (ret >= 200 && ret < 300) { LOG_INF("HTTP GET OK"); } 
+                else { LOG_ERR("HTTP GET failed (%d)", ret); }
+                continue;
+            }
             LOG_INF("============================================= CAPTURE #%09u =====", status_g.captures);
             int ret_cap = capture_f(&capture_task);
             status_g.captures++;
@@ -440,7 +487,8 @@ int main(void){
 
     /* init capture triggers */
     ret = init_time_trigger_capture(mcfg.trig_cfg.logging_interval);
-    ret = init_wake_trigger_capture(); /* failure not fatal */
+    ret = init_wake_trigger_capture();           /* failure not fatal */
+    ret = init_network_trigger_capture(60000);  /* failure not fatal */
 
    while(1){
         k_sleep(K_FOREVER); /* execution now thread based */

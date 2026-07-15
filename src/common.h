@@ -190,6 +190,7 @@ enum trigger_t {
     TIME_TRIGGER = 0,
     WAKE_TRIGGER,
     UART_TRIGGER,
+    NETWORK_TRIGGER,
 };
 
 struct trigger_config_t {
