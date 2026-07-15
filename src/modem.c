@@ -4,6 +4,7 @@
 #include <nrf_modem_at.h>
 #include <modem/nrf_modem_lib.h>
 #include <modem/at_monitor.h>
+#include <modem/lte_lc.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -88,6 +89,8 @@ int modem_init(void){
         /* Do nothing, modem is already configured and LTE connected. */
 #endif
     }
+
+    lte_lc_psm_req(1);
 
     return ret;
 }
@@ -254,7 +257,7 @@ int modem_wait_registration(const uint32_t timeout_ms){
             if(stat == 90){
                 LOG_ERR("CEREG UICC failure: %d", stat);
                 modem_uicc_debug();
-                return -90;
+                return -stat;
             }
 
             k_msleep(retry_delay_ms);
@@ -290,9 +293,10 @@ int modem_network_select(const char* mccmnc){
     int ret = 0;
     int timeout_ms     = 150000;
 
-    ret = modem_wait_registration(2000);
-    if(ret == 0){ return ret; }
-    if(ret == -90){ LOG_INF("UICC failure detected"); return ret; }
+    int stat = 0;
+    ret = nrf_modem_at_scanf("AT+CEREG?", "+CEREG: %*d,%d", &stat);
+    if (ret < 0){LOG_ERR("CEREG error"); return ret;}
+    if (stat == 90){LOG_INF("UICC failure detected"); return ret; }
 
     if(mccmnc == NULL){
         ret = nrf_modem_at_printf("AT+COPS=0");
@@ -336,6 +340,20 @@ int modem_network_register(const struct ftp_config_t* const ftp_cfg_p){
         ret = nrf_modem_at_printf("AT%%XSYSTEMMODE=1,0,%d,1", gnss);
         if(ret == 0){LOG_INF("XSYSTEMMODE set ok");}
         else if (ret < 0){LOG_ERR("XSYSTEMMODE set error"); return ret;}
+    }
+
+    int stat = 0;
+    ret = nrf_modem_at_scanf("AT+CEREG?", "+CEREG: %*d,%d", &stat);
+    if(ret == 1){
+        if(stat == 1 || stat == 5){
+            LOG_INF("CREG: registered, %d", stat);
+            goto cleanup;
+        }
+        if(stat == 90){
+            LOG_ERR("CEREG UICC failure: %d", stat);
+            modem_uicc_debug();
+            return -stat;
+        }
     }
 
     ret = nrf_modem_at_printf("AT+CGDCONT=0,\"IP\",\"%s\"", ftp_cfg_p->apn);
@@ -398,6 +416,13 @@ int modem_network_register(const struct ftp_config_t* const ftp_cfg_p){
     LOG_ERR("Unable to register to network");
     return -1;
 cleanup:
+    {
+        int tau, active;
+        int ret_psm = lte_lc_psm_get(&tau, &active);
+        if (ret_psm < 0) { LOG_ERR("PSM get error"); }
+        else { LOG_INF("TAU=%d s Active=%d s", tau, active); }
+    }
+
     modem_signal_strength(&status_g.rsrq, &status_g.rsrp);//we ignore the error here as its not too important if the signal strength is bad;
     return ret;
 }
