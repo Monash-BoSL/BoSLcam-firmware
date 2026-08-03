@@ -72,6 +72,7 @@ struct status_t status_g = {
                                 .time_wall = 0,             /* updated by capture_f() */
                                 .battery_voltage = -1,      /* updated by capture_f() */
                                 .captures = 0,              /* updated by capture_worker() */ 
+                                .network_capture_count = -1,/* updated by capture_worker() */ 
                                 .time_src = NO_TIME,        /* updated by time_source_stats_async() */
                                 .mccmnc = "\0\0\0\0\0\0\0", /* updated by modem.c */
                                 .rsrq = 0xFF,               /* updated by modem.c */
@@ -219,7 +220,7 @@ void network_trigger_handler(struct k_timer* timer_id) {
 int init_network_trigger_capture(uint32_t interval_ms) {
     static struct k_timer capture_timer;
     k_timer_init(&capture_timer, network_trigger_handler, NULL);
-    
+    /* bosl.com.au seems to accept connection keep-alive times of above 120s but not longer than 300s */
     k_timer_start(&capture_timer, K_NO_WAIT, K_MSEC(interval_ms));
     
     LOG_INF("Successfully scheduled network capture timer for %u ms interval.", interval_ms);
@@ -327,27 +328,58 @@ void capture_worker_f(void *p1, void *p2, void *p3){
      * setup() passes.
      */
     struct capture_task_t capture_task;
+    struct http_endpoint http_ep;
+    int ret = http_endpoint_init_host( &http_ep, "bosl.com.au", 80);
+    if (ret) {
+        LOG_ERR("HTTP endpoint init failed (%d)", ret);
+        return;
+    }
 
     while(1){
         if (!k_msgq_get(&capture_q, &capture_task, K_FOREVER)){ // always 0 for K_FOREVER unless queue is purged
             LOG_INF("new capture task received! "); 
             if(capture_task.trigger == NETWORK_TRIGGER){ /* for whatever reason this needs to happen in the main thread */
-                /* need to think about how to not fill up pipline with http */
+                /*
+                 * Modem operations must happen in this thread :(
+                 */
                 int ret = modem_network_register(&mcfg.ftp_cfg);
-                if (ret < 0){continue;}
+                if (ret < 0) {
+                    LOG_ERR("network registration failed (%d)", ret);
+                    continue;
+                }
 
-                ret = http_get_test(
-                        "bosl.com.au",
-                        "/IoT/AquaforBeech/scripts/ReadMe_v2.php?SiteName=SC.csv&Key=Temp"
-                    );
-                if (ret >= 200 && ret < 300) { LOG_INF("HTTP GET OK"); } 
-                else { LOG_ERR("HTTP GET failed (%d)", ret); }
-                continue;
+                uint32_t network_count;
+                ret = http_get_uint32(
+                    &http_ep,
+                    "/IoT/AquaforBeech/scripts/ReadMe_v2.php?SiteName=SC.csv&Key=Temp",
+                    &network_count);
+                if (ret) {
+                    LOG_ERR("HTTP counter read failed (%d)", ret);
+                    continue;
+                }
+
+                if (status_g.network_capture_count < 0) {
+                    status_g.network_capture_count = network_count;
+                    LOG_INF("initial network capture count %u", network_count);
+                    continue;
+                }
+
+                if (network_count <= status_g.network_capture_count) {
+                    LOG_INF("no new network capture");
+                    continue;
+                }
+
+                LOG_INF("new network capture available %u -> %u",
+                        status_g.network_capture_count,
+                        network_count);
+                status_g.network_capture_count = network_count;
             }
             LOG_INF("============================================= CAPTURE #%09u =====", status_g.captures);
             int ret_cap = capture_f(&capture_task);
             status_g.captures++;
-            // TODO: what to do with ret?
+            if (ret_cap) {
+                LOG_ERR("capture failed (%d)", ret_cap);
+            }
         }
     }
 }

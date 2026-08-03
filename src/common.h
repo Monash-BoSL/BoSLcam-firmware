@@ -254,6 +254,7 @@ struct status_t {
     int32_t time_wall;
     int32_t battery_voltage;
     uint32_t captures;
+    int32_t network_capture_count;
     enum time_source time_src;
     char mccmnc[7];
     uint8_t rsrq;

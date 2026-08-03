@@ -105,6 +105,7 @@ int test_modem_psm(uint8_t psm, uint8_t deregister) {
     int tau;
     int active;
     int64_t t;
+    struct http_endpoint http_ep;
 
     LOG_INF("TEST: MODEM PSM");
 
@@ -154,6 +155,12 @@ int test_modem_psm(uint8_t psm, uint8_t deregister) {
         return ret;
     }
 
+    ret = http_endpoint_init_host(&http_ep, "bosl.com.au", 80);
+    if (ret) {
+        LOG_ERR("HTTP endpoint init failed");
+        return ret;
+    }
+
     lte_lc_psm_req(psm);
 
     char buffer[256];
@@ -199,17 +206,17 @@ int test_modem_psm(uint8_t psm, uint8_t deregister) {
             LOG_INF("TAU=%d s Active=%d s", tau, active);
         }
 
-        /* Entire network transaction */
         t = time_ms();
-        ret = http_get_test(
-                "bosl.com.au",
+        ret = http_get(&http_ep,
                 "/IoT/AquaforBeech/scripts/ReadMe_v2.php?SiteName=SC.csv&Key=Temp");
         log_elapsed("Network total", t);
 
-        if (ret >= 200 && ret < 300) {
+        if (ret == 0 && http_ep.status >= 200 && http_ep.status < 300) {
             LOG_INF("HTTP GET OK");
+            printk("%s\n", http_body(&http_ep));
+            if (http_ep.truncated) {LOG_WRN("HTTP response truncated"); }
         } else {
-            LOG_ERR("HTTP GET failed (%d)", ret);
+            LOG_ERR("HTTP GET failed (%d)", http_ep.status);
         }
 
         if(deregister){
@@ -230,5 +237,6 @@ int test_modem_psm(uint8_t psm, uint8_t deregister) {
         k_sleep(K_SECONDS(180));
     }
 
+    http_disconnect(&http_ep);
     return 0;
 }
