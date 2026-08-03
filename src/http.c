@@ -11,7 +11,7 @@ LOG_MODULE_REGISTER(http);
 
 #define HTTP_TIMEOUT_MS 10000
 
-static int resolve_endpoint(struct http_endpoint *ep) {
+static int resolve_endpoint(struct http_endpoint* ep) {
     if (ep->addr_valid) {return 0;}
 
     struct addrinfo hints = {
@@ -26,7 +26,7 @@ static int resolve_endpoint(struct http_endpoint *ep) {
         return -ENOENT;
     }
 
-    struct sockaddr_in *addr = (struct sockaddr_in *)res->ai_addr;
+    struct sockaddr_in* addr = (struct sockaddr_in*)res->ai_addr;
     ep->addr = *addr;
     ep->addr.sin_port = htons(ep->port);
     ep->addr_valid = true;
@@ -39,8 +39,8 @@ static int resolve_endpoint(struct http_endpoint *ep) {
     return 0;
 }
 
-int http_endpoint_init_ip(struct http_endpoint *ep,
-                          const char *ip,
+int http_endpoint_init_ip(struct http_endpoint* ep,
+                          const char* ip,
                           uint16_t port) {
     memset(ep, 0, sizeof(*ep));
 
@@ -56,8 +56,8 @@ int http_endpoint_init_ip(struct http_endpoint *ep,
     return 0;
 }
 
-int http_endpoint_init_host(struct http_endpoint *ep,
-                            const char *host,
+int http_endpoint_init_host(struct http_endpoint* ep,
+                            const char* host,
                             uint16_t port) {
     memset(ep, 0, sizeof(*ep));
     ep->host = host;
@@ -66,7 +66,7 @@ int http_endpoint_init_host(struct http_endpoint *ep,
     return 0;
 }
 
-static int open_socket(struct http_endpoint *ep) {
+static int open_socket(struct http_endpoint* ep) {
     int sock;
 
     int ret = resolve_endpoint(ep);
@@ -75,7 +75,7 @@ static int open_socket(struct http_endpoint *ep) {
     sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock < 0) {return -errno; }
 
-    ret = connect(sock, (struct sockaddr *)&ep->addr, sizeof(ep->addr));
+    ret = connect(sock, (struct sockaddr*)&ep->addr, sizeof(ep->addr));
     if (ret < 0) {
         close(sock);
         return -errno;
@@ -84,17 +84,19 @@ static int open_socket(struct http_endpoint *ep) {
     return sock;
 }
 
-static void response_cb(struct http_response *rsp,
+static void response_cb(struct http_response* rsp,
                         enum http_final_call final_data,
-                        void *user_data) {
-    struct http_endpoint *ep = user_data;
+                        void* user_data) {
+    struct http_endpoint* ep = user_data;
 
-    ep->recv_len = rsp->data_len;
-    ep->status = rsp->http_status_code;
     ep->truncated = rsp->data_len > sizeof(ep->recv_buf);
+    if (ep->truncated) { ep->recv_len = sizeof(ep->recv_buf); } 
+    else { ep->recv_len = rsp->data_len; }
+
+    ep->status = rsp->http_status_code;
 }
 
-static int do_request(const int sock, struct http_endpoint *ep, const char *path) {
+static int do_request(const int sock, struct http_endpoint* ep, const char* path) {
     struct http_request req = {
         .method = HTTP_GET,
         .url = path,
@@ -109,7 +111,7 @@ static int do_request(const int sock, struct http_endpoint *ep, const char *path
     return http_client_req(sock, &req, HTTP_TIMEOUT_MS, ep);
 }
 
-int http_get(struct http_endpoint *ep, const char *path) {
+int http_get(struct http_endpoint* ep, const char* path) {
     int ret;
     int sock;
 
@@ -120,9 +122,7 @@ int http_get(struct http_endpoint *ep, const char *path) {
     if (sock < 0) {return sock; }
 
     ret = do_request(sock, ep, path);
-
     close(sock);
-
     if (ret < 0) {
         LOG_ERR("HTTP request failed (%d)", ret);
         return ret;
@@ -132,37 +132,64 @@ int http_get(struct http_endpoint *ep, const char *path) {
     return 0;
 }
 
-char *http_body(struct http_endpoint *ep) {
-    char *body;
-    body = strstr((char *)ep->recv_buf, "\r\n\r\n");
+char* http_body(struct http_endpoint* ep) {
+    char* body;
+    body = strstr((char*)ep->recv_buf, "\r\n\r\n");
     if (body) { return body + 4; }
-    return (char *)ep->recv_buf;
+    return (char*)ep->recv_buf;
 }
 
 /******************************************************************************/
 /* HELPERS                                                                    */
 /******************************************************************************/
 
-int http_get_uint32(struct http_endpoint *ep,
-                    const char *path,
-                    uint32_t *value) {
-    int ret;
-    ret = http_get(ep, path);
-    if (ret) {return ret; }
+int http_get_uint32(struct http_endpoint* ep,
+                    const char* path,
+                    uint32_t* value) {
+    int ret = http_get(ep, path);
+    if (ret){return ret; }
 
-    if (ep->status < 200 || ep->status >= 300) {
+    if (ep->status < 200 || ep->status >= 300){
         return -EIO;
     }
-    if (ep->truncated) {
-        return -EMSGSIZE;
-    }
+    if (ep->truncated){return -EMSGSIZE; }
 
     char *body = http_body(ep);
+    if (body == NULL){return -EINVAL; }
+
+    size_t body_len = ep->recv_len - (body - (char*)ep->recv_buf);
+
+    /* Parse first chunk size (hex). */
+    errno = 0;
+    char *chunk_end;
+    unsigned long chunk_size = strtoul(body, &chunk_end, 16);
+    if (chunk_end == body){return -EINVAL; }
+    if (errno == ERANGE){return -ERANGE; }
+
+    /* Chunk size line must end with CRLF. */
+    size_t chunk_header_len = chunk_end - body;
+    if (chunk_header_len + 2 > body_len){return -EINVAL; }
+
+    if (chunk_end[0] != '\r' || chunk_end[1] != '\n'){
+        return -EINVAL;
+    }
+    chunk_end += 2;
+    body_len -= chunk_header_len + 2;
+
+    /* Ensure the first chunk contains at least one byte. */
+    if (chunk_size == 0 || chunk_size > body_len){
+        return -EINVAL;
+    }
+
+    /* Parse integer from first chunk data. */
+    errno = 0;
     char *end;
-    unsigned long parsed = strtoul(body, &end, 10);
-    if (end == body) {return -EINVAL; }
+    unsigned long parsed = strtoul(chunk_end, &end, 10);
+    if (end == chunk_end){return -EINVAL; }
+    if (errno == ERANGE || parsed > UINT32_MAX){
+        return -ERANGE;
+    }
 
     *value = (uint32_t)parsed;
-
     return 0;
 }

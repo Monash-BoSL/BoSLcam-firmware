@@ -11,7 +11,7 @@
 
 
 struct http_endpoint {
-    const char *host;
+    const char* host;
     uint16_t port;
 
     struct sockaddr_in addr;
@@ -23,22 +23,22 @@ struct http_endpoint {
     bool truncated;
 };
 
-int http_endpoint_init_ip(struct http_endpoint *ep,
-                          const char *ip,
+int http_endpoint_init_ip(struct http_endpoint* ep,
+                          const char* ip,
                           uint16_t port);
 
-int http_endpoint_init_host(struct http_endpoint *ep,
-                            const char *host,
+int http_endpoint_init_host(struct http_endpoint* ep,
+                            const char* host,
                             uint16_t port);
 
-int http_get(struct http_endpoint *ep, const char *path);
+int http_get(struct http_endpoint* ep, const char* path);
 
-char *http_body(struct http_endpoint *ep);
+char *http_body(struct http_endpoint* ep);
 
 /******************************************************************************/
 /* HELPERS                                                                    */
 /******************************************************************************/
 
-int http_get_uint32(struct http_endpoint *ep,
-                    const char *path,
-                    uint32_t *value);
+int http_get_uint32(struct http_endpoint* ep,
+                    const char* path,
+                    uint32_t* value);

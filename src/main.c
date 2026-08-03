@@ -80,6 +80,8 @@ struct status_t status_g = {
                                 .network_searched = 0,      /* updated by modem.c */
                                 };
 
+struct http_endpoint http_ep_g;
+
 
 // This function puts a capture task into the capture queue. If the queue is full, it will drop the oldest item to make room for the new one.
 void msgq_put_force(struct k_msgq* const q, const struct capture_task_t* const task) {
@@ -328,17 +330,15 @@ void capture_worker_f(void *p1, void *p2, void *p3){
      * setup() passes.
      */
     struct capture_task_t capture_task;
-    struct http_endpoint http_ep;
-    int ret = http_endpoint_init_host( &http_ep, "bosl.com.au", 80);
-    if (ret) {
-        LOG_ERR("HTTP endpoint init failed (%d)", ret);
-        return;
-    }
 
     while(1){
         if (!k_msgq_get(&capture_q, &capture_task, K_FOREVER)){ // always 0 for K_FOREVER unless queue is purged
             LOG_INF("new capture task received! "); 
             if(capture_task.trigger == NETWORK_TRIGGER){ /* for whatever reason this needs to happen in the main thread */
+                if(http_ep_g.host == NULL){
+                    LOG_ERR("no host configured for network trigger!");
+                    continue;
+                }
                 /*
                  * Modem operations must happen in this thread :(
                  */
@@ -350,8 +350,8 @@ void capture_worker_f(void *p1, void *p2, void *p3){
 
                 uint32_t network_count;
                 ret = http_get_uint32(
-                    &http_ep,
-                    "/IoT/AquaforBeech/scripts/ReadMe_v2.php?SiteName=SC.csv&Key=Temp",
+                    &http_ep_g,
+                    mcfg.trig_cfg.network_site,
                     &network_count);
                 if (ret) {
                     LOG_ERR("HTTP counter read failed (%d)", ret);
@@ -430,6 +430,8 @@ int setup(void){
 
     int d = mcfg.trig_cfg.logging_decimation_ftp;
     if(d > 0){//first try get time from network
+        http_endpoint_init_host(&http_ep_g, mcfg.trig_cfg.network_domain, 80);
+
         ftp_setup();
 
         modem_init();
@@ -520,7 +522,7 @@ int main(void){
     /* init capture triggers */
     ret = init_time_trigger_capture(mcfg.trig_cfg.logging_interval);
     ret = init_wake_trigger_capture();           /* failure not fatal */
-    ret = init_network_trigger_capture(60000);  /* failure not fatal */
+    ret = init_network_trigger_capture(mcfg.trig_cfg.network_interval);  /* failure not fatal */
 
    while(1){
         k_sleep(K_FOREVER); /* execution now thread based */
