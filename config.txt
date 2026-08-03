@@ -52,4 +52,7 @@ trigger_config_t
     uint32_t logging_interval           = 360000                    // ms (90000 is near the maximum logging frequency possible, longer than a day will also not work (causes watchdog timer to starve))
     uint32_t logging_decimation_ftp     = 1                         // 1 in every x photos captured to sd will be uploaded
     uint8_t dark_noup                   = 30                        // [0,255], mean R+B+G value below which to not upload. 255 to disable. (< 20 cuts most nighttime images, > 40 keeps most daytime)
+    uint32_t network_interval           = 12000                     // ms polling interval for network trigger
+    char* network_domain                = "bosl.com.au"             // domain for network trigger 
+    char* network_site                  = "/IoT/AquaforBeech/scripts/ReadMe_v2.php?SiteName=SC.csv&Key=Temp" // site for network trigger 
 

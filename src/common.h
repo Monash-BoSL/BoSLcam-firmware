@@ -198,6 +198,9 @@ struct trigger_config_t {
     uint32_t logging_interval; //ms
     uint32_t logging_decimation_ftp;//1 in every x photos captured to sd will be uploaded
     uint8_t dark_noup;// mean R+G+B below which image is not uploaded. 255 to disable
+    uint32_t network_interval; //ms
+    char* network_domain;
+    char* network_site;
 };
 
 struct capture_task_t {

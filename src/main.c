@@ -220,7 +220,7 @@ void network_trigger_handler(struct k_timer* timer_id) {
 int init_network_trigger_capture(uint32_t interval_ms) {
     static struct k_timer capture_timer;
     k_timer_init(&capture_timer, network_trigger_handler, NULL);
-    /* bosl.com.au seems to accept connection keep-alive times of above 120s but not longer than 300s */
+
     k_timer_start(&capture_timer, K_NO_WAIT, K_MSEC(interval_ms));
     
     LOG_INF("Successfully scheduled network capture timer for %u ms interval.", interval_ms);

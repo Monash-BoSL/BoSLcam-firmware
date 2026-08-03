@@ -31,12 +31,11 @@ static int resolve_endpoint(struct http_endpoint *ep) {
     ep->addr.sin_port = htons(ep->port);
     ep->addr_valid = true;
 
-    freeaddrinfo(res);
-
     char ip_str[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &addr->sin_addr, ip_str, sizeof(ip_str));
     LOG_INF("DNS resolution: %s -> %s", ep->host, ip_str);
 
+    freeaddrinfo(res);
     return 0;
 }
 
@@ -108,7 +107,7 @@ static int do_request(const int sock, struct http_endpoint *ep, const char *path
     };
     ep->recv_len = 0;
 
-    http_client_req(sock, &req, HTTP_TIMEOUT_MS, ep);
+    return http_client_req(sock, &req, HTTP_TIMEOUT_MS, ep);
 }
 
 int http_get(struct http_endpoint *ep, const char *path) {

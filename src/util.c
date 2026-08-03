@@ -1,6 +1,9 @@
 
+#include <stdio.h>
+
 #include "util.h"
 #include "errno.h"
+
 
 void unix_date(struct tm* cal, int32_t unixtime) {
   uint32_t seconds, minutes, hours, days, year, month;
