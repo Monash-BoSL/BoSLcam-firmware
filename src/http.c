@@ -33,7 +33,7 @@ static int resolve_endpoint(struct http_endpoint *ep) {
 
     char ip_str[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &addr->sin_addr, ip_str, sizeof(ip_str));
-    LOG_INF("DNS resolution: %s -> %s", ep->host, ip_str);
+    LOG_INF("DNS resolution: %s -> %s", log_strdup(ep->host), log_strdup(ip_str));
 
     freeaddrinfo(res);
     return 0;
@@ -76,7 +76,6 @@ static int open_socket(struct http_endpoint *ep) {
     if (sock < 0) {return -errno; }
 
     ret = connect(sock, (struct sockaddr *)&ep->addr, sizeof(ep->addr));
-
     if (ret < 0) {
         close(sock);
         return -errno;
@@ -120,7 +119,7 @@ int http_get(struct http_endpoint *ep, const char *path) {
     sock = open_socket(ep);
     if (sock < 0) {return sock; }
 
-    ret = do_request(ep, sock, path);
+    ret = do_request(sock, ep, path);
 
     close(sock);
 
