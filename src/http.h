@@ -17,11 +17,7 @@ struct http_endpoint {
     struct sockaddr_in addr;
     bool addr_valid;
 
-    int sock;
-    bool connected;
-
     uint8_t recv_buf[HTTP_RECV_BUF_SIZE];
-
     size_t recv_len;
     int status;
     bool truncated;
@@ -36,8 +32,6 @@ int http_endpoint_init_host(struct http_endpoint *ep,
                             uint16_t port);
 
 int http_get(struct http_endpoint *ep, const char *path);
-
-void http_disconnect(struct http_endpoint *ep);
 
 char *http_body(struct http_endpoint *ep);
 

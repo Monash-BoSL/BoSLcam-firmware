@@ -33,6 +33,10 @@ static int resolve_endpoint(struct http_endpoint *ep) {
 
     freeaddrinfo(res);
 
+    char ip_str[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &addr->sin_addr, ip_str, sizeof(ip_str));
+    LOG_INF("DNS resolution: %s -> %s", ep->host, ip_str);
+
     return 0;
 }
 
@@ -43,7 +47,6 @@ int http_endpoint_init_ip(struct http_endpoint *ep,
 
     ep->host = ip;
     ep->port = port;
-    ep->sock = -1;
     ep->addr.sin_family = AF_INET;
     ep->addr.sin_port = htons(port);
     if (inet_pton(AF_INET, ip, &ep->addr.sin_addr) != 1) {
@@ -60,37 +63,27 @@ int http_endpoint_init_host(struct http_endpoint *ep,
     memset(ep, 0, sizeof(*ep));
     ep->host = host;
     ep->port = port;
-    ep->sock = -1;
 
     return 0;
 }
 
-static int ensure_connected(struct http_endpoint *ep) {
-    if (ep->connected){return 0; }
+static int open_socket(struct http_endpoint *ep) {
+    int sock;
 
     int ret = resolve_endpoint(ep);
     if (ret) {return ret; }
 
-    ep->sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (ep->sock < 0) {return -errno; }
+    sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (sock < 0) {return -errno; }
 
-    ret = connect(ep->sock, (struct sockaddr *)&ep->addr, sizeof(ep->addr));
+    ret = connect(sock, (struct sockaddr *)&ep->addr, sizeof(ep->addr));
+
     if (ret < 0) {
-        close(ep->sock);
-        ep->sock = -1;
+        close(sock);
         return -errno;
     }
 
-    ep->connected = true;
-    return 0;
-}
-
-void http_disconnect(struct http_endpoint *ep) {
-    if (ep->connected) {
-        close(ep->sock);
-        ep->sock = -1;
-        ep->connected = false;
-    }
+    return sock;
 }
 
 static void response_cb(struct http_response *rsp,
@@ -103,7 +96,7 @@ static void response_cb(struct http_response *rsp,
     ep->truncated = rsp->data_len > sizeof(ep->recv_buf);
 }
 
-static int do_request(struct http_endpoint *ep, const char *path) {
+static int do_request(const int sock, struct http_endpoint *ep, const char *path) {
     struct http_request req = {
         .method = HTTP_GET,
         .url = path,
@@ -115,36 +108,25 @@ static int do_request(struct http_endpoint *ep, const char *path) {
     };
     ep->recv_len = 0;
 
-    return http_client_req(ep->sock, &req, HTTP_TIMEOUT_MS, ep);
+    http_client_req(sock, &req, HTTP_TIMEOUT_MS, ep);
 }
 
 int http_get(struct http_endpoint *ep, const char *path) {
     int ret;
+    int sock;
 
     memset(ep->recv_buf, 0, sizeof(ep->recv_buf));
     ep->recv_len = 0;
 
-    ret = ensure_connected(ep);
-    if (ret) {return ret; }
+    sock = open_socket(ep);
+    if (sock < 0) {return sock; }
 
-    ret = do_request(ep, path);
-    /*
-     * Server may have closed keep-alive connection.
-     * Retry once.
-     */
-    if (ret < 0) {
-        LOG_WRN("HTTP retry after reconnect");
-        http_disconnect(ep);
+    ret = do_request(ep, sock, path);
 
-        ret = ensure_connected(ep);
-        if (ret) {return ret; }
-
-        ret = do_request(ep, path);
-    }
+    close(sock);
 
     if (ret < 0) {
         LOG_ERR("HTTP request failed (%d)", ret);
-        http_disconnect(ep);
         return ret;
     }
 

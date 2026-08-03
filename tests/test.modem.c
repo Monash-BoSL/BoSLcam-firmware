@@ -85,6 +85,21 @@ int test_modem_shutdowns_trigger_reset(void){
     return 0;
 }
 
+static void lte_handler(const struct lte_lc_evt *const evt) {
+    switch (evt->type) {
+    case LTE_LC_EVT_MODEM_SLEEP_ENTER:
+        LOG_INF("MODEM ENTER SLEEP");
+        break;
+
+    case LTE_LC_EVT_MODEM_SLEEP_EXIT:
+        LOG_INF("MODEM EXIT SLEEP");
+        break;
+
+    default:
+        break;
+    }
+}
+
 static int64_t time_ms(void) {
     return k_uptime_get();
 }
@@ -162,6 +177,7 @@ int test_modem_psm(uint8_t psm, uint8_t deregister) {
     }
 
     lte_lc_psm_req(psm);
+    lte_lc_register_handler(lte_handler);
 
     char buffer[256];
     for (size_t i = 0;; i++) {
@@ -237,6 +253,5 @@ int test_modem_psm(uint8_t psm, uint8_t deregister) {
         k_sleep(K_SECONDS(180));
     }
 
-    http_disconnect(&http_ep);
     return 0;
 }
