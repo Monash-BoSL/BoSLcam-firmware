@@ -15,6 +15,7 @@ static const char* trigger_str[] = {
                                         "TIME_TRIGGER",
                                         "WAKE_TRIGGER",
                                         "UART_TRIGGER",
+                                        "NETWORK_TRIGGER",
                                         };
 
 int LOG_UNIXTIME(const int32_t ln){
