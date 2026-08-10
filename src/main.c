@@ -23,8 +23,8 @@
 #endif
 
 /*************** VERSION NUMBER ********************/
-// #define _VERSION "v2.0.0rc"
-#define _VERSION "v2.0.0"
+// #define _VERSION "v2.0.2rc"
+#define _VERSION "v2.0.1"
 /*************** TODO *******************************
 [ ] add UART trigger and configuration 
 [ ] compute jpg huffman coefficients at compile time and store in flash (tjpg.h)

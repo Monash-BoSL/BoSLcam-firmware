@@ -26,9 +26,16 @@ int test_runtime(void){
 
     // test_modem_shutdown_callback();
     // test_modem_shutdowns_trigger_reset();
+    test_modem_psm(1, 0);
 
 
-    printf("All tests successful!\n");
+    printk("All tests successful!\n");
+    for(;;){
+        led(1);
+        k_sleep(K_MSEC(300));
+        led(0);
+        k_sleep(K_MSEC(300));
+    }
     k_sleep(K_FOREVER);
     return 0;
 }

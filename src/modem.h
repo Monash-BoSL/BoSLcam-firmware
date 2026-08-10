@@ -1,6 +1,5 @@
 #pragma once
 
-
 int modem_init(void);
 
 int modem_shutdown(void);

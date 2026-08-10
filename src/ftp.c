@@ -142,7 +142,7 @@ int ftp_write_image(const struct ftp_config_t* const ftp_cfg_p, const struct cap
 cleanup:
     LOG_INF("FTP STATUS: closing...");
     ftp_close();
-    // LOG_INF("UPLOAD SEQUENCE ENDED. ret: %d", ret);
+    LOG_INF("UPLOAD SEQUENCE ENDED. ret: %d", ret);
     return ret;
 }
 

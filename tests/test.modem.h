@@ -6,6 +6,7 @@ int test_automatic_network_selection(void);
 int test_modem_shutdown_callback(void);
 int test_modem_shutdowns_trigger_reset(void);
 
+int test_modem_psm(uint8_t psm, uint8_t deregister);
 
 
 #endif
