@@ -23,7 +23,7 @@
  ## Status File Format
  As of firmware revision v1.4.0 the status file format is given as:
  ```
- DATE-TIME, TIME_SOURCE, CAPTURE_NO, BATTERY_mV, MCCMNC, RSRQ, RSRP, TIME_TRIGGER
+ DATE-TIME, TIME_SOURCE, CAPTURE_NO, BATTERY_mV, MCCMNC, RSRQ, RSRP, TRIGGER
  ```
  So the log:
  ```
