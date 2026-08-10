@@ -13,10 +13,10 @@
 #include <zephyr/logging/log.h>
 
 #include <net/socket.h>
-#include <net/http_client.h>
 
 #include "../src/common.h"
 #include "../src/modem.h"
+#include "../src/http.h"
 
 LOG_MODULE_REGISTER(test_modem);
 
@@ -85,15 +85,20 @@ int test_modem_shutdowns_trigger_reset(void){
     return 0;
 }
 
-#define HTTP_TIMEOUT_MS     10000
-#define HTTP_RECV_BUF_SIZE  1024
+static void lte_handler(const struct lte_lc_evt *const evt) {
+    switch (evt->type) {
+    case LTE_LC_EVT_MODEM_SLEEP_ENTER:
+        LOG_INF("MODEM ENTER SLEEP");
+        break;
 
-static uint8_t recv_buf[HTTP_RECV_BUF_SIZE];
+    case LTE_LC_EVT_MODEM_SLEEP_EXIT:
+        LOG_INF("MODEM EXIT SLEEP");
+        break;
 
-struct http_result {
-    int status;
-    size_t bytes;
-};
+    default:
+        break;
+    }
+}
 
 static int64_t time_ms(void) {
     return k_uptime_get();
@@ -103,116 +108,6 @@ static void log_elapsed(const char *name, int64_t start) {
     LOG_INF("%-24s %lld ms", name, k_uptime_get() - start);
 }
 
-static void response_cb(struct http_response *rsp,
-                        enum http_final_call final_data,
-                        void *user_data) {
-    struct http_result *result = user_data;
-
-    if (rsp->http_status_code) {
-        result->status = rsp->http_status_code;
-    }
-
-    result->bytes += rsp->body_frag_len;
-    if (rsp->body_frag_len > 0) {
-        size_t len = MIN(rsp->body_frag_len, 24);
-        char buf[25];
-
-        memcpy(buf, rsp->body_frag_start, len);
-        buf[len] = '\0';
-
-        LOG_INF("HTTP body first %u bytes: %s", len, buf);
-    }
-
-    if (final_data == HTTP_DATA_FINAL) {
-        LOG_INF("HTTP body received: %d bytes", result->bytes);
-    }
-}
-
-int http_get_test(const char *host,
-                  const char *path) {
-    int ret;
-    int sock;
-    int64_t t;
-
-    struct addrinfo hints = {
-        .ai_family = AF_INET,
-        .ai_socktype = SOCK_STREAM,
-    };
-
-    struct addrinfo *res;
-
-    struct http_result result = {
-        .status = 0,
-        .bytes = 0,
-    };
-
-    /* ------------------------------------------------ */
-    /* DNS */
-    /* ------------------------------------------------ */
-    t = time_ms();
-    ret = getaddrinfo(host, "80", &hints, &res);
-    log_elapsed("DNS lookup", t);
-    if (ret) {
-        LOG_ERR("getaddrinfo failed (%d)", ret);
-        return -ENOENT;
-    }
-
-    /* ------------------------------------------------ */
-    /* TCP connect */
-    /* ------------------------------------------------ */
-
-    sock = socket(res->ai_family,
-                  res->ai_socktype,
-                  IPPROTO_TCP);
-    if (sock < 0) {
-        freeaddrinfo(res);
-        LOG_ERR("socket failed");
-        return -errno;
-    }
-
-    t = time_ms();
-    ret = connect(sock,
-                  res->ai_addr,
-                  res->ai_addrlen);
-    log_elapsed("TCP connect", t);
-    freeaddrinfo(res);
-    if (ret < 0) {
-        LOG_ERR("connect failed (%d)", errno);
-        close(sock);
-        return -errno;
-    }
-
-    /* ------------------------------------------------ */
-    /* HTTP GET */
-    /* ------------------------------------------------ */
-
-    struct http_request req = {
-        .method = HTTP_GET,
-        .url = path,
-        .host = host,
-        .protocol = "HTTP/1.1",
-
-        .response = response_cb,
-
-        .recv_buf = recv_buf,
-        .recv_buf_len = sizeof(recv_buf),
-    };
-
-    t = time_ms();
-    ret = http_client_req(sock,
-                          &req,
-                          HTTP_TIMEOUT_MS,
-                          &result);
-    log_elapsed("HTTP GET", t);
-    close(sock);
-    if (ret < 0) {
-        LOG_ERR("http_client_req failed (%d)", ret);
-        return ret;
-    }
-
-    LOG_INF("HTTP status %d", result.status);
-    return result.status;
-}
 
 struct ftp_config_t ftp_cfg = {
     .mccmnc = "50501",
@@ -225,6 +120,7 @@ int test_modem_psm(uint8_t psm, uint8_t deregister) {
     int tau;
     int active;
     int64_t t;
+    struct http_endpoint http_ep;
 
     LOG_INF("TEST: MODEM PSM");
 
@@ -274,7 +170,14 @@ int test_modem_psm(uint8_t psm, uint8_t deregister) {
         return ret;
     }
 
+    ret = http_endpoint_init_host(&http_ep, "bosl.com.au", 80);
+    if (ret) {
+        LOG_ERR("HTTP endpoint init failed");
+        return ret;
+    }
+
     lte_lc_psm_req(psm);
+    lte_lc_register_handler(lte_handler);
 
     char buffer[256];
     for (size_t i = 0;; i++) {
@@ -319,17 +222,17 @@ int test_modem_psm(uint8_t psm, uint8_t deregister) {
             LOG_INF("TAU=%d s Active=%d s", tau, active);
         }
 
-        /* Entire network transaction */
         t = time_ms();
-        ret = http_get_test(
-                "bosl.com.au",
+        ret = http_get(&http_ep,
                 "/IoT/AquaforBeech/scripts/ReadMe_v2.php?SiteName=SC.csv&Key=Temp");
         log_elapsed("Network total", t);
 
-        if (ret >= 200 && ret < 300) {
+        if (ret == 0 && http_ep.status >= 200 && http_ep.status < 300) {
             LOG_INF("HTTP GET OK");
+            printk("%s\n", http_body(&http_ep));
+            if (http_ep.truncated) {LOG_WRN("HTTP response truncated"); }
         } else {
-            LOG_ERR("HTTP GET failed (%d)", ret);
+            LOG_ERR("HTTP GET failed (%d)", http_ep.status);
         }
 
         if(deregister){

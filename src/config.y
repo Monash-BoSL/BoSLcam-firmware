@@ -83,6 +83,9 @@ int yydebug = 1;
 %token logging_interval_tk
 %token logging_decimation_ftp_tk
 %token dark_noup_tk
+%token network_interval_tk
+%token network_domain_tk
+%token network_site_tk
 
 %token name
 
@@ -175,6 +178,9 @@ trigger_config_t_entry  : enum_tk trigger_t_tk trigger_tk                  '=' e
                         | uint32_t_tk logging_interval_tk                  '=' integer                     {parser_config_handle->trig_cfg.logging_interval = $4;}
                         | uint32_t_tk logging_decimation_ftp_tk            '=' integer                     {parser_config_handle->trig_cfg.logging_decimation_ftp = $4;}
                         | uint8_t_tk dark_noup_tk                          '=' integer                     {parser_config_handle->trig_cfg.dark_noup = $4;}
+                        | uint32_t_tk network_interval_tk                  '=' integer                     {parser_config_handle->trig_cfg.network_interval = $4;}
+                        | char_p_tk network_domain_tk                      '=' string                      {string_malloc(&parser_config_handle->trig_cfg.network_domain,$4);}
+                        | char_p_tk network_site_tk                        '=' string                      {string_malloc(&parser_config_handle->trig_cfg.network_site,$4);}
                         ;
 
 %%                     /* C code */
